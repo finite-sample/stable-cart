@@ -1,6 +1,6 @@
 # evaluation.py
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict
 
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.metrics import (
@@ -80,8 +80,9 @@ def prediction_stability(
         mean_pred = np.mean(preds, axis=1)  # ensemble mean per sample
         scores = {}
         for k, name in enumerate(names):
-            rmse = mean_squared_error(mean_pred, preds[:, k], squared=False)
-            scores[name] = float(rmse)  # lower = more stable
+            err = mean_pred - preds[:, k]
+            rmse = float(np.sqrt(np.mean(np.square(err))))
+            scores[name] = rmse  # lower = more stable
         return scores
 
     else:
@@ -148,7 +149,7 @@ def accuracy(
         for name, mdl in models.items():
             y_pred = mdl.predict(X)
             mae = float(mean_absolute_error(y, y_pred))
-            rmse = float(mean_squared_error(y, y_pred, squared=False))
+            rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
             r2 = float(r2_score(y, y_pred))
             results[name] = {"mae": mae, "rmse": rmse, "r2": r2}
 

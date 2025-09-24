@@ -1,6 +1,6 @@
-"""Stable Cart package."""
+"""Public package exports for :mod:`stable_cart`."""
 
-from .evalutation import prediction_stability, accuracy
+from .evaluation import prediction_stability, accuracy
 from .less_greedy_tree import LessGreedyHybridRegressor, GreedyCARTExact
 
 __all__ = [
