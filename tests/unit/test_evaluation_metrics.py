@@ -4,7 +4,6 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.base import BaseClassifierMixin
 
 import evalutation as ev
 
