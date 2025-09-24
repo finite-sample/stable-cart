@@ -9,7 +9,8 @@ name = "stable-cart"
 version = "0.1.0"
 description = "A stable decision tree (CART) implementation."
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Gaurav Sood", email = "-" },
+    { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
