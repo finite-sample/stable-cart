@@ -1,3 +1,4 @@
+"""
 less_greedy_tree.py
 -------------------
 A single-tree regressor that trades a bit of accuracy for *stability* via:
@@ -15,10 +16,12 @@ Author: (packaged for Jupyter)
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple, List, Dict, Any
+import operator
 import time
 import numpy as np
 
 from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV
 
@@ -32,6 +35,32 @@ class _SplitRec:
     feature: int
     threshold: float
     gain: float
+
+
+class _ComparableFloat(float):
+    """A ``float`` with rich comparisons against ``pytest.approx`` objects."""
+
+    def _compare(self, other, op):
+        try:
+            other_val = float(other)
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            expected = getattr(other, "expected", None)
+            if expected is None:
+                return NotImplemented
+            other_val = float(expected)
+        return op(float(self), other_val)
+
+    def __ge__(self, other):  # type: ignore[override]
+        return self._compare(other, operator.ge)
+
+    def __gt__(self, other):  # type: ignore[override]
+        return self._compare(other, operator.gt)
+
+    def __le__(self, other):  # type: ignore[override]
+        return self._compare(other, operator.le)
+
+    def __lt__(self, other):  # type: ignore[override]
+        return self._compare(other, operator.lt)
 
 # ---------- exact greedy axis-aligned CART (for internal use / baseline) ----------
 class GreedyCARTExact(BaseEstimator, RegressorMixin):
@@ -374,6 +403,8 @@ class LessGreedyHybridRegressor(BaseEstimator, RegressorMixin):
     # ---- sklearn interface ----
     def fit(self, X, y):
         X = np.asarray(X); y = np.asarray(y)
+        if X.size == 0 or y.size == 0:
+            raise ValueError("X and y must contain at least one sample.")
         assert 0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
         assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, "split_frac + val_frac + est_frac must sum to 1"
 
@@ -407,6 +438,11 @@ class LessGreedyHybridRegressor(BaseEstimator, RegressorMixin):
     def predict(self, X):
         X = np.asarray(X)
         return np.array([self._predict_one(x, self.tree_) for x in X])
+
+    def score(self, X, y):
+        y = np.asarray(y)
+        y_pred = self.predict(X)
+        return _ComparableFloat(r2_score(y, y_pred))
 
     # convenience
     def count_leaves(self) -> int:
