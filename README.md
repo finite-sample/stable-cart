@@ -3,7 +3,7 @@
 [![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![Downloads](https://pepy.tech/badge/stable-cart)](https://pepy.tech/project/stable-cart)
-[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](https://finite-sample.github.io/stable-cart/)
+[![Documentation](https://github.com/finite-sample/stable-cart/actions/workflows/docs.yml/badge.svg)](https://finite-sample.github.io/stable-cart/)
 [![License](https://img.shields.io/github/license/finite-sample/stable-cart)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
 
 A scikit-learn compatible implementation of **Stable CART** (Classification and Regression Trees) with advanced stability metrics and techniques to reduce prediction variance.
