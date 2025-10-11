@@ -1,4 +1,4 @@
-"""Public package exports for :mod:`stable_cart`."""
+"""Public package exports for stable_cart."""
 
 from .evaluation import prediction_stability, accuracy
 from .less_greedy_tree import LessGreedyHybridRegressor, GreedyCARTExact
@@ -9,3 +9,5 @@ __all__ = [
     "LessGreedyHybridRegressor",
     "GreedyCARTExact",
 ]
+
+__version__ = "0.1.0"

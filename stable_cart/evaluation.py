@@ -8,7 +8,7 @@ from sklearn.metrics import (
     roc_auc_score,
     mean_squared_error,
     mean_absolute_error,
-    r2_score
+    r2_score,
 )
 from sklearn.preprocessing import label_binarize
 from sklearn.model_selection import train_test_split
@@ -19,9 +19,7 @@ from sklearn.datasets import make_classification, make_regression
 # Prediction Stability (OOS)
 # -------------------------------
 def prediction_stability(
-    models: Dict[str, object],
-    X_oos: np.ndarray,
-    task: str = "categorical"
+    models: Dict[str, object], X_oos: np.ndarray, task: str = "categorical"
 ) -> Dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
@@ -57,19 +55,18 @@ def prediction_stability(
             unique, inv = np.unique(preds, return_inverse=True)
             preds = inv.reshape(preds.shape)
 
-        # pairwise agreement matrix A[k,l] = mean(pred_k == pred_l)
-        n = preds.shape[0]
+        # pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
         agree = np.ones((K, K), dtype=float)
         for k in range(K):
-            for l in range(k + 1, K):
-                a = float(np.mean(preds[:, k] == preds[:, l]))
-                agree[k, l] = agree[l, k] = a
+            for j in range(k + 1, K):
+                a = float(np.mean(preds[:, k] == preds[:, j]))
+                agree[k, j] = agree[j, k] = a
 
         # per-model disagreement = average over pairs involving the model
         scores = {}
         for k, name in enumerate(names):
             # exclude self
-            others = [agree[k, l] for l in range(K) if l != k]
+            others = [agree[k, j] for j in range(K) if j != k]
             avg_disagree = float(np.mean([1.0 - a for a in others]))
             scores[name] = avg_disagree
         return scores
@@ -93,10 +90,7 @@ def prediction_stability(
 # Accuracy / Performance
 # -------------------------------
 def accuracy(
-    models: Dict[str, object],
-    X: np.ndarray,
-    y: np.ndarray,
-    task: str = "categorical"
+    models: Dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
 ) -> Dict[str, Dict[str, float]]:
     """
     Evaluate predictive performance per model.
@@ -122,7 +116,7 @@ def accuracy(
 
     if task == "categorical":
         y_unique = np.unique(y)
-        is_binary = (len(y_unique) == 2)
+        is_binary = len(y_unique) == 2
 
         for name, mdl in models.items():
             y_hat = mdl.predict(X)
@@ -165,8 +159,7 @@ def accuracy(
 def _test_classification():
     """Tiny proof: two CART classifiers, OOS stability + accuracy."""
     X, y = make_classification(
-        n_samples=800, n_features=12, n_informative=6, n_redundant=2,
-        n_classes=3, random_state=0
+        n_samples=800, n_features=12, n_informative=6, n_redundant=2, n_classes=3, random_state=0
     )
     X_tr, X_oos, y_tr, y_oos = train_test_split(X, y, test_size=0.3, random_state=42)
 

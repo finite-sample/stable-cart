@@ -1,95 +1,80 @@
-# stable-cart
+# Stable CART Package
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An experimental decision tree regressor that focuses on stability while
-maintaining the familiar scikit-learn API.
+A scikit-learn compatible implementation of **Stable CART** (Classification and Regression Trees) with advanced stability metrics and techniques to reduce prediction variance.
+
+## Features
+
+- 🌳 **LessGreedyHybridRegressor**: Advanced regression tree with stability-enhancing techniques
+- 📊 **GreedyCARTExact**: Standard CART baseline for comparison
+- 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
+- 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
 
 ## Installation
 
-Clone the repository and install dependencies:
+### From Source
 
 ```bash
-git clone https://github.com/your-username/stable-cart.git
+git clone https://github.com/yourusername/stable-cart.git
 cd stable-cart
 pip install -e .
 ```
 
-Or install directly with pip (once published to PyPI):
+### With Development Dependencies
 
 ```bash
-pip install stable-cart
+pip install -e ".[dev]"
 ```
 
-## Usage
-
-### Training a stable CART
+## Quick Start
 
 ```python
-from stable_cart.less_greedy_tree import LessGreedyTreeClassifier
+from stable_cart import LessGreedyHybridRegressor, GreedyCARTExact
+from stable_cart import prediction_stability, accuracy
+from sklearn.datasets import make_regression
+from sklearn.model_selection import train_test_split
 
-# Example dataset
-X = [[0, 0], [1, 1], [1, 0], [0, 1]]
-y = [0, 1, 1, 0]
+# Generate data
+X, y = make_regression(n_samples=1000, n_features=10, noise=10, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-# Train a more stable decision tree
-tree = LessGreedyTreeClassifier(max_depth=3)
-tree.fit(X, y)
+# Train models
+stable_model = LessGreedyHybridRegressor(max_depth=5, random_state=42)
+greedy_model = GreedyCARTExact(max_depth=5)
 
-# Predict
-print(tree.predict([[1, 0], [0, 0]]))
+stable_model.fit(X_train, y_train)
+greedy_model.fit(X_train, y_train)
+
+# Evaluate performance
+models = {"stable": stable_model, "greedy": greedy_model}
+metrics = accuracy(models, X_test, y_test, task="continuous")
+print(f"Performance: {metrics}")
+
+# Evaluate stability
+stability = prediction_stability(models, X_test, task="continuous")
+print(f"Stability (lower is better): {stability}")
 ```
 
-### Evaluation
-
-The package includes evaluation utilities for comparing model stability across different runs.
-
-```python
-from stable_cart import evaluation
-from sklearn.tree import DecisionTreeClassifier
-
-# Example: evaluate stability of sklearn CART vs. LessGreedyTree
-evaluation.compare_models(
-    models=[DecisionTreeClassifier(), LessGreedyTreeClassifier()],
-    X=X,
-    y=y,
-    n_trials=10
-)
-```
-
-This produces accuracy, stability, and agreement metrics across multiple random seeds.
-
-## Modules
-
-- **`less_greedy_tree.py`**
-  Implements the `LessGreedyTreeClassifier`, a variant of CART with modified split selection to reduce variance and improve stability.
-
-- **`evaluation.py`**
-  Functions to test and compare models across seeds, reporting accuracy, stability, and cross-run consistency.
-
-- **`__init__.py`**
-  Exposes package-level imports for easy access.
-
-## Motivation
-
-Standard decision trees (CART) are **unstable**: small changes in the training data can result in very different tree structures. While ensembles like random forests address this with bagging, **stable CART** focuses on modifying the tree induction process itself to produce **more consistent models** without sacrificing interpretability.
-
-## Roadmap
-
-- [ ] Add regression tree support
-- [ ] Publish package to PyPI
-- [ ] Add visualization utilities for comparing stable vs. standard trees
-
-
-## Documentation
-
-The project documentation is authored with [Sphinx](https://www.sphinx-doc.org)
-and is automatically published to GitHub Pages whenever changes are pushed
-to the `main` branch. To build the docs locally run:
+## Running Tests
 
 ```bash
-python -m pip install -r docs/requirements.txt
-sphinx-build -b html docs docs/_build/html
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=stable_cart
+
+# Run specific test categories
+pytest -m "not slow"  # Skip slow tests
+pytest tests/unit/     # Unit tests only
+pytest tests/e2e/      # End-to-end tests only
 ```
 
-The rendered site will be available from the generated
-`docs/_build/html/index.html` file.
+## License
+
+MIT License - see LICENSE file for details.
