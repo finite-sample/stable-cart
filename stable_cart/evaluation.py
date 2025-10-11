@@ -1,6 +1,5 @@
 # evaluation.py
 import numpy as np
-from typing import Dict
 
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.metrics import (
@@ -19,8 +18,8 @@ from sklearn.datasets import make_classification, make_regression
 # Prediction Stability (OOS)
 # -------------------------------
 def prediction_stability(
-    models: Dict[str, object], X_oos: np.ndarray, task: str = "categorical"
-) -> Dict[str, float]:
+    models: dict[str, object], X_oos: np.ndarray, task: str = "categorical"
+) -> dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
 
@@ -90,8 +89,8 @@ def prediction_stability(
 # Accuracy / Performance
 # -------------------------------
 def accuracy(
-    models: Dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
-) -> Dict[str, Dict[str, float]]:
+    models: dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
+) -> dict[str, dict[str, float]]:
     """
     Evaluate predictive performance per model.
 
@@ -112,7 +111,7 @@ def accuracy(
         For 'categorical': {'acc': ..., 'auc': ... (if available)} per model.
         For 'continuous': {'mae': ..., 'rmse': ..., 'r2': ...} per model.
     """
-    results: Dict[str, Dict[str, float]] = {}
+    results: dict[str, dict[str, float]] = {}
 
     if task == "categorical":
         y_unique = np.unique(y)

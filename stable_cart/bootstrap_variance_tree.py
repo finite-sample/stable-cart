@@ -8,10 +8,9 @@ This encourages the tree to make splits that lead to more stable predictions
 across different bootstrap samples of the training data.
 """
 
-from __future__ import annotations
 import numpy as np
 import time
-from typing import Dict, Any, Optional
+from typing import Any
 
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.metrics import r2_score
@@ -99,8 +98,8 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         self.random_state = random_state
 
         # Learned attributes
-        self.tree_: Dict[str, Any] = {}
-        self.oblique_info_: Optional[Dict[str, Any]] = None
+        self.tree_: dict[str, Any] = {}
+        self.oblique_info_: dict[str, Any] | None = None
         self.fit_time_sec_: float = 0.0
         self.splits_scanned_: int = 0
         self.bootstrap_evaluations_: int = 0

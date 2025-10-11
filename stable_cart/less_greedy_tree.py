@@ -17,9 +17,8 @@ Also includes a small GreedyCARTExact for apples-to-apples axis-only baselines.
 Author: (packaged for Jupyter)
 """
 
-from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Any
 import operator
 import time
 import numpy as np
@@ -125,8 +124,8 @@ class LessGreedyHybridRegressor(BaseEstimator, RegressorMixin):
         self.random_state = random_state
 
         # learned artifacts
-        self.tree_: Dict[str, Any] = {}
-        self.oblique_info_: Optional[Dict[str, Any]] = None
+        self.tree_: dict[str, Any] = {}
+        self.oblique_info_: dict[str, Any] | None = None
         self.fit_time_sec_: float = 0.0
         self.splits_scanned_: int = 0
 

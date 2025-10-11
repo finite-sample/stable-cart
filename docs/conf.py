@@ -1,5 +1,4 @@
 """Configuration for Sphinx documentation build."""
-from __future__ import annotations
 
 import pathlib
 import sys
