@@ -1,4 +1,4 @@
-# Stable CART Package
+## Stable CART: Lower Cross-Bootstrap Prediction Variance
 
 [![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
