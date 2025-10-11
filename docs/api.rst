@@ -21,15 +21,6 @@ accuracy for greatly improved stability. Key features include:
   equally attractive.
 * Leaf-value shrinkage to limit overfitting and reduce variance.
 
-GreedyCARTExact
----------------
-
-:Location: ``stable-cart/less_greedy_tree.py``
-
-A straightforward axis-aligned CART baseline that mirrors the
-``LessGreedyHybridRegressor`` interface. It is handy for benchmarks and
-for validating that the hybrid strategy is delivering additional
-stability.
 
 Utility helpers
 ---------------

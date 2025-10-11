@@ -3,7 +3,7 @@ benchmark_less_greedy.py
 Benchmark LessGreedyHybridRegressor against sklearn DecisionTree baselines:
   - CART_PRUNED(CV-min alpha)
   - CART_PRUNED_1SE (simplest tree within 1SE of CV-min)
-Optionally include GreedyCARTExact as a sanity axis-aligned baseline.
+Optionally include DecisionTreeRegressor as a sanity axis-aligned baseline.
 
 Outputs CSVs with accuracy, size, timing and stability metrics.
 """
@@ -17,7 +17,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.datasets import make_friedman1
 
-from less_greedy_tree import LessGreedyHybridRegressor, GreedyCARTExact
+from less_greedy_tree import LessGreedyHybridRegressor
 
 # -------- Datasets --------
 def dgp_quadrant(n=3000, noise=0.5, rs=42):
@@ -138,19 +138,17 @@ def run_benchmark(select=None, out_dir="./bench_out", B_stab=12, rs=0):
         X,y = DGPS[name]()
         Xtr,Xte,ytr,yte = train_test_split(X,y,test_size=0.3,random_state=42)
 
-        # GREEDY_EXACT(CV) capacity
-        p_g = GreedyCARTExact(max_depth=5, min_samples_leaf=20)  # placeholder for param recording
-        gcv = GreedyCARTExact(max_depth=5, min_samples_leaf=20)
+        # SKLEARN_DT(CV) capacity
         # Small grid: (4,10), (5,20)
         grid = [(4,10),(5,20)]
         best=(np.inf, None, None)
         for d,lf in grid:
-            m=GreedyCARTExact(max_depth=d, min_samples_split=20, min_samples_leaf=lf).fit(Xtr,ytr)
+            m=DecisionTreeRegressor(max_depth=d, min_samples_split=20, min_samples_leaf=lf, random_state=rs).fit(Xtr,ytr)
             mse=mean_squared_error(yte, m.predict(Xte))
             if mse<best[0]: best=(mse, d, lf)
         d_best, lf_best = best[1], best[2]
-        g = GreedyCARTExact(max_depth=d_best, min_samples_split=20, min_samples_leaf=lf_best).fit(Xtr,ytr)
-        pred_g = g.predict(Xte); leaves_g = g.count_leaves()
+        g = DecisionTreeRegressor(max_depth=d_best, min_samples_split=20, min_samples_leaf=lf_best, random_state=rs).fit(Xtr,ytr)
+        pred_g = g.predict(Xte); leaves_g = sklearn_leaf_count(g)
 
         # CART_PRUNED(CV-min alpha)
         (_, p_min) = cv_cart_minalpha(Xtr,ytr, rs=rs)
@@ -185,7 +183,7 @@ def run_benchmark(select=None, out_dir="./bench_out", B_stab=12, rs=0):
 
         # stability rows (bootstrap on train)
         factories = {
-            'GREEDY_EXACT(CV)': lambda: GreedyCARTExact(max_depth=d_best, min_samples_split=20, min_samples_leaf=lf_best),
+            'SKLEARN_DT(CV)': lambda: DecisionTreeRegressor(max_depth=d_best, min_samples_split=20, min_samples_leaf=lf_best, random_state=rs),
             'CART_PRUNED(CV)':  lambda: DecisionTreeRegressor(max_depth=p_min['max_depth'], min_samples_leaf=p_min['min_samples_leaf'],
                                                               ccp_alpha=p_min['ccp_alpha'], random_state=rs),
             'CART_PRUNED_1SE':  lambda: DecisionTreeRegressor(max_depth=p_1se['max_depth'], min_samples_leaf=p_1se['min_samples_leaf'],

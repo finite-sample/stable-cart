@@ -8,7 +8,6 @@ A scikit-learn compatible implementation of **Stable CART** (Classification and 
 ## Features
 
 - 🌳 **LessGreedyHybridRegressor**: Advanced regression tree with stability-enhancing techniques
-- 📊 **GreedyCARTExact**: Standard CART baseline for comparison
 - 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
 - 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
 
@@ -31,10 +30,11 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-from stable_cart import LessGreedyHybridRegressor, GreedyCARTExact
+from stable_cart import LessGreedyHybridRegressor
 from stable_cart import prediction_stability, accuracy
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
 
 # Generate data
 X, y = make_regression(n_samples=1000, n_features=10, noise=10, random_state=42)
@@ -42,7 +42,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 
 # Train models
 stable_model = LessGreedyHybridRegressor(max_depth=5, random_state=42)
-greedy_model = GreedyCARTExact(max_depth=5)
+greedy_model = DecisionTreeRegressor(max_depth=5, random_state=42)
 
 stable_model.fit(X_train, y_train)
 greedy_model.fit(X_train, y_train)

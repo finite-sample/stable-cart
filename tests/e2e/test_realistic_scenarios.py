@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # Import from package (not direct module imports)
-from stable_cart import LessGreedyHybridRegressor, GreedyCARTExact, prediction_stability, accuracy
+from stable_cart import LessGreedyHybridRegressor, prediction_stability, accuracy
 
 
 @pytest.mark.e2e
@@ -26,7 +26,9 @@ def test_regression_end_to_end(tmp_path):
         "less_greedy": LessGreedyHybridRegressor(
             max_depth=6, min_samples_split=40, min_samples_leaf=20, random_state=7
         ),
-        "greedy_cart": GreedyCARTExact(max_depth=6, min_samples_split=40, min_samples_leaf=20),
+        "greedy_cart": DecisionTreeRegressor(
+            max_depth=6, min_samples_split=40, min_samples_leaf=20, random_state=7
+        ),
         "sklearn_dt": DecisionTreeRegressor(max_depth=8, random_state=7),
     }
 
@@ -106,7 +108,12 @@ def test_sklearn_ecosystem_integration():
     assert all(isinstance(s, (int, float)) for s in scores)
 
     # Test in pipeline
-    pipe = Pipeline([("scaler", StandardScaler()), ("model", GreedyCARTExact(max_depth=3))])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("model", DecisionTreeRegressor(max_depth=3, random_state=42)),
+        ]
+    )
     pipe.fit(X, y)
     predictions = pipe.predict(X)
     assert predictions.shape == y.shape
@@ -116,7 +123,7 @@ def test_sklearn_ecosystem_integration():
     # Skip this test for now due to sklearn compatibility issue
     # TODO: Fix sklearn regressor detection in future version
     # ensemble = VotingRegressor([
-    #     ('greedy', GreedyCARTExact(max_depth=3)),
+    #     ('greedy', DecisionTreeRegressor(max_depth=3, random_state=42)),
     #     ('less_greedy', LessGreedyHybridRegressor(max_depth=3, random_state=42))
     # ])
     # ensemble.fit(X, y)
@@ -125,7 +132,9 @@ def test_sklearn_ecosystem_integration():
 
     # Test with GridSearchCV
     param_grid = {"max_depth": [2, 3], "min_samples_leaf": [10, 20]}
-    grid = GridSearchCV(GreedyCARTExact(), param_grid, cv=3, scoring="neg_mean_squared_error")
+    grid = GridSearchCV(
+        DecisionTreeRegressor(random_state=42), param_grid, cv=3, scoring="neg_mean_squared_error"
+    )
     grid.fit(X, y)
     assert hasattr(grid, "best_params_")
     assert hasattr(grid, "best_estimator_")
@@ -139,7 +148,7 @@ def test_model_persistence():
     X, y = make_regression(n_samples=100, n_features=5, random_state=42)
 
     # Train models
-    model1 = GreedyCARTExact(max_depth=3).fit(X, y)
+    model1 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y)
     model2 = LessGreedyHybridRegressor(max_depth=3, random_state=42).fit(X, y)
 
     # Pickle and unpickle

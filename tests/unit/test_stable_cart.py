@@ -9,7 +9,6 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 # Import from the installed package
 from stable_cart.evaluation import prediction_stability, accuracy
 from stable_cart.less_greedy_tree import (
-    GreedyCARTExact,
     LessGreedyHybridRegressor,
     _sse,
     _ComparableFloat,
@@ -82,23 +81,12 @@ def test_comparable_float():
 
 
 # -------------------------------
-# Test GreedyCARTExact
+# Test sklearn DecisionTreeRegressor compatibility
 # -------------------------------
 
 
-def test_greedy_cart_exact_fit_predict(small_regression_data):
-    X, y = small_regression_data
-    model = GreedyCARTExact(max_depth=2, min_samples_split=2, min_samples_leaf=1)
-    model.fit(X, y)
-    assert model.tree_["type"] in ["split", "leaf"]
-    preds = model.predict(X)
-    assert preds.shape == y.shape
-    assert model.fit_time_sec_ >= 0
-    assert model.splits_scanned_ >= 0
-
-
-def test_greedy_cart_exact_sklearn_compatibility():
-    """Test sklearn API compatibility."""
+def test_sklearn_decision_tree_compatibility():
+    """Test that sklearn DecisionTreeRegressor works as expected for comparisons."""
     from sklearn.model_selection import cross_val_score
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
@@ -106,12 +94,17 @@ def test_greedy_cart_exact_sklearn_compatibility():
     X, y = make_regression(n_samples=100, n_features=5, random_state=42)
 
     # Test with cross-validation
-    model = GreedyCARTExact(max_depth=3)
+    model = DecisionTreeRegressor(max_depth=3, random_state=42)
     scores = cross_val_score(model, X, y, cv=3, scoring="r2")
     assert len(scores) == 3
 
     # Test in pipeline
-    pipe = Pipeline([("scaler", StandardScaler()), ("model", GreedyCARTExact(max_depth=3))])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("model", DecisionTreeRegressor(max_depth=3, random_state=42)),
+        ]
+    )
     pipe.fit(X, y)
     predictions = pipe.predict(X)
     assert predictions.shape == y.shape
