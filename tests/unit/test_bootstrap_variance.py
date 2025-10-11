@@ -230,7 +230,7 @@ def test_variance_penalty_effect(regression_data):
     # The high penalty model should have conducted bootstrap evaluations
     assert model_no_penalty.bootstrap_evaluations_ == 0
     assert model_high.bootstrap_evaluations_ > 0
-    
+
     # Both models should be able to make predictions
     preds_no_penalty = model_no_penalty.predict(X_test)
     preds_high = model_high.predict(X_test)
