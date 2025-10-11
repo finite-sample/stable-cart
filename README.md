@@ -8,6 +8,7 @@ A scikit-learn compatible implementation of **Stable CART** (Classification and 
 ## Features
 
 - 🌳 **LessGreedyHybridRegressor**: Advanced regression tree with stability-enhancing techniques
+- 📊 **BootstrapVariancePenalizedRegressor**: Tree regressor that explicitly penalizes bootstrap prediction variance
 - 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
 - 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
 
@@ -30,7 +31,7 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ```python
-from stable_cart import LessGreedyHybridRegressor
+from stable_cart import LessGreedyHybridRegressor, BootstrapVariancePenalizedRegressor
 from stable_cart import prediction_stability, accuracy
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
@@ -42,13 +43,21 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 
 # Train models
 stable_model = LessGreedyHybridRegressor(max_depth=5, random_state=42)
+bootstrap_model = BootstrapVariancePenalizedRegressor(
+    max_depth=5, variance_penalty=2.0, n_bootstrap=10, random_state=42
+)
 greedy_model = DecisionTreeRegressor(max_depth=5, random_state=42)
 
 stable_model.fit(X_train, y_train)
+bootstrap_model.fit(X_train, y_train)
 greedy_model.fit(X_train, y_train)
 
 # Evaluate performance
-models = {"stable": stable_model, "greedy": greedy_model}
+models = {
+    "stable": stable_model,
+    "bootstrap_penalized": bootstrap_model,
+    "greedy": greedy_model
+}
 metrics = accuracy(models, X_test, y_test, task="continuous")
 print(f"Performance: {metrics}")
 

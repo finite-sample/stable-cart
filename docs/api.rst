@@ -21,6 +21,21 @@ accuracy for greatly improved stability. Key features include:
   equally attractive.
 * Leaf-value shrinkage to limit overfitting and reduce variance.
 
+BootstrapVariancePenalizedRegressor
+-----------------------------------
+
+:Location: ``stable-cart/bootstrap_variance_tree.py``
+
+A tree regressor that explicitly penalizes bootstrap prediction variance
+during split selection. This approach encourages the tree to make splits
+that lead to more stable predictions across different bootstrap samples
+of the training data. Key features include:
+
+* Bootstrap variance estimation on validation set during split evaluation.
+* Configurable variance penalty weight to balance accuracy vs. stability.
+* Fast bootstrap trees for efficient variance computation.
+* Full compatibility with sklearn pipelines and cross-validation.
+
 
 Utility helpers
 ---------------
