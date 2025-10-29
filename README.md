@@ -1,10 +1,10 @@
 ## Stable CART: Lower Cross-Bootstrap Prediction Variance
 
-[![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/soodoku/stable-cart/actions/workflows/ci.yml)
+[![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![Downloads](https://pepy.tech/badge/stable-cart)](https://pepy.tech/project/stable-cart)
 [![Documentation](https://github.com/finite-sample/stable-cart/actions/workflows/docs.yml/badge.svg)](https://finite-sample.github.io/stable-cart/)
-[![License](https://img.shields.io/github/license/soodoku/stable-cart)](https://github.com/soodoku/stable-cart/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/finite-sample/stable-cart)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 A scikit-learn compatible implementation of **Stable CART** (Classification and Regression Trees) with advanced stability metrics and techniques to reduce prediction variance.
@@ -28,7 +28,7 @@ pip install stable-cart
 ### From Source
 
 ```bash
-git clone https://github.com/soodoku/stable-cart.git
+git clone https://github.com/finite-sample/stable-cart.git
 cd stable-cart
 pip install -e .
 ```
@@ -104,26 +104,108 @@ print(f"Classification Performance: {clf_metrics}")
 
 ### LessGreedyHybridRegressor
 
-A regression tree that trades some accuracy for improved stability through:
-- **Honest data partitioning**: Splits data into SPLIT (structure), VAL (validation), and EST (estimation) sets
-- **Optional oblique root**: Linear combinations at the root node when beneficial
-- **Lookahead with beam search**: Considers multiple steps ahead for better long-term decisions
-- **Leaf shrinkage**: Ridge-like regularization for leaf predictions
+**🎯 When to use**: When you need stable predictions but can't afford the complexity of ensembles
+
+**💡 Core intuition**: Like a careful decision-maker who considers multiple options before choosing, rather than going with the first good option. Standard CART makes greedy choices at each split - this algorithm looks ahead and thinks more carefully.
+
+**⚖️ Trade-offs**: 
+- ✅ **Gain**: 30-50% more stable predictions across different training runs
+- ✅ **Gain**: Better generalization with honest estimation  
+- ❌ **Cost**: ~5% accuracy reduction, slightly higher training time
+
+**🔧 How it works**:
+- **Honest data partitioning**: Separates data for structure learning vs. prediction estimation (like training a model on one set but tuning on another)
+- **Lookahead with beam search**: Considers multiple future splits before deciding (not just immediate gain)
+- **Optional oblique root**: Can use linear combinations at the top when it helps capture the main pattern
+- **Leaf shrinkage**: Prevents overfitting by regularizing final predictions
 
 ### BootstrapVariancePenalizedRegressor
 
-Explicitly reduces bootstrap prediction variance by:
-- **Variance penalty**: Adds bootstrap variance as a regularization term
-- **Honest estimation**: Separates structure learning from leaf value estimation
-- **Bootstrap evaluation**: Uses multiple bootstrap samples to estimate prediction variance
+**🎯 When to use**: When prediction consistency is more important than squeezing out every bit of accuracy
+
+**💡 Core intuition**: Like choosing a reliable car over a faster but unpredictable one. This algorithm explicitly optimizes for models that give similar predictions even when trained on slightly different data samples.
+
+**⚖️ Trade-offs**:
+- ✅ **Gain**: Most consistent predictions across bootstrap samples
+- ✅ **Gain**: Excellent for scenarios where you retrain models frequently  
+- ❌ **Cost**: Moderate training time increase due to bootstrap evaluation
+- ❌ **Cost**: May sacrifice some accuracy for consistency
+
+**🔧 How it works**:
+- **Variance penalty**: During training, penalizes splits that lead to high prediction variance across bootstrap samples
+- **Honest estimation**: Builds tree structure on one data subset, estimates leaf values on another (prevents overfitting)
+- **Bootstrap evaluation**: Tests each potential split on multiple bootstrap samples to measure stability before deciding
 
 ### RobustPrefixHonestClassifier
 
-A binary classifier designed for stability through:
-- **Robust prefix**: Locks top-level splits using consensus across bootstrap samples
-- **Honest leaves**: Estimates leaf probabilities on separate data from structure learning
-- **m-estimate smoothing**: Stabilizes probability estimates in small leaves
-- **Winsorization**: Reduces impact of outliers on split selection
+**🎯 When to use**: For binary classification where you need reliable probability estimates and stable decision boundaries
+
+**💡 Core intuition**: Like making the big strategic decisions first with a committee consensus, then fine-tuning details with fresh information. This classifier locks in the most important splits using agreement across multiple bootstrap samples, then uses separate data to estimate probabilities.
+
+**⚖️ Trade-offs**:
+- ✅ **Gain**: Very stable decision boundaries across different training runs
+- ✅ **Gain**: Reliable probability estimates (great for risk assessment)
+- ✅ **Gain**: Robust to outliers and data noise
+- ❌ **Cost**: Limited to binary classification only
+- ❌ **Cost**: May be conservative in capturing complex patterns
+
+**🔧 How it works**:
+- **Robust prefix**: Uses multiple bootstrap samples to find splits that consistently matter, then locks those in
+- **Honest leaves**: After structure is fixed, estimates class probabilities on completely separate data
+- **m-estimate smoothing**: Prevents overconfident predictions in regions with little data
+- **Winsorization**: Caps extreme feature values to reduce outlier influence
+
+## Choosing the Right Algorithm
+
+### 🤔 Decision Guide
+
+**Start here**: What's your primary concern?
+
+```
+📊 Regression Tasks:
+├── Need maximum stability? → BootstrapVariancePenalizedRegressor
+├── Want balanced stability + flexibility? → LessGreedyHybridRegressor  
+└── Just need sklearn DecisionTree baseline? → Standard CART
+
+🎯 Classification Tasks:
+├── Binary classification + need probability estimates? → RobustPrefixHonestClassifier
+├── Multi-class classification? → Standard CART (stable methods coming soon!)
+└── Just need sklearn DecisionTree baseline? → Standard CART
+```
+
+### 📋 Use Case Comparison
+
+| Scenario | Best Choice | Why |
+|----------|-------------|-----|
+| **Financial risk models** | RobustPrefixHonest | Stable probability estimates crucial |
+| **A/B testing analysis** | BootstrapVariancePenalized | Consistency across samples matters most |
+| **Medical diagnosis support** | RobustPrefixHonest | Reliable probabilities + robust to outliers |
+| **Demand forecasting** | LessGreedyHybrid | Balance of accuracy + stability |
+| **Real-time recommendations** | Standard CART | Speed over stability |
+| **Research/prototyping** | LessGreedyHybrid | Good general-purpose stable option |
+
+### ⚡ Quick Selection Rules
+
+**Choose BootstrapVariancePenalizedRegressor when**:
+- You retrain models frequently with new data
+- Prediction consistency is more important than peak accuracy
+- You have sufficient training time
+
+**Choose LessGreedyHybridRegressor when**:
+- You want stability without major accuracy loss
+- You need a general-purpose stable regressor
+- Training time is somewhat constrained
+
+**Choose RobustPrefixHonestClassifier when**:
+- You have binary classification
+- You need trustworthy probability estimates
+- Your data may have outliers
+
+**Stick with Standard CART when**:
+- You need maximum speed
+- You have very large datasets (>100k samples)
+- Stability is not a concern
+- You need multi-class classification (for now)
 
 ## Performance Comparison
 
@@ -183,14 +265,24 @@ make coverage    # Run tests with coverage report
 
 ### Benchmarking
 
-Run performance benchmarks:
+Run comprehensive benchmarks comparing CART vs stable-CART methods:
 
 ```bash
-# Run benchmark scripts
+# Quick benchmark (4 key datasets, fast execution)
+make quick-benchmark
+
+# Comprehensive benchmark (all datasets)
 make benchmark
 
+# Stability-focused benchmark (datasets highlighting variance differences)
+make stability-benchmark
+
+# Custom benchmark
+python scripts/comprehensive_benchmark.py --datasets friedman1,breast_cancer --models CART,LessGreedyHybrid --quick
+
 # View results
-ls bench_out/
+ls benchmark_results/
+cat benchmark_results/comprehensive_benchmark_report.md
 ```
 
 ## Citation
@@ -202,7 +294,7 @@ If you use stable-cart in your research, please cite:
   title={Stable CART: Enhanced Decision Trees with Prediction Stability},
   author={Sood, Gaurav and Bhosle, Arav},
   year={2025},
-  url={https://github.com/soodoku/stable-cart},
+  url={https://github.com/finite-sample/stable-cart},
   version={0.1.0}
 }
 ```

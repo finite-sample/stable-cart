@@ -4,7 +4,7 @@ visualize_benchmark_results.py
 Generate publication-quality plots from benchmark results.
 
 Usage:
-    python visualize_benchmark_results.py --input bench_results
+    python visualize_benchmark_results.py --input benchmark_results
 """
 
 import argparse
@@ -274,7 +274,7 @@ def main():
     parser.add_argument(
         "--input",
         type=str,
-        default="./bench_results",
+        default="./benchmark_results",
         help="Directory containing benchmark results"
     )
     parser.add_argument(

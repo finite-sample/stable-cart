@@ -45,11 +45,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/soodoku/stable-cart"
-Repository = "https://github.com/soodoku/stable-cart"
-Documentation = "https://soodoku.github.io/stable-cart/"
-Changelog = "https://github.com/soodoku/stable-cart/blob/main/CHANGELOG.md"
-Issues = "https://github.com/soodoku/stable-cart/issues"
+Homepage = "https://github.com/finite-sample/stable-cart"
+Repository = "https://github.com/finite-sample/stable-cart"
+Documentation = "https://finite-sample.github.io/stable-cart/"
+Changelog = "https://github.com/finite-sample/stable-cart/blob/main/CHANGELOG.md"
+Issues = "https://github.com/finite-sample/stable-cart/issues"
 
 [project.optional-dependencies]
 dev = [

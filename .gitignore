@@ -206,5 +206,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 .DS_Store
+/benchmark_results
 /bench_out
-robust_benchmark_results.csv
+/bench_results
