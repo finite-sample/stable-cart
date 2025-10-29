@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "stable-cart"
 version = "0.1.0"
-description = "A stable decision tree (CART) implementation with prediction stability metrics."
+description = "Stable CART decision trees with enhanced prediction stability and variance reduction techniques for robust machine learning."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
@@ -13,6 +13,17 @@ authors = [
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
+keywords = [
+    "machine learning",
+    "decision trees",
+    "CART",
+    "stability",
+    "variance reduction",
+    "sklearn",
+    "prediction stability",
+    "bootstrap",
+    "honest learning"
+]
 dependencies = [
     "numpy>=1.23.0",
     "scikit-learn>=1.2.0",
@@ -21,13 +32,24 @@ dependencies = [
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Operating System :: OS Independent",
 ]
+
+[project.urls]
+Homepage = "https://github.com/soodoku/stable-cart"
+Repository = "https://github.com/soodoku/stable-cart"
+Documentation = "https://soodoku.github.io/stable-cart/"
+Changelog = "https://github.com/soodoku/stable-cart/blob/main/CHANGELOG.md"
+Issues = "https://github.com/soodoku/stable-cart/issues"
 
 [project.optional-dependencies]
 dev = [
