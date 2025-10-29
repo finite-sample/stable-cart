@@ -1,16 +1,16 @@
 """Public package exports for stable_cart."""
 
 from .evaluation import prediction_stability, evaluate_models
-from .less_greedy_tree import LessGreedyHybridRegressor
-from .bootstrap_variance_tree import BootstrapVariancePenalizedRegressor
-from .robust_prefix import RobustPrefixHonestClassifier
+from .less_greedy_tree import LessGreedyHybridTree
+from .bootstrap_variance_tree import BootstrapVariancePenalizedTree
+from .robust_prefix import RobustPrefixHonestTree
 
 __all__ = [
     "prediction_stability",
     "evaluate_models",
-    "LessGreedyHybridRegressor",
-    "BootstrapVariancePenalizedRegressor",
-    "RobustPrefixHonestClassifier",
+    "LessGreedyHybridTree",
+    "BootstrapVariancePenalizedTree",
+    "RobustPrefixHonestTree",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

@@ -1,4 +1,4 @@
-"""Unit tests for LessGreedyHybridRegressor and related utilities."""
+"""Unit tests for LessGreedyHybridTree and related utilities."""
 
 import pytest
 import numpy as np
@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.base import clone
 
 from stable_cart.less_greedy_tree import (
-    LessGreedyHybridRegressor,
+    LessGreedyHybridTree,
     _sse,
     _ComparableFloat,
 )
@@ -67,14 +67,15 @@ def test_comparable_float():
 
 
 # -------------------------------
-# Test LessGreedyHybridRegressor
+# Test LessGreedyHybridTree
 # -------------------------------
 
 
 def test_less_greedy_hybrid_basic_fit_predict(small_regression_data):
     """Test basic fitting and prediction."""
     X, y = small_regression_data
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=2,
         min_samples_split=2,
         min_samples_leaf=1,
@@ -104,7 +105,7 @@ def test_less_greedy_hybrid_sklearn_compatibility(regression_data):
     X, y = regression_data
 
     # Test cloning
-    model = LessGreedyHybridRegressor(max_depth=3, random_state=42)
+    model = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42)
     cloned = clone(model)
     assert cloned.get_params() == model.get_params()
 
@@ -117,7 +118,7 @@ def test_less_greedy_hybrid_sklearn_compatibility(regression_data):
     pipe = Pipeline(
         [
             ("scaler", StandardScaler()),
-            ("model", LessGreedyHybridRegressor(max_depth=3, random_state=42)),
+            ("model", LessGreedyHybridTree(task="regression", max_depth=3, random_state=42)),
         ]
     )
     pipe.fit(X, y)
@@ -125,7 +126,7 @@ def test_less_greedy_hybrid_sklearn_compatibility(regression_data):
     assert predictions.shape == y.shape
 
     # Test GridSearchCV
-    param_grid = {"max_depth": [2, 3], "leaf_shrinkage_lambda": [0.0, 0.1]}
+    param_grid = {"max_depth": [2, 3], "leaf_smoothing": [0.0, 0.1]}
     grid = GridSearchCV(model, param_grid, cv=3, scoring="r2")
     grid.fit(X, y)
     assert hasattr(grid, "best_params_")
@@ -137,7 +138,7 @@ def test_less_greedy_hybrid_score_method(regression_data):
     X, y = regression_data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    model = LessGreedyHybridRegressor(max_depth=4, random_state=42)
+    model = LessGreedyHybridTree(task="regression", max_depth=4, random_state=42)
     model.fit(X_train, y_train)
 
     score = model.score(X_test, y_test)
@@ -155,7 +156,7 @@ def test_less_greedy_hybrid_different_depths(regression_data):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
     for depth in [1, 3, 5]:
-        model = LessGreedyHybridRegressor(max_depth=depth, random_state=42)
+        model = LessGreedyHybridTree(task="regression", max_depth=depth, random_state=42)
         model.fit(X_train, y_train)
 
         preds = model.predict(X_test)
@@ -171,7 +172,8 @@ def test_less_greedy_hybrid_oblique_root(regression_data):
     X, y = regression_data
 
     # Enable oblique root
-    model_oblique = LessGreedyHybridRegressor(
+    model_oblique = LessGreedyHybridTree(
+        task="regression",
         max_depth=3,
         enable_oblique_root=True,
         random_state=42,
@@ -179,7 +181,8 @@ def test_less_greedy_hybrid_oblique_root(regression_data):
     model_oblique.fit(X, y)
 
     # Disable oblique root
-    model_no_oblique = LessGreedyHybridRegressor(
+    model_no_oblique = LessGreedyHybridTree(
+        task="regression",
         max_depth=3,
         enable_oblique_root=False,
         random_state=42,
@@ -204,7 +207,8 @@ def test_less_greedy_hybrid_lookahead(regression_data):
     X, y = regression_data
 
     # With lookahead
-    model_lookahead = LessGreedyHybridRegressor(
+    model_lookahead = LessGreedyHybridTree(
+        task="regression",
         max_depth=4,
         root_k=2,
         inner_k=1,
@@ -214,7 +218,8 @@ def test_less_greedy_hybrid_lookahead(regression_data):
     model_lookahead.fit(X, y)
 
     # Without lookahead (disable by high threshold)
-    model_no_lookahead = LessGreedyHybridRegressor(
+    model_no_lookahead = LessGreedyHybridTree(
+        task="regression",
         max_depth=4,
         root_k=0,
         inner_k=0,
@@ -234,17 +239,19 @@ def test_less_greedy_hybrid_leaf_shrinkage(regression_data):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
     # No shrinkage
-    model_no_shrink = LessGreedyHybridRegressor(
+    model_no_shrink = LessGreedyHybridTree(
+        task="regression",
         max_depth=5,
-        leaf_shrinkage_lambda=0.0,
+        leaf_smoothing=0.0,
         random_state=42,
     )
     model_no_shrink.fit(X_train, y_train)
 
     # With shrinkage
-    model_shrink = LessGreedyHybridRegressor(
+    model_shrink = LessGreedyHybridTree(
+        task="regression",
         max_depth=5,
-        leaf_shrinkage_lambda=10.0,
+        leaf_smoothing=10.0,
         random_state=42,
     )
     model_shrink.fit(X_train, y_train)
@@ -265,7 +272,8 @@ def test_less_greedy_hybrid_count_leaves(small_regression_data):
     """Test leaf counting functionality."""
     X, y = small_regression_data
 
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=2,
         min_samples_split=2,
         min_samples_leaf=1,
@@ -284,7 +292,7 @@ def test_less_greedy_hybrid_empty_data_error():
     X = np.array([]).reshape(0, 2)
     y = np.array([])
 
-    model = LessGreedyHybridRegressor(random_state=42)
+    model = LessGreedyHybridTree(task="regression", random_state=42)
 
     with pytest.raises(ValueError, match="X and y must contain at least one sample"):
         model.fit(X, y)
@@ -294,7 +302,8 @@ def test_less_greedy_hybrid_invalid_fractions():
     """Test error handling with invalid data fractions."""
     X, y = make_regression(n_samples=100, n_features=5, random_state=42)
 
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         split_frac=0.8,
         val_frac=0.15,
         est_frac=0.1,  # Doesn't sum to 1
@@ -309,8 +318,8 @@ def test_less_greedy_hybrid_deterministic_with_random_state():
     """Test that results are deterministic with fixed random_state."""
     X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
-    model1 = LessGreedyHybridRegressor(max_depth=4, random_state=42)
-    model2 = LessGreedyHybridRegressor(max_depth=4, random_state=42)
+    model1 = LessGreedyHybridTree(task="regression", max_depth=4, random_state=42)
+    model2 = LessGreedyHybridTree(task="regression", max_depth=4, random_state=42)
 
     model1.fit(X, y)
     model2.fit(X, y)
@@ -326,8 +335,8 @@ def test_less_greedy_hybrid_different_random_states():
     """Test that different random states give different results."""
     X, y = make_regression(n_samples=200, n_features=5, random_state=42)
 
-    model1 = LessGreedyHybridRegressor(max_depth=4, random_state=42)
-    model2 = LessGreedyHybridRegressor(max_depth=4, random_state=99)
+    model1 = LessGreedyHybridTree(task="regression", max_depth=4, random_state=42)
+    model2 = LessGreedyHybridTree(task="regression", max_depth=4, random_state=99)
 
     model1.fit(X, y)
     model2.fit(X, y)
@@ -344,7 +353,8 @@ def test_less_greedy_hybrid_honest_partitioning():
     """Test that honest data partitioning is working correctly."""
     X, y = make_regression(n_samples=300, n_features=5, random_state=42)
 
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=3,
         split_frac=0.6,
         val_frac=0.2,
@@ -368,7 +378,8 @@ def test_less_greedy_hybrid_single_feature():
     """Test with single feature."""
     X, y = make_regression(n_samples=100, n_features=1, random_state=42)
 
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=3,
         enable_oblique_root=False,  # Disable oblique for single feature
         random_state=42,
@@ -384,7 +395,8 @@ def test_less_greedy_hybrid_very_small_data():
     X = np.array([[1], [2], [3], [4], [5]])
     y = np.array([1.0, 2.0, 1.5, 2.5, 2.0])
 
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=2,
         min_samples_split=2,
         min_samples_leaf=1,
@@ -398,10 +410,11 @@ def test_less_greedy_hybrid_very_small_data():
 
 def test_less_greedy_hybrid_get_params():
     """Test that get_params works correctly (sklearn requirement)."""
-    model = LessGreedyHybridRegressor(
+    model = LessGreedyHybridTree(
+        task="regression",
         max_depth=5,
         min_samples_split=40,
-        leaf_shrinkage_lambda=1.0,
+        leaf_smoothing=1.0,
         random_state=42,
     )
 
@@ -409,13 +422,13 @@ def test_less_greedy_hybrid_get_params():
 
     assert params["max_depth"] == 5
     assert params["min_samples_split"] == 40
-    assert params["leaf_shrinkage_lambda"] == 1.0
+    assert params["leaf_smoothing"] == 1.0
     assert params["random_state"] == 42
 
 
 def test_less_greedy_hybrid_set_params():
     """Test that set_params works correctly (sklearn requirement)."""
-    model = LessGreedyHybridRegressor(max_depth=3, random_state=42)
+    model = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42)
 
     model.set_params(max_depth=5, min_samples_split=50)
 

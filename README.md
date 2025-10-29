@@ -11,9 +11,10 @@ A scikit-learn compatible implementation of **Stable CART** (Classification and 
 
 ## Features
 
-- 🌳 **LessGreedyHybridRegressor**: Advanced regression tree with honest data partitioning and lookahead
-- 📊 **BootstrapVariancePenalizedRegressor**: Tree regressor that explicitly penalizes bootstrap prediction variance
-- 🎯 **RobustPrefixHonestClassifier**: Binary classifier with robust prefix splits and honest leaf estimation
+- 🌳 **Unified Tree Architecture**: All trees support both regression and classification with a simple `task` parameter
+- 🎯 **LessGreedyHybridTree**: Advanced tree with honest data partitioning, lookahead, and optional oblique splits
+- 📊 **BootstrapVariancePenalizedTree**: Explicitly penalizes bootstrap prediction variance during split selection
+- 🛡️ **RobustPrefixHonestTree**: Robust consensus-based prefix splits with honest leaf estimation
 - 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
 - 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
 
@@ -43,9 +44,11 @@ pip install -e ".[dev]"
 
 ```python
 from stable_cart import (
-    LessGreedyHybridRegressor, 
-    BootstrapVariancePenalizedRegressor,
-    RobustPrefixHonestClassifier,
+    # Unified trees - all support both regression and classification
+    LessGreedyHybridTree, 
+    BootstrapVariancePenalizedTree,
+    RobustPrefixHonestTree,
+    # Evaluation utilities
     prediction_stability, 
     evaluate_models
 )
@@ -53,106 +56,134 @@ from sklearn.datasets import make_regression, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 
+# === UNIFIED ARCHITECTURE ===
+
 # Regression Example
 X_reg, y_reg = make_regression(n_samples=1000, n_features=10, noise=10, random_state=42)
 X_train, X_test, y_train, y_test = train_test_split(X_reg, y_reg, test_size=0.3, random_state=42)
 
-# Train regression models
-stable_model = LessGreedyHybridRegressor(max_depth=5, random_state=42)
-bootstrap_model = BootstrapVariancePenalizedRegressor(
-    max_depth=5, variance_penalty=2.0, n_bootstrap=10, random_state=42
+# All trees support both tasks with the 'task' parameter
+less_greedy = LessGreedyHybridTree(task='regression', max_depth=5, random_state=42)
+bootstrap_tree = BootstrapVariancePenalizedTree(
+    task='regression', max_depth=5, variance_penalty=2.0, n_bootstrap=10, random_state=42
 )
+robust_tree = RobustPrefixHonestTree(task='regression', top_levels=2, max_depth=5, random_state=42)
 greedy_model = DecisionTreeRegressor(max_depth=5, random_state=42)
 
-stable_model.fit(X_train, y_train)
-bootstrap_model.fit(X_train, y_train)
-greedy_model.fit(X_train, y_train)
+# Fit models
+for model in [less_greedy, bootstrap_tree, robust_tree, greedy_model]:
+    model.fit(X_train, y_train)
 
-# Evaluate performance
-models = {
-    "stable": stable_model,
-    "bootstrap_penalized": bootstrap_model,
-    "greedy": greedy_model
-}
-metrics = evaluate_models(models, X_test, y_test, task="continuous")
-print(f"Performance: {metrics}")
-
-# Evaluate stability
-stability = prediction_stability(models, X_test, task="continuous")
-print(f"Stability (lower is better): {stability}")
-
-# Classification Example
+# Classification Example with Same Tree Classes
 X_clf, y_clf = make_classification(n_samples=1000, n_features=10, n_classes=2, random_state=42)
 X_train_clf, X_test_clf, y_train_clf, y_test_clf = train_test_split(
     X_clf, y_clf, test_size=0.3, random_state=42
 )
 
-# Train classification models
-robust_model = RobustPrefixHonestClassifier(top_levels=2, max_depth=5, random_state=42)
-standard_model = DecisionTreeClassifier(max_depth=5, random_state=42)
+# Same tree classes, just change the task parameter
+less_greedy_clf = LessGreedyHybridTree(task='classification', max_depth=5, random_state=42)
+bootstrap_clf = BootstrapVariancePenalizedTree(
+    task='classification', max_depth=5, variance_penalty=1.0, n_bootstrap=5, random_state=42
+)
+robust_clf = RobustPrefixHonestTree(task='classification', top_levels=2, max_depth=5, random_state=42)
+standard_clf = DecisionTreeClassifier(max_depth=5, random_state=42)
 
-robust_model.fit(X_train_clf, y_train_clf)
-standard_model.fit(X_train_clf, y_train_clf)
+# Fit classification models
+for model in [less_greedy_clf, bootstrap_clf, robust_clf, standard_clf]:
+    model.fit(X_train_clf, y_train_clf)
 
-# Evaluate classification performance
-clf_models = {"robust": robust_model, "standard": standard_model}
-clf_metrics = evaluate_models(clf_models, X_test_clf, y_test_clf, task="categorical")
-print(f"Classification Performance: {clf_metrics}")
+# Evaluate both regression and classification
+reg_models = {
+    "less_greedy": less_greedy,
+    "bootstrap_penalized": bootstrap_tree,
+    "robust_prefix": robust_tree,
+    "greedy": greedy_model
+}
+
+clf_models = {
+    "less_greedy": less_greedy_clf,
+    "bootstrap_penalized": bootstrap_clf,
+    "robust_prefix": robust_clf,
+    "standard": standard_clf
+}
+
+# Get predictions and probabilities
+reg_predictions = {name: model.predict(X_test) for name, model in reg_models.items()}
+clf_predictions = {name: model.predict(X_test_clf) for name, model in clf_models.items()}
+clf_probabilities = {name: model.predict_proba(X_test_clf) for name, model in clf_models.items() 
+                     if hasattr(model, 'predict_proba')}
+
+print("Regression R² scores:")
+for name, model in reg_models.items():
+    score = model.score(X_test, y_test)
+    print(f"  {name}: {score:.3f}")
+
+print("\nClassification accuracy scores:")
+for name, model in clf_models.items():
+    score = model.score(X_test_clf, y_test_clf)
+    print(f"  {name}: {score:.3f}")
+
 ```
 
 ## Algorithms
 
-### LessGreedyHybridRegressor
+All trees in stable-cart use a **unified architecture** that supports both regression and classification through a simple `task` parameter. This means you can use the same algorithm for both types of problems!
 
-**🎯 When to use**: When you need stable predictions but can't afford the complexity of ensembles
+### LessGreedyHybridTree
+
+**🎯 When to use**: When you need stable predictions but can't afford the complexity of ensembles (works for both regression and classification)
 
 **💡 Core intuition**: Like a careful decision-maker who considers multiple options before choosing, rather than going with the first good option. Standard CART makes greedy choices at each split - this algorithm looks ahead and thinks more carefully.
 
 **⚖️ Trade-offs**: 
 - ✅ **Gain**: 30-50% more stable predictions across different training runs
-- ✅ **Gain**: Better generalization with honest estimation  
+- ✅ **Gain**: Better generalization with honest estimation
+- ✅ **Gain**: Works for both regression and classification with same API
 - ❌ **Cost**: ~5% accuracy reduction, slightly higher training time
 
 **🔧 How it works**:
-- **Honest data partitioning**: Separates data for structure learning vs. prediction estimation (like training a model on one set but tuning on another)
+- **Honest data partitioning**: Separates data for structure learning vs. prediction estimation
 - **Lookahead with beam search**: Considers multiple future splits before deciding (not just immediate gain)
-- **Optional oblique root**: Can use linear combinations at the top when it helps capture the main pattern
-- **Leaf shrinkage**: Prevents overfitting by regularizing final predictions
+- **Optional oblique root**: Can use linear combinations at the top (Lasso for regression, LogisticRegression for classification)
+- **Task-adaptive leaf estimation**: Shrinkage for regression, m-estimate smoothing for classification
 
-### BootstrapVariancePenalizedRegressor
+### BootstrapVariancePenalizedTree
 
-**🎯 When to use**: When prediction consistency is more important than squeezing out every bit of accuracy
+**🎯 When to use**: When prediction consistency is more important than squeezing out every bit of accuracy (both regression and classification)
 
 **💡 Core intuition**: Like choosing a reliable car over a faster but unpredictable one. This algorithm explicitly optimizes for models that give similar predictions even when trained on slightly different data samples.
 
 **⚖️ Trade-offs**:
 - ✅ **Gain**: Most consistent predictions across bootstrap samples
-- ✅ **Gain**: Excellent for scenarios where you retrain models frequently  
+- ✅ **Gain**: Excellent for scenarios where you retrain models frequently
+- ✅ **Gain**: Unified interface for regression and classification
 - ❌ **Cost**: Moderate training time increase due to bootstrap evaluation
 - ❌ **Cost**: May sacrifice some accuracy for consistency
 
 **🔧 How it works**:
 - **Variance penalty**: During training, penalizes splits that lead to high prediction variance across bootstrap samples
-- **Honest estimation**: Builds tree structure on one data subset, estimates leaf values on another (prevents overfitting)
-- **Bootstrap evaluation**: Tests each potential split on multiple bootstrap samples to measure stability before deciding
+- **Honest estimation**: Builds tree structure on one data subset, estimates leaf values on another
+- **Bootstrap evaluation**: Tests each potential split on multiple bootstrap samples to measure stability
+- **Task-adaptive loss**: Uses SSE for regression, Gini/entropy for classification
 
-### RobustPrefixHonestClassifier
+### RobustPrefixHonestTree
 
-**🎯 When to use**: For binary classification where you need reliable probability estimates and stable decision boundaries
+**🎯 When to use**: When you need reliable probability estimates and stable decision boundaries (supports both binary classification and regression)
 
-**💡 Core intuition**: Like making the big strategic decisions first with a committee consensus, then fine-tuning details with fresh information. This classifier locks in the most important splits using agreement across multiple bootstrap samples, then uses separate data to estimate probabilities.
+**💡 Core intuition**: Like making the big strategic decisions first with a committee consensus, then fine-tuning details with fresh information. This tree locks in the most important splits using agreement across multiple bootstrap samples, then uses separate data for final estimates.
 
 **⚖️ Trade-offs**:
 - ✅ **Gain**: Very stable decision boundaries across different training runs
-- ✅ **Gain**: Reliable probability estimates (great for risk assessment)
+- ✅ **Gain**: Reliable probability estimates (classification) or predictions (regression)
 - ✅ **Gain**: Robust to outliers and data noise
-- ❌ **Cost**: Limited to binary classification only
+- ✅ **Gain**: Unified API for both regression and classification
+- ❌ **Cost**: Limited to binary classification (multi-class support coming soon)
 - ❌ **Cost**: May be conservative in capturing complex patterns
 
 **🔧 How it works**:
 - **Robust prefix**: Uses multiple bootstrap samples to find splits that consistently matter, then locks those in
-- **Honest leaves**: After structure is fixed, estimates class probabilities on completely separate data
-- **m-estimate smoothing**: Prevents overconfident predictions in regions with little data
+- **Honest leaves**: After structure is fixed, estimates values on completely separate data
+- **Task-adaptive smoothing**: Shrinkage for regression, m-estimate for classification
 - **Winsorization**: Caps extreme feature values to reduce outlier influence
 
 ## Choosing the Right Algorithm
@@ -162,50 +193,51 @@ print(f"Classification Performance: {clf_metrics}")
 **Start here**: What's your primary concern?
 
 ```
-📊 Regression Tasks:
-├── Need maximum stability? → BootstrapVariancePenalizedRegressor
-├── Want balanced stability + flexibility? → LessGreedyHybridRegressor  
-└── Just need sklearn DecisionTree baseline? → Standard CART
-
-🎯 Classification Tasks:
-├── Binary classification + need probability estimates? → RobustPrefixHonestClassifier
-├── Multi-class classification? → Standard CART (stable methods coming soon!)
-└── Just need sklearn DecisionTree baseline? → Standard CART
+🌟 UNIFIED ARCHITECTURE:
+├── Need maximum stability? → BootstrapVariancePenalizedTree(task='regression'|'classification')
+├── Want balanced stability + flexibility? → LessGreedyHybridTree(task='regression'|'classification')
+├── Need robust prefix + reliable estimates? → RobustPrefixHonestTree(task='regression'|'classification')
+└── Just need sklearn baseline? → DecisionTreeRegressor/DecisionTreeClassifier
 ```
+
+**💡 Pro Tip**: All stable-cart trees use the same unified interface with the `task` parameter - switch between regression and classification effortlessly!
 
 ### 📋 Use Case Comparison
 
 | Scenario | Best Choice | Why |
 |----------|-------------|-----|
-| **Financial risk models** | RobustPrefixHonest | Stable probability estimates crucial |
-| **A/B testing analysis** | BootstrapVariancePenalized | Consistency across samples matters most |
-| **Medical diagnosis support** | RobustPrefixHonest | Reliable probabilities + robust to outliers |
-| **Demand forecasting** | LessGreedyHybrid | Balance of accuracy + stability |
+| **Financial risk models** | RobustPrefixHonestTree(task='classification') | Stable probability estimates crucial |
+| **A/B testing analysis** | BootstrapVariancePenalizedTree(task='regression') | Consistency across samples matters most |
+| **Medical diagnosis support** | RobustPrefixHonestTree(task='classification') | Reliable probabilities + robust to outliers |
+| **Demand forecasting** | LessGreedyHybridTree(task='regression') | Balance of accuracy + stability |
+| **Customer churn prediction** | LessGreedyHybridTree(task='classification') | Stable classification with probability estimates |
 | **Real-time recommendations** | Standard CART | Speed over stability |
-| **Research/prototyping** | LessGreedyHybrid | Good general-purpose stable option |
+| **Research/prototyping** | LessGreedyHybridTree(task='regression'/'classification') | Good general-purpose stable option |
 
 ### ⚡ Quick Selection Rules
 
-**Choose BootstrapVariancePenalizedRegressor when**:
+**Choose BootstrapVariancePenalizedTree when**:
 - You retrain models frequently with new data
 - Prediction consistency is more important than peak accuracy
 - You have sufficient training time
+- **Works for both**: `task='regression'` or `task='classification'`
 
-**Choose LessGreedyHybridRegressor when**:
+**Choose LessGreedyHybridTree when**:
 - You want stability without major accuracy loss
-- You need a general-purpose stable regressor
+- You need a general-purpose stable tree
 - Training time is somewhat constrained
+- **Works for both**: `task='regression'` or `task='classification'`
 
-**Choose RobustPrefixHonestClassifier when**:
-- You have binary classification
-- You need trustworthy probability estimates
+**Choose RobustPrefixHonestTree when**:
+- You need trustworthy probability estimates (classification) or predictions (regression)
 - Your data may have outliers
+- You want very stable decision boundaries
+- **Works for both**: `task='regression'` or `task='classification'` (binary only for now)
 
 **Stick with Standard CART when**:
 - You need maximum speed
 - You have very large datasets (>100k samples)
 - Stability is not a concern
-- You need multi-class classification (for now)
 
 ## Performance Comparison
 
