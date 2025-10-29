@@ -30,7 +30,7 @@ def prediction_stability(
 ) -> dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
-    
+
     This metric quantifies prediction stability by measuring how much models agree
     with each other on the same out-of-sample data. Lower values indicate more
     stable/consistent predictions.
@@ -49,12 +49,12 @@ def prediction_stability(
     -------
     scores : dict[str, float]
         Stability score for each model.
-        
-        For 'categorical': 
+
+        For 'categorical':
             Average pairwise DISAGREEMENT rate per model (range: 0-1).
             Lower is better (more stable). 0 = perfect agreement with all other models.
-            
-        For 'continuous': 
+
+        For 'continuous':
             RMSE of each model's predictions vs the ensemble mean.
             Lower is better (more stable). 0 = identical to ensemble mean.
 
@@ -76,7 +76,7 @@ def prediction_stability(
     >>> stability = prediction_stability(models, X_test, task='categorical')
     >>> print(stability)  # Lower values = more stable predictions
     {'tree1': 0.15, 'tree2': 0.15}
-    
+
     Notes
     -----
     - Stability is measured relative to other models in the collection
@@ -94,7 +94,7 @@ def prediction_stability(
     # --- CATEGORICAL: pairwise disagreement (1 - agreement rate) ---
     if task == "categorical":
         preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-        
+
         # Ensure numeric label space for comparisons
         if not np.issubdtype(preds.dtype, np.number):
             # Map labels to integers consistently
@@ -121,7 +121,7 @@ def prediction_stability(
     elif task == "continuous":
         preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
         mean_pred = np.mean(preds, axis=1)  # Ensemble mean per sample
-        
+
         scores = {}
         for k, name in enumerate(names):
             deviation = mean_pred - preds[:, k]
@@ -137,14 +137,11 @@ def prediction_stability(
 # Model Performance Evaluation
 # -------------------------------
 def evaluate_models(
-    models: dict[str, object], 
-    X: np.ndarray, 
-    y: np.ndarray, 
-    task: str = "categorical"
+    models: dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
 ) -> dict[str, dict[str, float]]:
     """
     Evaluate predictive performance of multiple models using standard metrics.
-    
+
     Computes task-appropriate performance metrics for each model. For classification,
     includes accuracy and AUC (if predict_proba available). For regression, includes
     MAE, RMSE, and R².
@@ -164,13 +161,13 @@ def evaluate_models(
     -------
     metrics : dict[str, dict[str, float]]
         Nested dictionary: {model_name: {metric_name: value}}
-        
+
         For 'categorical':
             - 'acc': Classification accuracy (0-1)
             - 'auc': ROC AUC score (0-1, if predict_proba available)
                     For binary: standard AUC
                     For multi-class: one-vs-rest macro AUC
-                    
+
         For 'continuous':
             - 'mae': Mean Absolute Error (lower is better)
             - 'rmse': Root Mean Squared Error (lower is better)
@@ -192,7 +189,7 @@ def evaluate_models(
     >>> performance = evaluate_models(models, X, y, task='continuous')
     >>> print(performance['shallow'])
     {'mae': 12.3, 'rmse': 15.7, 'r2': 0.85}
-    
+
     Notes
     -----
     - AUC computation gracefully handles cases where predict_proba is not available
@@ -208,7 +205,11 @@ def evaluate_models(
 
         for name, mdl in models.items():
             y_hat = mdl.predict(X)
-            acc = float(accuracy_score(y, y_hat))
+            try:
+                acc = float(accuracy_score(y, y_hat))
+            except ValueError:
+                # Handle cases where predictions contain NaN or invalid values
+                acc = np.nan
             entry = {"acc": acc}
 
             # Compute AUC if model supports probability predictions
@@ -220,9 +221,7 @@ def evaluate_models(
                     else:
                         # One-vs-rest macro AUC for multi-class
                         Yb = label_binarize(y, classes=y_unique)
-                        auc = float(roc_auc_score(
-                            Yb, proba, average="macro", multi_class="ovr"
-                        ))
+                        auc = float(roc_auc_score(Yb, proba, average="macro", multi_class="ovr"))
                     entry["auc"] = auc
                 except Exception:
                     # Silently skip AUC if computation fails (e.g., single class in y)
@@ -233,9 +232,15 @@ def evaluate_models(
     elif task == "continuous":
         for name, mdl in models.items():
             y_pred = mdl.predict(X)
-            mae = float(mean_absolute_error(y, y_pred))
-            rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
-            r2 = float(r2_score(y, y_pred))
+            try:
+                mae = float(mean_absolute_error(y, y_pred))
+                rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
+                r2 = float(r2_score(y, y_pred))
+            except ValueError:
+                # Handle cases where predictions contain NaN or invalid values
+                mae = np.nan
+                rmse = np.nan
+                r2 = np.nan
             results[name] = {"mae": mae, "rmse": rmse, "r2": r2}
 
     else:

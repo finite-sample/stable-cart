@@ -35,7 +35,7 @@ pip install -e ".[dev]"
 
 ```python
 from stable_cart import LessGreedyHybridRegressor, BootstrapVariancePenalizedRegressor
-from stable_cart import prediction_stability, accuracy
+from stable_cart import prediction_stability, evaluate_models
 from sklearn.datasets import make_regression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
@@ -61,7 +61,7 @@ models = {
     "bootstrap_penalized": bootstrap_model,
     "greedy": greedy_model
 }
-metrics = accuracy(models, X_test, y_test, task="continuous")
+metrics = evaluate_models(models, X_test, y_test, task="continuous")
 print(f"Performance: {metrics}")
 
 # Evaluate stability

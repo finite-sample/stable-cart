@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # Import from package (not direct module imports)
-from stable_cart import LessGreedyHybridRegressor, prediction_stability, accuracy
+from stable_cart import LessGreedyHybridRegressor, prediction_stability, evaluate_models
 
 
 @pytest.mark.e2e
@@ -42,7 +42,7 @@ def test_regression_end_to_end(tmp_path):
     df_pred.to_csv(pred_path, index=False)
 
     # Test using package functions
-    perf = accuracy(models, Xte, yte, task="continuous")
+    perf = evaluate_models(models, Xte, yte, task="continuous")
     metrics_path = tmp_path / "metrics.json"
     metrics_path.write_text(json.dumps(perf, indent=2))
 
@@ -80,7 +80,7 @@ def test_classification_stability():
     }
 
     # Test accuracy metrics
-    acc = accuracy(models, Xte, yte, task="categorical")
+    acc = evaluate_models(models, Xte, yte, task="categorical")
     for d in acc.values():
         assert 0.0 <= d["acc"] <= 1.0
         if "auc" in d and d["auc"] is not None:

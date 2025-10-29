@@ -6,7 +6,7 @@ from sklearn.datasets import make_regression, make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 
-from stable_cart.evaluation import prediction_stability, evaluate_models, accuracy
+from stable_cart.evaluation import prediction_stability, evaluate_models
 
 
 # Tolerance for floating-point comparisons
@@ -262,37 +262,6 @@ def test_evaluate_models_perfect_predictions():
 # -------------------------------
 # Test backward compatibility
 # -------------------------------
-
-
-def test_accuracy_deprecated_wrapper():
-    """Test that old accuracy() function still works with deprecation warning."""
-    X, y = make_classification(n_samples=100, n_features=5, random_state=42)
-    model = DecisionTreeClassifier(random_state=42).fit(X, y)
-    models = {"dt": model}
-    
-    # Should raise DeprecationWarning
-    with pytest.warns(DeprecationWarning, match="accuracy\\(\\) is deprecated"):
-        results = accuracy(models, X, y, task="categorical")
-    
-    # But should still return correct results
-    assert "acc" in results["dt"]
-    assert 0 <= results["dt"]["acc"] <= 1
-
-
-def test_accuracy_matches_evaluate_models():
-    """Test that accuracy() returns same results as evaluate_models()."""
-    X, y = make_regression(n_samples=100, n_features=5, random_state=42)
-    model = DecisionTreeRegressor(random_state=42).fit(X, y)
-    models = {"dt": model}
-    
-    # Suppress the deprecation warning for this test
-    with pytest.warns(DeprecationWarning):
-        results_old = accuracy(models, X, y, task="continuous")
-    
-    results_new = evaluate_models(models, X, y, task="continuous")
-    
-    # Should be identical
-    assert results_old == results_new
 
 
 # -------------------------------
