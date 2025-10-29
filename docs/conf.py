@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 project = "stable-cart"
 author = "stable-cart developers"
 copyright = "2024, stable-cart developers"
-release = "0.1.0"
+release = "0.3.0"
 
 # -- General configuration ---------------------------------------------------
 

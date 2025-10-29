@@ -125,6 +125,102 @@ for name, model in clf_models.items():
 
 ```
 
+## Advanced Configuration Examples
+
+### Unified Parameter Interface
+
+All stable-cart trees share a unified parameter interface with comprehensive stability primitives:
+
+```python
+from stable_cart import LessGreedyHybridTree
+
+# Regression with all stability features enabled
+advanced_reg_tree = LessGreedyHybridTree(
+    # === CORE CONFIGURATION ===
+    task='regression',               # 'regression' or 'classification'
+    max_depth=6,                    # Maximum tree depth
+    min_samples_split=50,           # Minimum samples to split node
+    min_samples_leaf=25,            # Minimum samples per leaf
+    
+    # === HONEST DATA PARTITIONING ===
+    split_frac=0.6,                 # Fraction for structure learning
+    val_frac=0.2,                   # Fraction for validation
+    est_frac=0.2,                   # Fraction for leaf estimation
+    enable_stratified_sampling=True, # Balanced honest partitioning
+    
+    # === OBLIQUE SPLITS (SIGNATURE FEATURE) ===
+    enable_oblique_splits=True,     # Enable oblique splits
+    oblique_strategy='root_only',   # 'root_only', 'all_levels', 'adaptive'
+    oblique_regularization='lasso', # 'lasso', 'ridge', 'elastic_net'
+    enable_correlation_gating=True, # Use correlation gating
+    min_correlation_threshold=0.3,  # Minimum correlation to trigger oblique
+    
+    # === LOOKAHEAD SEARCH (SIGNATURE FEATURE) ===
+    enable_lookahead=True,          # Enable lookahead search
+    lookahead_depth=2,              # Lookahead depth
+    beam_width=15,                  # Number of candidates to track
+    enable_ambiguity_gating=True,   # Use ambiguity gating
+    ambiguity_threshold=0.05,       # Trigger lookahead when splits are close
+    min_samples_for_lookahead=800,  # Minimum samples to enable lookahead
+    
+    # === CROSS-METHOD LEARNING FEATURES ===
+    enable_robust_consensus_for_ambiguous=True, # Consensus for ambiguous splits
+    consensus_samples=12,                       # Bootstrap samples for consensus
+    consensus_threshold=0.7,                    # Agreement threshold
+    enable_winsorization=True,                  # Outlier clipping (from RobustPrefix)
+    winsor_quantiles=(0.02, 0.98),            # Outlier clipping bounds
+    enable_bootstrap_variance_tracking=True,   # Variance tracking (from Bootstrap)
+    variance_tracking_samples=10,              # Bootstrap samples for variance
+    
+    # === LEAF STABILIZATION ===  
+    leaf_smoothing=0.1,             # Shrinkage parameter (0=none, higher=more)
+    leaf_smoothing_strategy='m_estimate',  # 'm_estimate', 'shrink_to_parent', 'beta_smoothing'
+    
+    random_state=42
+)
+
+# Classification with conservative stability settings
+conservative_clf_tree = LessGreedyHybridTree(
+    task='classification',
+    max_depth=4,                                    # Shallower for more stability
+    min_samples_split=60,                           # Higher split threshold
+    min_samples_leaf=30,                            # Larger leaves for stability
+    leaf_smoothing=0.5,                             # Heavy smoothing
+    leaf_smoothing_strategy='m_estimate',           # Bayesian smoothing
+    enable_bootstrap_variance_tracking=True,       # Track prediction variance
+    enable_robust_consensus_for_ambiguous=True,    # Use consensus for ambiguous splits
+    consensus_threshold=0.8,                       # High agreement requirement
+    consensus_samples=15,                          # More bootstrap samples
+    enable_winsorization=True,                     # Enable outlier protection
+    classification_criterion='gini',              # Gini impurity criterion
+    random_state=42
+)
+
+# Fit and evaluate
+advanced_reg_tree.fit(X_train, y_train)
+conservative_clf_tree.fit(X_train_clf, y_train_clf)
+
+print(f"Regression R²: {advanced_reg_tree.score(X_test, y_test):.3f}")
+print(f"Classification accuracy: {conservative_clf_tree.score(X_test_clf, y_test_clf):.3f}")
+```
+
+### Stability Measurement
+
+```python
+from stable_cart import prediction_stability
+
+# Measure prediction stability across bootstrap samples
+stability_results = prediction_stability(
+    [advanced_reg_tree, conservative_clf_tree], 
+    [X_test, X_test_clf], 
+    n_bootstrap=20
+)
+
+print("Prediction variance (lower = more stable):")
+for model_name, variance in stability_results.items():
+    print(f"  {model_name}: {variance:.4f}")
+```
+
 ## Algorithms
 
 All trees in stable-cart use a **unified architecture** that supports both regression and classification through a simple `task` parameter. This means you can use the same algorithm for both types of problems!
@@ -327,7 +423,7 @@ If you use stable-cart in your research, please cite:
   author={Sood, Gaurav and Bhosle, Arav},
   year={2025},
   url={https://github.com/finite-sample/stable-cart},
-  version={0.1.0}
+  version={0.3.0}
 }
 ```
 

@@ -506,12 +506,16 @@ class BaseStableTree(BaseEstimator):
                 "n_samples_est": len(y_est),
             }
         else:
-            # For classification, stabilized_value is probability
-            prob = (
-                stabilized_value
-                if isinstance(stabilized_value, (float, int))
-                else stabilized_value[1]
-            )
+            # For classification, stabilized_value is probability array or scalar
+            if isinstance(stabilized_value, (float, int)):
+                prob = stabilized_value
+            else:
+                # stabilized_value is an array of class probabilities
+                if len(stabilized_value) >= 2:
+                    prob = stabilized_value[1]  # P(class=1) for binary classification
+                else:
+                    # Only one class present, assume class 0
+                    prob = 0.0
             return {
                 "type": "leaf",
                 "proba": float(prob),
