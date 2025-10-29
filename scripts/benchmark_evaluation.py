@@ -55,10 +55,10 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 split_frac=0.6,
                 val_frac=0.2,
                 est_frac=0.2,
-                enable_oblique_root=True,
-                gain_margin=0.03,
-                beam_topk=12,
-                leaf_shrinkage_lambda=10.0,
+                enable_oblique_splits=True,
+                margin_threshold=0.03,
+                beam_width=12,
+                leaf_smoothing=0.0,  # Conservative for LessGreedy
                 random_state=random_state,
             ),
             "BootstrapVariancePenalized": lambda: BootstrapVariancePenalizedTree(
@@ -71,8 +71,8 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 est_frac=0.2,
                 variance_penalty=1.0,
                 n_bootstrap=10,
-                beam_topk=12,
-                leaf_shrinkage_lambda=10.0,
+                beam_width=8,
+                leaf_smoothing=0.0,  # Conservative default
                 random_state=random_state,
             ),
             "RobustPrefixHonest": lambda: RobustPrefixHonestTree(
@@ -83,7 +83,7 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 val_frac=0.2,
                 est_frac=0.4,
                 smoothing=1.0,
-                consensus_B=12,
+                consensus_samples=12,
                 random_state=random_state,
             ),
         }
@@ -106,10 +106,10 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 split_frac=0.6,
                 val_frac=0.2,
                 est_frac=0.2,
-                enable_oblique_root=True,
-                gain_margin=0.03,
-                beam_topk=12,
-                leaf_shrinkage_lambda=1.0,  # m-estimate smoothing for classification
+                enable_oblique_splits=True,
+                margin_threshold=0.03,
+                beam_width=12,
+                leaf_smoothing=1.0,  # m-estimate smoothing for classification
                 random_state=random_state,
             ),
             "BootstrapVariancePenalized": lambda: BootstrapVariancePenalizedTree(
@@ -121,9 +121,9 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 val_frac=0.2,
                 est_frac=0.2,
                 variance_penalty=1.0,
-                n_bootstrap=10,
-                beam_topk=12,
-                leaf_shrinkage_lambda=1.0,  # m-estimate smoothing for classification
+                n_bootstrap=5,  # Faster for classification
+                beam_width=8,
+                leaf_smoothing=1.0,  # m-estimate smoothing for classification
                 random_state=random_state,
             ),
             "RobustPrefixHonest": lambda: RobustPrefixHonestTree(
@@ -134,7 +134,7 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 val_frac=0.2,
                 est_frac=0.4,
                 smoothing=1.0,
-                consensus_B=12,
+                consensus_samples=12,
                 random_state=random_state,
             ),
         }
@@ -150,6 +150,7 @@ def bootstrap_prediction_variance(
     X_train: np.ndarray,
     y_train: np.ndarray,
     X_test: np.ndarray,
+    task: str,
     n_bootstrap: int = 20,
     random_state: int = 42,
 ) -> Dict[str, float]:
@@ -195,11 +196,11 @@ def bootstrap_prediction_variance(
         model = model_factory()
         model.fit(X_boot, y_boot)
 
-        # For classification, use probabilities if available
-        if hasattr(model, "predict_proba") and len(np.unique(y_train)) == 2:
+        # For classification, use probabilities if available; for regression, use predictions
+        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) == 2:
             # Binary classification - use probability of positive class
             pred = model.predict_proba(X_test)[:, 1]
-        elif hasattr(model, "predict_proba") and len(np.unique(y_train)) > 2:
+        elif task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) > 2:
             # Multi-class - use max probability
             proba = model.predict_proba(X_test)
             pred = np.max(proba, axis=1)
@@ -334,12 +335,12 @@ def evaluate_single_model(
     # Predictions for discrimination metrics
     y_pred = model.predict(X_test)
     y_proba = None
-    if hasattr(model, "predict_proba"):
+    if task == "classification" and hasattr(model, "predict_proba"):
         y_proba = model.predict_proba(X_test)
 
     # 1. Bootstrap prediction variance (stability)
     stability_metrics = bootstrap_prediction_variance(
-        model_factory, X_train, y_train, X_test, n_bootstrap, random_state
+        model_factory, X_train, y_train, X_test, task, n_bootstrap, random_state
     )
 
     # 2. Discrimination metrics
@@ -476,7 +477,7 @@ def cross_validation_stability(
         model = model_factory()
         model.fit(X_train_cv, y_train_cv)
 
-        if hasattr(model, "predict_proba") and len(np.unique(y)) == 2:
+        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y)) == 2:
             pred = model.predict_proba(X_val_cv)[:, 1]
         else:
             pred = model.predict(X_val_cv)

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stable-cart"
-version = "0.1.0"
-description = "Stable CART decision trees with enhanced prediction stability and variance reduction techniques for robust machine learning."
+version = "0.3.0"
+description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
