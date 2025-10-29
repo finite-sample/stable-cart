@@ -22,7 +22,9 @@ def _winsorize_apply(X: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarra
     return np.minimum(np.maximum(X, lo), hi)
 
 
-def _stratified_bootstrap(X: np.ndarray, y: np.ndarray, rng: np.random.RandomState) -> Tuple[np.ndarray, np.ndarray]:
+def _stratified_bootstrap(
+    X: np.ndarray, y: np.ndarray, rng: np.random.RandomState
+) -> Tuple[np.ndarray, np.ndarray]:
     """Class-stratified bootstrap indices."""
     idxs = []
     for c in np.unique(y):
@@ -43,12 +45,13 @@ def _robust_stump_on_node(
     B: int,
     subsample_frac: float,
     max_bins: int,
-    rng: np.random.RandomState
+    rng: np.random.RandomState,
 ) -> Optional[Tuple[int, float]]:
     """
     Choose a stump by 'majority validation-loss winner':
     bag depth-1 trees on bootstraps of the node's SPLIT data, evaluate val log-loss,
-    bin thresholds per feature to remove micro-jitter, pick (feature, bin) with lowest median val-loss;
+    bin thresholds per feature to remove micro-jitter, pick (feature, bin) with lowest median
+    val-loss;
     set threshold to the median of thresholds in the winning bin.
     """
     n = len(X_split)
@@ -57,6 +60,7 @@ def _robust_stump_on_node(
 
     # Buckets: (feat, bin_idx, lo, hi) -> list[vloss], list[thr]
     from collections import defaultdict
+
     bucket_losses: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
     bucket_thresholds: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
 
@@ -141,8 +145,9 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
     Notes
     -----
     * Binary classification only (multi-class is a straightforward Dirichlet-smoothed extension).
-    * Mirrors the SPLIT / VAL / EST “honest” pattern described in the project docs. :contentReference[oaicite:1]{index=1}
+    * Mirrors the SPLIT / VAL / EST "honest" pattern described in the project docs.
     """
+
     top_levels: int = 2
     max_depth: int = 6
     min_samples_leaf: int = 2
@@ -158,7 +163,9 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
     # learned state
     _lo_: Optional[np.ndarray] = None
     _hi_: Optional[np.ndarray] = None
-    _prefix_nodes_: Optional[List[Tuple[int, int, float, int, int]]] = None  # (nid, feat, thr, left_id, right_id)
+    _prefix_nodes_: Optional[List[Tuple[int, int, float, int, int]]] = (
+        None  # (nid, feat, thr, left_id, right_id)
+    )
     _region_models_: Optional[Dict[int, DecisionTreeClassifier]] = None
     _region_leaf_probs_: Optional[Dict[int, Dict[int, float]]] = None  # region -> {leaf_id: p1}
     classes_: Optional[np.ndarray] = None
@@ -166,7 +173,7 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
     def _route_mask(self, X: np.ndarray, path: List[Tuple[int, float, str]]) -> np.ndarray:
         m = np.ones(len(X), dtype=bool)
         for f, t, side in path:
-            m &= (X[:, f] <= t) if side == 'L' else (X[:, f] > t)
+            m &= (X[:, f] <= t) if side == "L" else (X[:, f] > t)
         return m
 
     def _route_node_ids(self, X: np.ndarray) -> np.ndarray:
@@ -184,7 +191,9 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
         X = np.asarray(X)
         y = np.asarray(y).astype(int)
         if len(np.unique(y)) > 2:
-            raise ValueError("RobustPrefixHonestClassifier currently supports binary classification only.")
+            raise ValueError(
+                "RobustPrefixHonestClassifier currently supports binary classification only."
+            )
 
         rng = np.random.RandomState(self.random_state)
         # winsorize (store quantiles for inference)
@@ -193,9 +202,17 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
 
         # honest partition: SPLIT / VAL / EST (global, then routed)
         X_split, X_tmp, y_split, y_tmp = train_test_split(
-            Xw, y, test_size=self.val_frac + self.est_frac, random_state=rng.randint(0, 10**9), stratify=y
+            Xw,
+            y,
+            test_size=self.val_frac + self.est_frac,
+            random_state=rng.randint(0, 10**9),
+            stratify=y,
         )
-        rel = (self.est_frac / (self.val_frac + self.est_frac)) if (self.val_frac + self.est_frac) > 0 else 0.5
+        rel = (
+            (self.est_frac / (self.val_frac + self.est_frac))
+            if (self.val_frac + self.est_frac) > 0
+            else 0.5
+        )
         X_val, X_est, y_val, y_est = train_test_split(
             X_tmp, y_tmp, test_size=rel, random_state=rng.randint(0, 10**9), stratify=y_tmp
         )
@@ -216,11 +233,14 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
                     self._prefix_nodes_.append((nid, None, None, None, None))
                     continue
                 cs = _robust_stump_on_node(
-                    Xs, ys, Xv, yv,
+                    Xs,
+                    ys,
+                    Xv,
+                    yv,
                     B=self.consensus_B,
                     subsample_frac=self.consensus_subsample_frac,
                     max_bins=self.consensus_max_bins,
-                    rng=np.random.RandomState(rng.randint(0, 10**9))
+                    rng=np.random.RandomState(rng.randint(0, 10**9)),
                 )
                 if cs is None:
                     self._prefix_nodes_.append((nid, None, None, None, None))
@@ -228,8 +248,8 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
                 f, t = cs
                 L, R = 2 * nid + 1, 2 * nid + 2
                 self._prefix_nodes_.append((nid, f, t, L, R))
-                next_q.append((L, path + [(f, t, 'L')]))
-                next_q.append((R, path + [(f, t, 'R')]))
+                next_q.append((L, path + [(f, t, "L")]))
+                next_q.append((R, path + [(f, t, "R")]))
             node_queue = next_q
             level += 1
 
@@ -242,15 +262,16 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
                 terminal_paths.append((nid, path))
                 return
             f, t, L, R = locked[nid]
-            gather(L, path + [(f, t, 'L')], lvl + 1)
-            gather(R, path + [(f, t, 'R')], lvl + 1)
+            gather(L, path + [(f, t, "L")], lvl + 1)
+            gather(R, path + [(f, t, "R")], lvl + 1)
 
         if not self._prefix_nodes_:
             terminal_paths.append((0, []))
         else:
             gather(0, [], 0)
 
-        # train per-region subtrees (structure on SPLIT; leaf probs estimated on EST with m-smoothing)
+        # train per-region subtrees (structure on SPLIT; leaf probs estimated on EST with
+        # m-smoothing)
         remain = max(self.max_depth - self.top_levels, 0)
         self._region_models_ = {}
         self._region_leaf_probs_ = {}
@@ -269,7 +290,7 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
                 subtree = DecisionTreeClassifier(
                     max_depth=remain,
                     min_samples_leaf=max(self.min_samples_leaf, 2),
-                    random_state=self.random_state
+                    random_state=self.random_state,
                 )
             subtree.fit(Xs, ys)
             self._region_models_[nid] = subtree
@@ -281,7 +302,7 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
             leaves = subtree.apply(Xleaf)
             unique = np.unique(leaves)
             for lid in unique:
-                m = (leaves == lid)
+                m = leaves == lid
                 n_leaf = int(m.sum())
                 k_leaf = int(yleaf[m].sum())
                 phat = (k_leaf + self.m_smooth * p0) / (n_leaf + self.m_smooth)
@@ -291,7 +312,7 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
             for lid in all_leaves:
                 if int(lid) not in leaf_probs:
                     # backfill from SPLIT counts
-                    m = (subtree.apply(Xs) == lid)
+                    m = subtree.apply(Xs) == lid
                     n_leaf = int(m.sum())
                     k_leaf = int(ys[m].sum())
                     phat = (k_leaf + self.m_smooth * p0) / (n_leaf + self.m_smooth)
@@ -304,19 +325,31 @@ class RobustPrefixHonestClassifier(BaseEstimator, ClassifierMixin):
 
     # --- sklearn API ---
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        check_is_fitted(self, ["_lo_", "_hi_", "_prefix_nodes_", "_region_models_", "_region_leaf_probs_", "classes_"])
+        check_is_fitted(
+            self,
+            [
+                "_lo_",
+                "_hi_",
+                "_prefix_nodes_",
+                "_region_models_",
+                "_region_leaf_probs_",
+                "classes_",
+            ],
+        )
         X = np.asarray(X)
         Xw = _winsorize_apply(X, self._lo_, self._hi_)
         ids = self._route_node_ids(Xw)
 
         proba = np.zeros((len(Xw), 2), dtype=float)
         for nid, subtree in self._region_models_.items():
-            mask = (ids == nid)
+            mask = ids == nid
             if not mask.any():
                 continue
             leaves = subtree.apply(Xw[mask])
             # look up smoothed probs
-            p1 = np.array([self._region_leaf_probs_[nid].get(int(lid), 0.5) for lid in leaves], dtype=float)
+            p1 = np.array(
+                [self._region_leaf_probs_[nid].get(int(lid), 0.5) for lid in leaves], dtype=float
+            )
             p1 = np.clip(p1, 1e-7, 1 - 1e-7)
             proba[mask, 1] = p1
             proba[mask, 0] = 1.0 - p1
