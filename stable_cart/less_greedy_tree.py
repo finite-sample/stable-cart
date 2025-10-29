@@ -73,13 +73,73 @@ class _ComparableFloat(float):
 # ---------- Less-Greedy Hybrid ----------
 class LessGreedyHybridRegressor(BaseEstimator, RegressorMixin):
     """
-    A single-tree regressor with:
-      - Honest SPLIT/VAL/EST partition inside fit()
-      - Optional oblique root split (lasso projection) with correlation + gain-margin gating
-      - Honest k-step (axis-only) lookahead with beam search near the top when gains are ambiguous
-      - Leaf shrinkage toward parent mean (variance control)
+    A drop-in replacement for tree-based regressors that trades a little raw
+    accuracy for greatly improved stability. 
 
-    Parameters are sklearn-style and can be tuned with GridSearchCV.
+    This single-tree regressor implements several variance reduction techniques:
+
+    1. **Honest data partitioning**: Splits training data into SPLIT (for structure),
+       VAL (for honest validation), and EST (for leaf value estimation) subsets.
+    2. **Optional oblique root split**: Uses Lasso-based feature projections with
+       correlation and gain-margin gating to create linear splits at the root.
+    3. **Honest lookahead with beam search**: When multiple candidate splits look
+       equally attractive, performs k-step lookahead to make more informed decisions.
+    4. **Leaf-value shrinkage**: Shrinks leaf predictions toward parent means to
+       limit overfitting and reduce variance.
+
+    Parameters
+    ----------
+    max_depth : int, default=5
+        Maximum depth of the tree.
+    min_samples_split : int, default=40
+        Minimum number of samples required to split an internal node.
+    min_samples_leaf : int, default=20
+        Minimum number of samples required to be at a leaf node.
+    split_frac : float, default=0.6
+        Fraction of training data used for structure learning (SPLIT subset).
+    val_frac : float, default=0.2
+        Fraction of training data used for validation (VAL subset).
+    est_frac : float, default=0.2
+        Fraction of training data used for leaf estimation (EST subset).
+    enable_oblique_root : bool, default=True
+        Whether to enable oblique (linear) splits at the root node.
+    gain_margin : float, default=0.03
+        Minimum gain advantage required for oblique splits over axis-aligned splits.
+    min_abs_corr : float, default=0.3
+        Minimum absolute correlation required between Lasso projection and target.
+    oblique_cv : int, default=5
+        Number of cross-validation folds for Lasso regularization parameter selection.
+    beam_topk : int, default=12
+        Number of top candidates to keep during beam search.
+    ambiguity_eps : float, default=0.05
+        Threshold for considering splits as "ambiguous" and triggering lookahead.
+    min_n_for_lookahead : int, default=600
+        Minimum sample size required to enable lookahead functionality.
+    root_k : int, default=2
+        Lookahead depth for root-level splits.
+    inner_k : int, default=1
+        Lookahead depth for inner-level splits.
+    leaf_shrinkage_lambda : float, default=0.0
+        Shrinkage parameter for leaf values (0.0 = no shrinkage, 1.0 = full shrinkage to parent).
+    random_state : int, default=0
+        Random seed for reproducibility.
+
+    Notes
+    -----
+    * Follows the scikit-learn API and can be used with GridSearchCV for hyperparameter tuning.
+    * Designed for scenarios where prediction stability is as important as raw accuracy.
+    * The honest partitioning scheme ensures unbiased evaluation of splits and leaf estimates.
+
+    Examples
+    --------
+    >>> from sklearn.datasets import make_regression
+    >>> from sklearn.model_selection import train_test_split
+    >>> X, y = make_regression(n_samples=1000, n_features=10, random_state=42)
+    >>> X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    >>> regressor = LessGreedyHybridRegressor(max_depth=4, random_state=42)
+    >>> regressor.fit(X_train, y_train)
+    >>> predictions = regressor.predict(X_test)
+    >>> r2_score = regressor.score(X_test, y_test)
     """
 
     def __init__(
