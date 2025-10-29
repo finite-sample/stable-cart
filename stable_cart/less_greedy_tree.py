@@ -487,8 +487,8 @@ class LessGreedyHybridRegressor(BaseEstimator, RegressorMixin):
         n_split = int(self.split_frac * n)
         n_val = int(self.val_frac * n)
         iS = idx[:n_split]
-        iV = idx[n_split:n_split + n_val]
-        iE = idx[n_split + n_val:]
+        iV = idx[n_split : n_split + n_val]
+        iE = idx[n_split + n_val :]
 
         Xs, ys = X[iS], y[iS]
         Xv, yv = X[iV], y[iV]
