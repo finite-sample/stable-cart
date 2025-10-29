@@ -37,6 +37,7 @@ autodoc_default_options = {
 
 autodoc_mock_imports = [
     "numpy",
+    "pandas", 
     "sklearn",
     "sklearn.base",
     "sklearn.preprocessing",
@@ -46,6 +47,7 @@ autodoc_mock_imports = [
     "sklearn.utils.validation",
     "sklearn.metrics",
     "sklearn.model_selection",
+    "sklearn.datasets",
 ]
 
 # Napoleon settings for Google/NumPy style docstrings
