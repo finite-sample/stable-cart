@@ -3,7 +3,7 @@
 [![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/soodoku/stable-cart/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![Downloads](https://pepy.tech/badge/stable-cart)](https://pepy.tech/project/stable-cart)
-[![Documentation](https://github.com/soodoku/stable-cart/actions/workflows/docs.yml/badge.svg)](https://soodoku.github.io/stable-cart/)
+[![Documentation](https://github.com/finite-sample/stable-cart/actions/workflows/docs.yml/badge.svg)](https://finite-sample.github.io/stable-cart/)
 [![License](https://img.shields.io/github/license/soodoku/stable-cart)](https://github.com/soodoku/stable-cart/blob/main/LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
