@@ -47,6 +47,14 @@ nitpicky = False
 nitpick_ignore = [
     ("py:class", "sklearn.base.BaseEstimator"),
     ("py:class", "numpy.ndarray"),
+    ("py:class", "pandas.DataFrame"),
+    ("py:obj", "sklearn.base.BaseEstimator"),
+]
+
+# Add better link checking
+linkcheck_ignore = [
+    r'http://localhost:\d+/',
+    r'https://example\.com',
 ]
 
 autodoc_mock_imports = [
@@ -90,6 +98,11 @@ intersphinx_mapping = {
     "sklearn": ("https://scikit-learn.org/stable/", None),
 }
 
+# Intersphinx configuration
+intersphinx_timeout = 10
+intersphinx_retries = 3
+intersphinx_disabled_reftypes = ["*"]  # Disable intersphinx for problematic references
+
 templates_path = ["_templates"]
 exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -98,6 +111,12 @@ exclude_patterns: list[str] = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "furo"
 html_title = f"{project} v{release}"
 html_static_path = ["_static"]
+
+# GitHub Pages configuration
+html_baseurl = "https://finite-sample.github.io/stable-cart/"
+html_use_smartypants = False
+html_copy_source = False
+html_show_sourcelink = False
 
 html_theme_options = {
     "sidebar_hide_name": True,

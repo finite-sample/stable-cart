@@ -1,13 +1,18 @@
-API reference
+.. _api_reference:
+
+API Reference
 =============
 
 This project provides unified tree estimators that follow the familiar scikit-learn API. 
 All classes support both regression and classification through a unified ``task`` parameter.
 
+.. _tree_estimators:
+
 Unified Tree Estimators
 ------------------------
 
-These are the main estimators that work for both regression and classification:
+These are the main estimators that work for both regression and classification.
+All classes inherit from :class:`BaseStableTree` and support both ``task='regression'`` and ``task='classification'``:
 
 .. currentmodule:: stable_cart
 
@@ -29,10 +34,12 @@ These are the main estimators that work for both regression and classification:
    :show-inheritance:
    :special-members: __init__
 
+.. _base_classes:
+
 Base Classes
 ------------
 
-For advanced users and researchers:
+For advanced users and researchers who want to extend the functionality or understand the underlying architecture:
 
 .. autoclass:: BaseStableTree
    :members:
@@ -40,19 +47,25 @@ For advanced users and researchers:
    :show-inheritance:
    :special-members: __init__
 
+.. _evaluation_functions:
+
 Evaluation Functions
 --------------------
 
-These functions help assess model performance and prediction stability:
+These functions help assess model performance and prediction stability.
+Use these to compare different tree algorithms or measure the effectiveness of stability features:
 
 .. autofunction:: prediction_stability
 
 .. autofunction:: evaluate_models
 
+.. _advanced_classes:
+
 Advanced Classes for Researchers
 ---------------------------------
 
-Internal classes for advanced customization and research:
+Internal classes for advanced customization and research.
+These provide the building blocks for creating custom stability algorithms:
 
 .. autoclass:: SplitCandidate
    :members:
