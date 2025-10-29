@@ -1,8 +1,9 @@
 """
 bootstrap_variance_tree.py
 ---------------------------
-A variant of LessGreedyHybridRegressor that explicitly penalizes bootstrap
-prediction variance on the validation set during split selection.
+A unified tree that explicitly penalizes bootstrap prediction variance on
+the validation set during split selection, supporting both regression and
+classification tasks.
 
 This encourages the tree to make splits that lead to more stable predictions
 across different bootstrap samples of the training data.
@@ -10,27 +11,49 @@ across different bootstrap samples of the training data.
 
 import numpy as np
 import time
-from typing import Any
+from typing import Any, Literal, Optional
 
-from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.metrics import r2_score
+from sklearn.base import BaseEstimator
+from sklearn.metrics import r2_score, accuracy_score
+from sklearn.linear_model import Lasso, LogisticRegressionCV
 
 from stable_cart.less_greedy_tree import _sse
 
 
-class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
-    """
-    A tree regressor that penalizes bootstrap prediction variance during split selection.
+def _gini_impurity(y: np.ndarray) -> float:
+    """Compute Gini impurity."""
+    if len(y) == 0:
+        return 0.0
+    proportions = np.bincount(y) / len(y)
+    return 1.0 - np.sum(proportions**2)
 
-    This extends the LessGreedyHybridRegressor by adding a bootstrap variance penalty
+
+def _entropy(y: np.ndarray) -> float:
+    """Compute entropy."""
+    if len(y) == 0:
+        return 0.0
+    proportions = np.bincount(y) / len(y)
+    proportions = proportions[proportions > 0]  # Avoid log(0)
+    return -np.sum(proportions * np.log2(proportions))
+
+
+class BootstrapVariancePenalizedTree(BaseEstimator):
+    """
+    A unified tree that penalizes bootstrap prediction variance during split selection,
+    supporting both regression and classification tasks.
+
+    This extends the base tree concept by adding a bootstrap variance penalty
     term to the split evaluation criterion. For each candidate split, we:
     1. Generate B bootstrap samples from the training data
     2. Fit a simple model to each bootstrap sample
     3. Compute prediction variance on the validation set
-    4. Add this variance as a penalty to the validation SSE
+    4. Add this variance as a penalty to the validation loss
 
     Parameters
     ----------
+    task : {'regression', 'classification'}, default='regression'
+        The prediction task type.
+
     variance_penalty : float, default=1.0
         Weight for the bootstrap variance penalty term.
         Higher values encourage more stable splits.
@@ -43,11 +66,12 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         Maximum depth for bootstrap trees used in variance estimation.
         Shallow trees are faster and often sufficient for stability assessment.
 
-    Other parameters are inherited from LessGreedyHybridRegressor.
+    Other parameters follow the same pattern as LessGreedyHybridTree.
     """
 
     def __init__(
         self,
+        task: Literal["regression", "classification"] = "regression",
         max_depth=5,
         min_samples_split=40,
         min_samples_leaf=20,
@@ -73,6 +97,10 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         leaf_shrinkage_lambda=0.0,
         random_state=0,
     ):
+        if task not in ["regression", "classification"]:
+            raise ValueError("task must be 'regression' or 'classification'")
+
+        self.task = task
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
@@ -103,6 +131,16 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         self.fit_time_sec_: float = 0.0
         self.splits_scanned_: int = 0
         self.bootstrap_evaluations_: int = 0
+        self.classes_: Optional[np.ndarray] = None
+
+        # Task-adaptive loss functions
+        if self.task == "regression":
+            self._loss_fn = _sse
+        elif self.task == "classification":
+            self._loss_fn = _gini_impurity  # Could also use _entropy
+
+        # Task-adaptive prediction setup
+        self._task_setup_done = False
 
     def _compute_bootstrap_variance(
         self,
@@ -200,9 +238,12 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
 
         Score = validation_SSE + variance_penalty * bootstrap_variance
         """
-        # Standard validation SSE
+        # Standard validation loss (task-adaptive)
         mask_val = Xv[:, feat] <= thr
-        val_sse = _sse(yv[mask_val]) + _sse(yv[~mask_val])
+        if self.task == "regression":
+            val_loss = _sse(yv[mask_val]) + _sse(yv[~mask_val])
+        else:  # classification
+            val_loss = self._loss_fn(yv[mask_val]) + self._loss_fn(yv[~mask_val])
 
         # Bootstrap variance penalty
         if self.variance_penalty > 0 and self.n_bootstrap > 0:
@@ -211,38 +252,58 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         else:
             penalty = 0.0
 
-        return val_sse + penalty
+        return val_loss + penalty
 
-    def _children_sse_vec(self, xs, ys, min_leaf):
-        """Vectorized computation of children SSE along sorted feature."""
+    def _children_loss_vec(self, xs, ys, min_leaf):
+        """Vectorized computation of children loss along sorted feature (task-adaptive)."""
         n = ys.size
         if n < 2 * min_leaf:
             return np.array([]), np.array([], dtype=bool)
 
-        ps1 = np.cumsum(ys, dtype=np.float64)
-        ps2 = np.cumsum(ys * ys, dtype=np.float64)
-        tot1 = ps1[-1]
-        tot2 = ps2[-1]
-        idx = np.arange(n - 1)
-        valid = xs[:-1] != xs[1:]
-        nL = idx + 1
-        nR = n - nL
-        valid &= (nL >= min_leaf) & (nR >= min_leaf)
-        sumL = ps1[idx]
-        sumL2 = ps2[idx]
-        sumR = tot1 - sumL
-        sumR2 = tot2 - sumL2
+        if self.task == "regression":
+            # SSE computation for regression
+            ps1 = np.cumsum(ys, dtype=np.float64)
+            ps2 = np.cumsum(ys * ys, dtype=np.float64)
+            tot1 = ps1[-1]
+            tot2 = ps2[-1]
+            idx = np.arange(n - 1)
+            valid = xs[:-1] != xs[1:]
+            nL = idx + 1
+            nR = n - nL
+            valid &= (nL >= min_leaf) & (nR >= min_leaf)
+            sumL = ps1[idx]
+            sumL2 = ps2[idx]
+            sumR = tot1 - sumL
+            sumR2 = tot2 - sumL2
 
-        # Avoid division by zero
-        sseL = np.where(nL > 0, sumL2 - (sumL * sumL) / nL, np.inf)
-        sseR = np.where(nR > 0, sumR2 - (sumR * sumR) / nR, np.inf)
+            # Avoid division by zero
+            lossL = np.where(nL > 0, sumL2 - (sumL * sumL) / nL, np.inf)
+            lossR = np.where(nR > 0, sumR2 - (sumR * sumR) / nR, np.inf)
+        else:
+            # Gini impurity computation for classification
+            idx = np.arange(n - 1)
+            valid = xs[:-1] != xs[1:]
+            nL = idx + 1
+            nR = n - nL
+            valid &= (nL >= min_leaf) & (nR >= min_leaf)
+
+            lossL = np.zeros(len(idx))
+            lossR = np.zeros(len(idx))
+
+            for i in range(len(idx)):
+                if valid[i]:
+                    lossL[i] = self._loss_fn(ys[: nL[i]])
+                    lossR[i] = self._loss_fn(ys[nL[i] :])
+                else:
+                    lossL[i] = np.inf
+                    lossR[i] = np.inf
 
         self.splits_scanned_ += int(valid.sum())
-        return sseL + sseR, valid
+        return lossL + lossR, valid
 
     def _topk_axis_candidates(self, Xs, ys, topk):
-        """Find top-k axis-aligned split candidates."""
-        parent_sse = _sse(ys)
+        """Find top-k axis-aligned split candidates (task-adaptive)."""
+        parent_loss = self._loss_fn(ys)
         gains = []
         p = Xs.shape[1]
 
@@ -250,14 +311,14 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
             order = np.argsort(Xs[:, j], kind="mergesort")
             xs = Xs[order, j]
             ys_ord = ys[order]
-            children_sse, valid = self._children_sse_vec(xs, ys_ord, self.min_samples_leaf)
+            children_loss, valid = self._children_loss_vec(xs, ys_ord, self.min_samples_leaf)
 
             if not valid.any():
                 continue
 
             thr = 0.5 * (xs[:-1] + xs[1:])
             idx = np.where(valid)[0]
-            g = parent_sse - children_sse[idx]
+            g = parent_loss - children_loss[idx]
 
             for i, gi in zip(idx, g):
                 gains.append((float(gi), int(j), float(thr[i])))
@@ -275,16 +336,24 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
 
         # Stopping conditions
         if depth >= self.max_depth or n_split < self.min_samples_split:
-            mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
-            lam = self.leaf_shrinkage_lambda
-            mu = (
-                ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
-                if lam > 0
-                else mu_leaf
-            )
+            if self.task == "regression":
+                mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+                lam = self.leaf_shrinkage_lambda
+                value = (
+                    ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
+                    if lam > 0
+                    else mu_leaf
+                )
+            else:  # classification
+                # Use majority class or estimate probability
+                if ye.size > 0:
+                    value = float(ye.mean())  # probability estimate for binary
+                else:
+                    value = float(ys.mean())
+
             return {
                 "type": "leaf",
-                "value": mu,
+                "value": value,
                 "n_split": int(n_split),
                 "n_val": int(n_val),
                 "n_est": int(ye.size),
@@ -295,16 +364,23 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
 
         if not cand_axis:
             # No valid splits, return leaf
-            mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
-            lam = self.leaf_shrinkage_lambda
-            mu = (
-                ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
-                if lam > 0
-                else mu_leaf
-            )
+            if self.task == "regression":
+                mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+                lam = self.leaf_shrinkage_lambda
+                value = (
+                    ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
+                    if lam > 0
+                    else mu_leaf
+                )
+            else:  # classification
+                if ye.size > 0:
+                    value = float(ye.mean())
+                else:
+                    value = float(ys.mean())
+
             return {
                 "type": "leaf",
-                "value": mu,
+                "value": value,
                 "n_split": int(n_split),
                 "n_val": int(n_val),
                 "n_est": int(ye.size),
@@ -332,16 +408,23 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
 
         if best_split is None:
             # No valid split found
-            mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
-            lam = self.leaf_shrinkage_lambda
-            mu = (
-                ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
-                if lam > 0
-                else mu_leaf
-            )
+            if self.task == "regression":
+                mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+                lam = self.leaf_shrinkage_lambda
+                value = (
+                    ((ye.size * mu_leaf + lam * parent_mean_est) / (ye.size + lam))
+                    if lam > 0
+                    else mu_leaf
+                )
+            else:  # classification
+                if ye.size > 0:
+                    value = float(ye.mean())
+                else:
+                    value = float(ys.mean())
+
             return {
                 "type": "leaf",
-                "value": mu,
+                "value": value,
                 "n_split": int(n_split),
                 "n_val": int(n_val),
                 "n_est": int(ye.size),
@@ -389,10 +472,32 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
 
         return node
 
+    def _setup_task_specific(self, y):
+        """Setup task-specific attributes."""
+        if self.task == "classification":
+            y = np.asarray(y, dtype=int)
+            self.classes_ = np.unique(y)
+            if len(self.classes_) > 2:
+                raise ValueError("Multi-class classification not yet supported")
+        return y
+
+    def _fit_oblique_projection(self, X, y, rng):
+        """Fit oblique projection (task-adaptive)."""
+        if self.task == "regression":
+            # Use Lasso for regression
+            model = Lasso(alpha=0.01, random_state=rng.randint(0, 10**9))
+            model.fit(X, y)
+            return model.coef_, model.intercept_
+        else:
+            # Use LogisticRegressionCV for classification
+            model = LogisticRegressionCV(cv=self.oblique_cv, random_state=rng.randint(0, 10**9))
+            model.fit(X, y)
+            return model.coef_[0], model.intercept_[0]
+
     def fit(self, X, y):
         """Fit the bootstrap variance penalized tree."""
         X = np.asarray(X)
-        y = np.asarray(y)
+        y = self._setup_task_specific(y)
 
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
@@ -422,7 +527,11 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
         self.splits_scanned_ = 0
         self.bootstrap_evaluations_ = 0
 
-        parent_mean_est = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+        if self.task == "regression":
+            parent_mean_est = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+        else:  # classification
+            parent_mean_est = float(ye.mean()) if ye.size > 0 else float(ys.mean())
+
         self.tree_ = self._build(
             Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est, rng=rng
         )
@@ -441,15 +550,35 @@ class BootstrapVariancePenalizedRegressor(BaseEstimator, RegressorMixin):
             return self._predict_one(x, node["right"])
 
     def predict(self, X):
-        """Predict for multiple samples."""
+        """Predict for multiple samples (task-adaptive)."""
         X = np.asarray(X)
-        return np.array([self._predict_one(x, self.tree_) for x in X])
+        if self.task == "regression":
+            return np.array([self._predict_one(x, self.tree_) for x in X])
+        else:  # classification
+            probas = self.predict_proba(X)
+            return (probas[:, 1] >= 0.5).astype(int)
+
+    def predict_proba(self, X):
+        """Predict class probabilities (classification only)."""
+        if self.task != "classification":
+            raise AttributeError("predict_proba only available for classification tasks")
+
+        X = np.asarray(X)
+        proba_pos = np.array([self._predict_one(x, self.tree_) for x in X])
+        proba_pos = np.clip(proba_pos, 1e-7, 1 - 1e-7)
+
+        # Return [P(class=0), P(class=1)]
+        proba = np.column_stack([1 - proba_pos, proba_pos])
+        return proba
 
     def score(self, X, y):
-        """Compute R² score."""
+        """Compute score (task-adaptive: R² for regression, accuracy for classification)."""
         y = np.asarray(y)
         y_pred = self.predict(X)
-        return r2_score(y, y_pred)
+        if self.task == "regression":
+            return r2_score(y, y_pred)
+        else:  # classification
+            return accuracy_score(y, y_pred)
 
     def count_leaves(self) -> int:
         """Count the number of leaves in the tree."""
@@ -538,3 +667,8 @@ class SimpleTree:
     def predict(self, X):
         """Predict for multiple samples."""
         return np.array([self._predict_one(x, self.tree_) for x in X])
+
+
+# ============================================================================
+# Backwards-compatible wrapper classes
+# ============================================================================

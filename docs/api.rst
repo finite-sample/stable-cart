@@ -1,49 +1,69 @@
 API reference
 =============
 
-This project packages a couple of estimators that follow the familiar
-scikit-learn API. The implementation lives in the ``stable-cart``
-directory. The sections below summarise the main entry points and their
-responsibilities.
+This project provides unified tree estimators that follow the familiar scikit-learn API. 
+All classes support both regression and classification through a unified ``task`` parameter.
 
-LessGreedyHybridRegressor
--------------------------
+Unified Tree Estimators
+------------------------
 
-:Location: ``stable-cart/less_greedy_tree.py``
+These are the main estimators that work for both regression and classification:
 
-A drop-in replacement for tree-based regressors that trades a little raw
-accuracy for greatly improved stability. Key features include:
+.. currentmodule:: stable_cart
 
-* Honest data partitioning into ``SPLIT``, ``VAL`` and ``EST`` subsets.
-* An optional oblique (linear) root split backed by Lasso-based feature
-  projections.
-* Honest lookahead with beam search when multiple candidate splits look
-  equally attractive.
-* Leaf-value shrinkage to limit overfitting and reduce variance.
+.. autoclass:: LessGreedyHybridTree
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :special-members: __init__
 
-BootstrapVariancePenalizedRegressor
------------------------------------
+.. autoclass:: BootstrapVariancePenalizedTree
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :special-members: __init__
 
-:Location: ``stable-cart/bootstrap_variance_tree.py``
+.. autoclass:: RobustPrefixHonestTree
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :special-members: __init__
 
-A tree regressor that explicitly penalizes bootstrap prediction variance
-during split selection. This approach encourages the tree to make splits
-that lead to more stable predictions across different bootstrap samples
-of the training data. Key features include:
+Base Classes
+------------
 
-* Bootstrap variance estimation on validation set during split evaluation.
-* Configurable variance penalty weight to balance accuracy vs. stability.
-* Fast bootstrap trees for efficient variance computation.
-* Full compatibility with sklearn pipelines and cross-validation.
+For advanced users and researchers:
 
+.. autoclass:: BaseStableTree
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :special-members: __init__
 
-Utility helpers
----------------
+Evaluation Functions
+--------------------
 
-:Location:
-   ``stable-cart/less_greedy_tree.py``
-   ``stable-cart/evalutation.py``
+These functions help assess model performance and prediction stability:
 
-The implementation also ships with a collection of helper routines that
-handle variance calculations, evaluation utilities and benchmarking
-support used in the accompanying notebooks.
+.. autofunction:: prediction_stability
+
+.. autofunction:: evaluate_models
+
+Advanced Classes for Researchers
+---------------------------------
+
+Internal classes for advanced customization and research:
+
+.. autoclass:: SplitCandidate
+   :members:
+   :show-inheritance:
+
+.. autoclass:: StabilityMetrics
+   :members:
+   :show-inheritance:
+
+.. autoclass:: SplitStrategy
+   :members:
+   :show-inheritance:
+
+.. autofunction:: create_split_strategy

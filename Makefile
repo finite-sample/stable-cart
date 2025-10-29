@@ -1,7 +1,7 @@
 # Makefile for stable-cart project
 # Simple, focused targets for essential development tasks
 
-.PHONY: help install test lint format clean coverage benchmark ci-docker
+.PHONY: help install test lint format clean coverage benchmark quick-benchmark stability-benchmark ci-docker
 
 # Default target
 help:
@@ -11,7 +11,9 @@ help:
 	@echo "  lint        Run linting checks (black + flake8)"
 	@echo "  format      Apply code formatting with black"
 	@echo "  coverage    Run tests with coverage report"
-	@echo "  benchmark   Run benchmark scripts"
+	@echo "  benchmark         Run comprehensive benchmark (all datasets)"
+	@echo "  quick-benchmark   Run quick benchmark (key datasets, fast)"
+	@echo "  stability-benchmark  Run stability-focused benchmark"
 	@echo "  ci-docker   Run CI pipeline in Docker container"
 	@echo "  clean       Clean up generated files"
 
@@ -42,12 +44,18 @@ ci-docker:
 
 # Benchmarking
 benchmark:
-	PYTHONPATH=. python3 scripts/benchmark_less_greedy.py
+	PYTHONPATH=. python3 scripts/comprehensive_benchmark.py --datasets comprehensive
+
+quick-benchmark:
+	PYTHONPATH=. python3 scripts/comprehensive_benchmark.py --datasets quick --quick
+
+stability-benchmark:
+	PYTHONPATH=. python3 scripts/comprehensive_benchmark.py --datasets stability_showcase
 
 # Cleanup
 clean:
 	rm -rf build/ dist/ *.egg-info/
 	rm -rf .pytest_cache/ .coverage htmlcov/ coverage.xml
-	rm -f bench_out/*.csv
+	rm -f benchmark_results/*.csv
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete

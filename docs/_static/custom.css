@@ -1,0 +1,162 @@
+/* Custom styling for stable-cart documentation with Furo theme */
+
+/* Improve code highlighting and readability */
+.highlight {
+    border-radius: 6px;
+    margin: 1.2em 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced parameter lists */
+.field-list {
+    margin-top: 1.2em;
+    margin-bottom: 1.2em;
+}
+
+.field-list dt {
+    font-weight: 600;
+    color: var(--color-brand-primary);
+    font-size: 0.95em;
+}
+
+.field-list dd {
+    margin-bottom: 0.8em;
+    margin-left: 1.5em;
+}
+
+/* Beautiful method signatures */
+.sig {
+    background: linear-gradient(135deg, var(--color-api-background), var(--color-background-secondary));
+    border: 1px solid var(--color-api-background-hover);
+    border-radius: 8px;
+    padding: 0.75em 1em;
+    font-family: var(--font-family-monospace);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+}
+
+.sig:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+/* Class and function name styling */
+.sig-name {
+    color: var(--color-api-name);
+    font-weight: 600;
+}
+
+.sig-prename {
+    color: var(--color-api-pre-name);
+    font-weight: 500;
+}
+
+/* Improve class documentation spacing */
+.py.class > dt {
+    margin-bottom: 1.5em;
+}
+
+.py.class > dd {
+    margin-bottom: 2em;
+}
+
+/* Enhanced rubric sections (Notes, Examples, etc.) */
+.rubric {
+    font-weight: 700;
+    color: var(--color-brand-primary);
+    border-bottom: 3px solid var(--color-brand-primary);
+    padding-bottom: 0.3em;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    font-size: 1.1em;
+    letter-spacing: 0.5px;
+}
+
+/* Beautiful doctest examples */
+.doctest .highlight {
+    background: linear-gradient(135deg, var(--color-background-secondary), var(--color-background-primary));
+    border-left: 4px solid var(--color-brand-primary);
+    padding-left: 1em;
+}
+
+/* Method spacing and organization */
+.py.method {
+    margin-bottom: 2.5em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid var(--color-background-border);
+}
+
+.py.method:last-child {
+    border-bottom: none;
+}
+
+/* Enhanced table of contents */
+.toctree-l1 > a {
+    font-weight: 600;
+    padding: 0.3em 0;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.toctree-l1 > a:hover {
+    background-color: var(--color-background-hover);
+    transform: translateX(4px);
+}
+
+/* Improve parameter descriptions with better typography */
+.field-body {
+    line-height: 1.6;
+    padding-left: 1.2em;
+}
+
+.field-body p {
+    margin-bottom: 0.5em;
+}
+
+/* Add subtle animations for better user experience */
+.py.class,
+.py.method,
+.py.function {
+    transition: all 0.2s ease;
+}
+
+/* Enhance cross-references */
+.reference.external {
+    color: var(--color-brand-primary);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--color-brand-primary);
+}
+
+.reference.external:hover {
+    border-bottom-style: solid;
+}
+
+/* Improve code spans in text */
+code.literal {
+    background-color: var(--color-background-secondary);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid var(--color-background-border);
+}
+
+/* Style admonitions if any */
+.admonition {
+    border-radius: 8px;
+    padding: 1em 1.2em;
+    margin: 1.5em 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+    .sig {
+        padding: 0.5em 0.8em;
+        font-size: 0.9em;
+    }
+    
+    .rubric {
+        font-size: 1em;
+        margin-top: 1.5em;
+    }
+}

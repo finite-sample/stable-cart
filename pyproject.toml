@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stable-cart"
-version = "0.1.0"
-description = "Stable CART decision trees with enhanced prediction stability and variance reduction techniques for robust machine learning."
+version = "0.3.0"
+description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
@@ -45,11 +45,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/soodoku/stable-cart"
-Repository = "https://github.com/soodoku/stable-cart"
-Documentation = "https://soodoku.github.io/stable-cart/"
-Changelog = "https://github.com/soodoku/stable-cart/blob/main/CHANGELOG.md"
-Issues = "https://github.com/soodoku/stable-cart/issues"
+Homepage = "https://github.com/finite-sample/stable-cart"
+Repository = "https://github.com/finite-sample/stable-cart"
+Documentation = "https://finite-sample.github.io/stable-cart/"
+Changelog = "https://github.com/finite-sample/stable-cart/blob/main/CHANGELOG.md"
+Issues = "https://github.com/finite-sample/stable-cart/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -62,7 +62,7 @@ dev = [
 ]
 docs = [
     "sphinx>=4.0.0",
-    "sphinx-rtd-theme>=1.0.0",
+    "furo>=2023.3.27",
     "myst-parser>=0.18.0",
 ]
 benchmark = [

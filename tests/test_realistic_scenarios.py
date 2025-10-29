@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # Import from package (not direct module imports)
-from stable_cart import LessGreedyHybridRegressor, prediction_stability, evaluate_models
+from stable_cart import LessGreedyHybridTree, prediction_stability, evaluate_models
 
 
 @pytest.mark.e2e
@@ -23,8 +23,12 @@ def test_regression_end_to_end(tmp_path):
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=7)
 
     models = {
-        "less_greedy": LessGreedyHybridRegressor(
-            max_depth=6, min_samples_split=40, min_samples_leaf=20, random_state=7
+        "less_greedy": LessGreedyHybridTree(
+            task="regression",
+            max_depth=6,
+            min_samples_split=40,
+            min_samples_leaf=20,
+            random_state=7,
         ),
         "greedy_cart": DecisionTreeRegressor(
             max_depth=6, min_samples_split=40, min_samples_leaf=20, random_state=7
@@ -102,7 +106,7 @@ def test_sklearn_ecosystem_integration():
     X, y = make_regression(n_samples=200, n_features=5, noise=10, random_state=42)
 
     # Test with cross-validation
-    model = LessGreedyHybridRegressor(max_depth=3, random_state=42)
+    model = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42)
     scores = cross_val_score(model, X, y, cv=3, scoring="r2")
     assert len(scores) == 3
     assert all(isinstance(s, (int, float)) for s in scores)
@@ -124,7 +128,7 @@ def test_sklearn_ecosystem_integration():
     # TODO: Fix sklearn regressor detection in future version
     # ensemble = VotingRegressor([
     #     ('greedy', DecisionTreeRegressor(max_depth=3, random_state=42)),
-    #     ('less_greedy', LessGreedyHybridRegressor(max_depth=3, random_state=42))
+    #     ('less_greedy', LessGreedyHybridTree(task="regression",max_depth=3, random_state=42))
     # ])
     # ensemble.fit(X, y)
     # ensemble_preds = ensemble.predict(X)
@@ -149,7 +153,7 @@ def test_model_persistence():
 
     # Train models
     model1 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y)
-    model2 = LessGreedyHybridRegressor(max_depth=3, random_state=42).fit(X, y)
+    model2 = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42).fit(X, y)
 
     # Pickle and unpickle
     for model in [model1, model2]:

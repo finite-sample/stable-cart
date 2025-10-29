@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Stable CART: Enhanced Decision Trees with Prediction Stability"
+version: "0.1.0"
+date-released: 2025-01-01
+url: "https://github.com/finite-sample/stable-cart"
+repository-code: "https://github.com/finite-sample/stable-cart"
+authors:
+  - family-names: "Sood"
+    given-names: "Gaurav"
+    email: "contact@gsood.com"
+  - family-names: "Bhosle"
+    given-names: "Arav"
+    email: "aravbhosle@gmail.com"
+abstract: >-
+  A scikit-learn compatible implementation of Stable CART (Classification and Regression Trees) 
+  with advanced stability metrics and techniques to reduce prediction variance. The package includes
+  LessGreedyHybridRegressor for advanced regression trees with honest data partitioning and lookahead,
+  BootstrapVariancePenalizedRegressor for explicitly reducing bootstrap prediction variance, and 
+  RobustPrefixHonestClassifier for binary classification with robust prefix splits and honest leaf estimation.
+keywords:
+  - machine learning
+  - decision trees
+  - CART
+  - stability
+  - variance reduction
+  - sklearn
+  - prediction stability
+  - bootstrap
+  - honest learning
+license: MIT
+license-url: "https://github.com/finite-sample/stable-cart/blob/main/LICENSE"
