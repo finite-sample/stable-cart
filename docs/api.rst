@@ -3,59 +3,67 @@ API reference
 
 This project provides unified tree estimators that follow the familiar scikit-learn API. 
 All classes support both regression and classification through a unified ``task`` parameter.
-The implementation lives in the ``stable-cart`` directory, and all classes and 
-functions are automatically documented from their docstrings.
 
 Unified Tree Estimators
 ------------------------
 
 These are the main estimators that work for both regression and classification:
 
-.. autoclass:: stable_cart.LessGreedyHybridTree
-   :members:
-   :inherited-members:
-   :show-inheritance:
+.. currentmodule:: stable_cart
 
-.. autoclass:: stable_cart.BootstrapVariancePenalizedTree
+.. autoclass:: LessGreedyHybridTree
    :members:
    :inherited-members:
    :show-inheritance:
+   :special-members: __init__
 
-.. autoclass:: stable_cart.RobustPrefixHonestTree
+.. autoclass:: BootstrapVariancePenalizedTree
    :members:
    :inherited-members:
    :show-inheritance:
+   :special-members: __init__
+
+.. autoclass:: RobustPrefixHonestTree
+   :members:
+   :inherited-members:
+   :show-inheritance:
+   :special-members: __init__
 
 Base Classes
 ------------
 
 For advanced users and researchers:
 
-.. autoclass:: stable_cart.BaseStableTree
+.. autoclass:: BaseStableTree
    :members:
    :inherited-members:
    :show-inheritance:
+   :special-members: __init__
 
-Utility Classes
----------------
+Evaluation Functions
+--------------------
 
-.. autoclass:: stable_cart.SplitCandidate
+These functions help assess model performance and prediction stability:
+
+.. autofunction:: prediction_stability
+
+.. autofunction:: evaluate_models
+
+Advanced Classes for Researchers
+---------------------------------
+
+Internal classes for advanced customization and research:
+
+.. autoclass:: SplitCandidate
    :members:
    :show-inheritance:
 
-.. autoclass:: stable_cart.StabilityMetrics
+.. autoclass:: StabilityMetrics
    :members:
    :show-inheritance:
 
-.. autoclass:: stable_cart.SplitStrategy
+.. autoclass:: SplitStrategy
    :members:
    :show-inheritance:
 
-Utility Functions
------------------
-
-.. autofunction:: stable_cart.prediction_stability
-
-.. autofunction:: stable_cart.evaluate_models
-
-.. autofunction:: stable_cart.create_split_strategy
+.. autofunction:: create_split_strategy

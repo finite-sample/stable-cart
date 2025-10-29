@@ -2,7 +2,7 @@
 RobustPrefixHonestTree: Enhanced with cross-method learning.
 
 Now inherits from BaseStableTree and incorporates lessons from:
-- LessGreedyHybridTree: Oblique splits, lookahead with beam search, ambiguity gating, correlation gating
+- LessGreedyHybridTree: Oblique splits, lookahead, ambiguity/correlation gating
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
@@ -16,10 +16,10 @@ class RobustPrefixHonestTree(BaseStableTree):
     Robust prefix honest tree with unified stability primitives.
 
     Enhanced with cross-method learning:
-    - Oblique splits (from LessGreedy): Add Lasso-based oblique splits to the locked prefix
-    - Lookahead with beam search (from LessGreedy): Replace depth-1 stumps with k-step lookahead
-    - Ambiguity gating (from LessGreedy): Only apply expensive consensus when splits are actually ambiguous
-    - Correlation gating (from LessGreedy): Check if features are correlated before attempting oblique splits
+    - Oblique splits (from LessGreedy): Add Lasso-based oblique splits to locked prefix
+    - Lookahead with beam search (from LessGreedy): Replace depth-1 stumps with k-step
+    - Ambiguity gating (from LessGreedy): Apply consensus only when splits are ambiguous
+    - Correlation gating (from LessGreedy): Check feature correlation before oblique splits
     - Explicit variance tracking (from Bootstrap): Monitor prediction variance as diagnostic
 
     Core Features:

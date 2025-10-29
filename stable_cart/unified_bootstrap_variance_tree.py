@@ -6,7 +6,6 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-import numpy as np
 from typing import Literal, Optional
 from .base_stable_tree import BaseStableTree
 
@@ -70,7 +69,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         enable_lookahead: bool = True,  # NEW: combine with variance penalty
         lookahead_depth: int = 1,  # Conservative for variance method
         beam_width: int = 8,  # Smaller beam for efficiency
-        enable_ambiguity_gating: bool = True,  # Use lookahead when variance penalty alone is ambiguous
+        enable_ambiguity_gating: bool = True,  # Use lookahead when penalty alone is ambiguous
         ambiguity_threshold: float = 0.1,  # More conservative threshold
         min_samples_for_lookahead: int = 100,
         # === LEAF STABILIZATION ===

@@ -110,7 +110,7 @@ class LessGreedyHybridTree(BaseStableTree):
             min_samples_for_lookahead=min_samples_for_lookahead,
             # ENHANCED: Consensus for ambiguous splits (from RobustPrefix)
             enable_robust_consensus_for_ambiguous=enable_robust_consensus_for_ambiguous,
-            enable_prefix_consensus=enable_robust_consensus_for_ambiguous,  # Use for ambiguous splits
+            enable_prefix_consensus=enable_robust_consensus_for_ambiguous,  # For ambiguous splits
             consensus_samples=consensus_samples,
             consensus_threshold=consensus_threshold,
             enable_threshold_binning=enable_threshold_binning,

@@ -590,8 +590,6 @@ def test_unified_tree_classification_task():
 
 def test_unified_tree_regression_task():
     """Test unified tree with regression task."""
-    from sklearn.datasets import make_regression
-
     X, y = make_regression(n_samples=200, n_features=10, noise=0.1, random_state=42)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
@@ -619,8 +617,6 @@ def test_unified_tree_invalid_task():
 
 def test_regression_wrapper():
     """Test the regression wrapper class."""
-    from sklearn.datasets import make_regression
-
     X, y = make_regression(n_samples=100, n_features=5, noise=0.1, random_state=42)
 
     model = RobustPrefixHonestTree(
@@ -659,8 +655,6 @@ def test_classification_wrapper_backwards_compatibility():
 
 def test_unified_tree_predict_proba_error_on_regression():
     """Test that predict_proba raises error for regression."""
-    from sklearn.datasets import make_regression
-
     X, y = make_regression(n_samples=50, n_features=3, random_state=42)
 
     model = RobustPrefixHonestTree(task="regression", random_state=42)

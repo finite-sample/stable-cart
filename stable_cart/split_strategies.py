@@ -6,7 +6,7 @@ This allows different tree methods to compose split strategies flexibly.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Literal
 import numpy as np
 
 from .stability_utils import (
@@ -20,7 +20,6 @@ from .stability_utils import (
     estimate_split_variance,
     should_stop_splitting,
     _find_candidate_splits,
-    _evaluate_split_gain,
 )
 
 

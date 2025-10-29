@@ -33,11 +33,26 @@ autodoc_default_options = {
     "show-inheritance": True,
     "special-members": "__init__",
     "undoc-members": True,
+    "inherited-members": True,
 }
+
+# Enable autodoc debugging and improve import handling
+autodoc_mock_imports_debug = True
+autodoc_typehints = "description"
+autodoc_typehints_description_target = "documented"
+autodoc_inherit_docstrings = True
+
+# Suppress warnings for missing references
+nitpicky = False
+nitpick_ignore = [
+    ("py:class", "sklearn.base.BaseEstimator"),
+    ("py:class", "numpy.ndarray"),
+]
 
 autodoc_mock_imports = [
     "numpy",
     "pandas", 
+    "scipy",
     "sklearn",
     "sklearn.base",
     "sklearn.preprocessing",
@@ -48,6 +63,10 @@ autodoc_mock_imports = [
     "sklearn.metrics",
     "sklearn.model_selection",
     "sklearn.datasets",
+    "sklearn.ensemble",
+    "matplotlib",
+    "matplotlib.pyplot",
+    "seaborn",
 ]
 
 # Napoleon settings for Google/NumPy style docstrings
