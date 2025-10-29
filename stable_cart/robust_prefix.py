@@ -13,6 +13,8 @@ from sklearn.model_selection import train_test_split
 
 def _winsorize_fit(X: np.ndarray, q: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
     """Return per-feature (low, high) quantiles for winsorization."""
+    if X.shape[0] == 0:
+        raise ValueError("Cannot winsorize empty array")
     lo = np.quantile(X, q[0], axis=0)
     hi = np.quantile(X, q[1], axis=0)
     return lo, hi
