@@ -1,7 +1,17 @@
-# evaluation.py
-import numpy as np
+"""
+evaluation.py
+-------------
+Evaluation utilities for assessing both model performance and prediction stability.
 
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+This module provides functions to:
+1. Measure prediction stability across multiple models (how consistent are predictions?)
+2. Evaluate predictive performance across standard metrics (accuracy, RMSE, etc.)
+
+These functions are designed to work with collections of fitted sklearn-compatible models
+and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
+"""
+
+import numpy as np
 from sklearn.metrics import (
     accuracy_score,
     roc_auc_score,
@@ -10,8 +20,6 @@ from sklearn.metrics import (
     r2_score,
 )
 from sklearn.preprocessing import label_binarize
-from sklearn.model_selection import train_test_split
-from sklearn.datasets import make_classification, make_regression
 
 
 # -------------------------------
@@ -22,22 +30,60 @@ def prediction_stability(
 ) -> dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
+    
+    This metric quantifies prediction stability by measuring how much models agree
+    with each other on the same out-of-sample data. Lower values indicate more
+    stable/consistent predictions.
 
     Parameters
     ----------
     models : dict[str, fitted_model]
-        Mapping of model name -> fitted model (CARTs here).
+        Mapping of model name -> fitted model (must have .predict() method).
+        Requires at least 2 models.
     X_oos : np.ndarray
-        Out-of-sample feature matrix.
-    task : {'categorical','continuous'}
-        Type of problem.
+        Out-of-sample feature matrix to evaluate on.
+    task : {'categorical', 'continuous'}, default='categorical'
+        Type of prediction task.
 
     Returns
     -------
     scores : dict[str, float]
-        For 'categorical': average pairwise DISAGREEMENT per model (higher = less stable).
-        For 'continuous' : RMSE of each model's predictions vs the ensemble mean
-                           (lower = more stable).
+        Stability score for each model.
+        
+        For 'categorical': 
+            Average pairwise DISAGREEMENT rate per model (range: 0-1).
+            Lower is better (more stable). 0 = perfect agreement with all other models.
+            
+        For 'continuous': 
+            RMSE of each model's predictions vs the ensemble mean.
+            Lower is better (more stable). 0 = identical to ensemble mean.
+
+    Raises
+    ------
+    ValueError
+        If fewer than 2 models provided, or if task is not 'categorical' or 'continuous'.
+
+    Examples
+    --------
+    >>> from sklearn.tree import DecisionTreeClassifier
+    >>> from sklearn.model_selection import train_test_split
+    >>> X, y = make_classification(n_samples=100, random_state=42)
+    >>> X_train, X_test, y_train, y_test = train_test_split(X, y)
+    >>> models = {
+    ...     'tree1': DecisionTreeClassifier(random_state=1).fit(X_train, y_train),
+    ...     'tree2': DecisionTreeClassifier(random_state=2).fit(X_train, y_train),
+    ... }
+    >>> stability = prediction_stability(models, X_test, task='categorical')
+    >>> print(stability)  # Lower values = more stable predictions
+    {'tree1': 0.15, 'tree2': 0.15}
+    
+    Notes
+    -----
+    - Stability is measured relative to other models in the collection
+    - For categorical tasks, uses pairwise agreement rates
+    - For continuous tasks, uses RMSE to ensemble mean as stability proxy
+    - This metric is complementary to predictive accuracy - a model can be
+      accurate but unstable, or stable but inaccurate
     """
     names = list(models.keys())
     K = len(names)
@@ -45,40 +91,42 @@ def prediction_stability(
     if K < 2:
         raise ValueError("Need at least 2 models to assess stability.")
 
-    # --- CAT: pairwise disagreement (1 - agreement rate) ---
+    # --- CATEGORICAL: pairwise disagreement (1 - agreement rate) ---
     if task == "categorical":
         preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-        # ensure numeric label space for comparisons
+        
+        # Ensure numeric label space for comparisons
         if not np.issubdtype(preds.dtype, np.number):
-            # map labels to integers consistently
+            # Map labels to integers consistently
             unique, inv = np.unique(preds, return_inverse=True)
             preds = inv.reshape(preds.shape)
 
-        # pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
+        # Compute pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
         agree = np.ones((K, K), dtype=float)
         for k in range(K):
             for j in range(k + 1, K):
-                a = float(np.mean(preds[:, k] == preds[:, j]))
-                agree[k, j] = agree[j, k] = a
+                agreement_rate = float(np.mean(preds[:, k] == preds[:, j]))
+                agree[k, j] = agree[j, k] = agreement_rate
 
-        # per-model disagreement = average over pairs involving the model
+        # Per-model disagreement = average disagreement over pairs involving the model
         scores = {}
         for k, name in enumerate(names):
-            # exclude self
-            others = [agree[k, j] for j in range(K) if j != k]
-            avg_disagree = float(np.mean([1.0 - a for a in others]))
-            scores[name] = avg_disagree
+            # Exclude self-comparison
+            other_agreements = [agree[k, j] for j in range(K) if j != k]
+            avg_disagreement = float(np.mean([1.0 - a for a in other_agreements]))
+            scores[name] = avg_disagreement
         return scores
 
-    # --- CONT: RMSE to ensemble mean ---
+    # --- CONTINUOUS: RMSE to ensemble mean ---
     elif task == "continuous":
         preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-        mean_pred = np.mean(preds, axis=1)  # ensemble mean per sample
+        mean_pred = np.mean(preds, axis=1)  # Ensemble mean per sample
+        
         scores = {}
         for k, name in enumerate(names):
-            err = mean_pred - preds[:, k]
-            rmse = float(np.sqrt(np.mean(np.square(err))))
-            scores[name] = rmse  # lower = more stable
+            deviation = mean_pred - preds[:, k]
+            rmse = float(np.sqrt(np.mean(np.square(deviation))))
+            scores[name] = rmse  # Lower = more stable
         return scores
 
     else:
@@ -86,30 +134,71 @@ def prediction_stability(
 
 
 # -------------------------------
-# Accuracy / Performance
+# Model Performance Evaluation
 # -------------------------------
-def accuracy(
-    models: dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
+def evaluate_models(
+    models: dict[str, object], 
+    X: np.ndarray, 
+    y: np.ndarray, 
+    task: str = "categorical"
 ) -> dict[str, dict[str, float]]:
     """
-    Evaluate predictive performance per model.
+    Evaluate predictive performance of multiple models using standard metrics.
+    
+    Computes task-appropriate performance metrics for each model. For classification,
+    includes accuracy and AUC (if predict_proba available). For regression, includes
+    MAE, RMSE, and R².
 
     Parameters
     ----------
     models : dict[str, fitted_model]
-        Model name -> fitted model.
+        Model name -> fitted model mapping. Models must have .predict() method.
     X : np.ndarray
-        Features for evaluation.
+        Feature matrix for evaluation.
     y : np.ndarray
-        Ground-truth labels/targets.
-    task : {'categorical','continuous'}
-        Type of problem.
+        Ground-truth labels (classification) or targets (regression).
+    task : {'categorical', 'continuous'}, default='categorical'
+        Type of prediction task.
 
     Returns
     -------
-    metrics : dict[str, dict]
-        For 'categorical': {'acc': ..., 'auc': ... (if available)} per model.
-        For 'continuous': {'mae': ..., 'rmse': ..., 'r2': ...} per model.
+    metrics : dict[str, dict[str, float]]
+        Nested dictionary: {model_name: {metric_name: value}}
+        
+        For 'categorical':
+            - 'acc': Classification accuracy (0-1)
+            - 'auc': ROC AUC score (0-1, if predict_proba available)
+                    For binary: standard AUC
+                    For multi-class: one-vs-rest macro AUC
+                    
+        For 'continuous':
+            - 'mae': Mean Absolute Error (lower is better)
+            - 'rmse': Root Mean Squared Error (lower is better)
+            - 'r2': R² coefficient of determination (-∞ to 1, higher is better)
+
+    Raises
+    ------
+    ValueError
+        If task is not 'categorical' or 'continuous'.
+
+    Examples
+    --------
+    >>> from sklearn.tree import DecisionTreeRegressor
+    >>> X, y = make_regression(n_samples=100, random_state=42)
+    >>> models = {
+    ...     'shallow': DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y),
+    ...     'deep': DecisionTreeRegressor(max_depth=10, random_state=42).fit(X, y),
+    ... }
+    >>> performance = evaluate_models(models, X, y, task='continuous')
+    >>> print(performance['shallow'])
+    {'mae': 12.3, 'rmse': 15.7, 'r2': 0.85}
+    
+    Notes
+    -----
+    - AUC computation gracefully handles cases where predict_proba is not available
+    - For multi-class classification, uses one-vs-rest strategy for AUC
+    - All metrics use standard sklearn implementations
+    - Consider using separate train/test sets to avoid overfitting bias
     """
     results: dict[str, dict[str, float]] = {}
 
@@ -122,18 +211,21 @@ def accuracy(
             acc = float(accuracy_score(y, y_hat))
             entry = {"acc": acc}
 
-            # AUC if possible
+            # Compute AUC if model supports probability predictions
             if hasattr(mdl, "predict_proba"):
                 try:
                     proba = mdl.predict_proba(X)
                     if is_binary:
                         auc = float(roc_auc_score(y, proba[:, 1]))
                     else:
-                        # One-vs-rest macro AUC
+                        # One-vs-rest macro AUC for multi-class
                         Yb = label_binarize(y, classes=y_unique)
-                        auc = float(roc_auc_score(Yb, proba, average="macro", multi_class="ovr"))
+                        auc = float(roc_auc_score(
+                            Yb, proba, average="macro", multi_class="ovr"
+                        ))
                     entry["auc"] = auc
                 except Exception:
+                    # Silently skip AUC if computation fails (e.g., single class in y)
                     pass
 
             results[name] = entry
@@ -150,65 +242,3 @@ def accuracy(
         raise ValueError("task must be 'categorical' or 'continuous'.")
 
     return results
-
-
-# -------------------------------
-# Minimal tests to prove it works
-# -------------------------------
-def _test_classification():
-    """Tiny proof: two CART classifiers, OOS stability + accuracy."""
-    X, y = make_classification(
-        n_samples=800, n_features=12, n_informative=6, n_redundant=2, n_classes=3, random_state=0
-    )
-    X_tr, X_oos, y_tr, y_oos = train_test_split(X, y, test_size=0.3, random_state=42)
-
-    models = {
-        "CART_seed0": DecisionTreeClassifier(random_state=0).fit(X_tr, y_tr),
-        "CART_seed1": DecisionTreeClassifier(random_state=1).fit(X_tr, y_tr),
-        "CART_seed2": DecisionTreeClassifier(random_state=2).fit(X_tr, y_tr),
-    }
-
-    print("\n=== Classification: OOS Prediction Stability (disagreement; lower is better) ===")
-    stab = prediction_stability(models, X_oos, task="categorical")
-    for k, (name, v) in enumerate(stab.items()):
-        print(f"Model {k} ({name}) disagrees with peers on about {v*100:.1f}% of OOS samples.")
-
-    print("\n=== Classification: OOS Accuracy (and AUC if available) ===")
-    perf = accuracy(models, X_oos, y_oos, task="categorical")
-    for k, (name, d) in enumerate(perf.items()):
-        extra = f" with AUC={d['auc']:.3f}" if "auc" in d else ""
-        print(f"Model {k} ({name}) got accuracy {d['acc']*100:.1f}%{extra}")
-
-
-def _test_regression():
-    """Tiny proof: two CART regressors, OOS stability + error metrics."""
-    X, y = make_regression(
-        n_samples=800, n_features=12, n_informative=6, noise=10.0, random_state=0
-    )
-    X_tr, X_oos, y_tr, y_oos = train_test_split(X, y, test_size=0.3, random_state=42)
-
-    models = {
-        "CART_R_seed0": DecisionTreeRegressor(random_state=0).fit(X_tr, y_tr),
-        "CART_R_seed1": DecisionTreeRegressor(random_state=1).fit(X_tr, y_tr),
-        "CART_R_seed2": DecisionTreeRegressor(random_state=2).fit(X_tr, y_tr),
-    }
-
-    print("\n=== Regression: OOS Prediction Stability (RMSE to ensemble mean; lower is better) ===")
-    stab = prediction_stability(models, X_oos, task="continuous")
-    for k, (name, v) in enumerate(stab.items()):
-        print(f"Model {k} ({name}) predictions differ from ensemble mean by RMSE={v:.2f}")
-
-    print("\n=== Regression: OOS Error Metrics ===")
-    perf = accuracy(models, X_oos, y_oos, task="continuous")
-    for k, (name, d) in enumerate(perf.items()):
-        print(f"Model {k} ({name}): MAE={d['mae']:.2f}, RMSE={d['rmse']:.2f}, R²={d['r2']:.3f}")
-
-
-def test():
-    """Run both quick demos to verify evaluation works."""
-    _test_classification()
-    _test_regression()
-
-
-if __name__ == "__main__":
-    test()
