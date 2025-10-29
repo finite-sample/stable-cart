@@ -156,33 +156,27 @@ pytest -m "benchmark"       # Benchmark tests only
 pytest tests/               # All tests
 ```
 
-### Local CI Simulation
+### Local CI Testing
 
-This project includes tools for running GitHub Actions locally:
+Test the CI pipeline locally using Docker:
 
 ```bash
-# Run linting checks
-make ci-lint
+# Run the full CI pipeline in a clean Docker container
+make ci-docker
 
-# Run tests locally
-make ci-test
-
-# Run full CI simulation with act (requires Docker)
-make ci-local
-
-# See all available targets
-make help
+# Or run individual steps
+make lint        # Check code formatting and style
+make test        # Run the test suite
+make coverage    # Run tests with coverage report
 ```
-
-See [docs/LOCAL_CI.md](docs/LOCAL_CI.md) for detailed instructions.
 
 ### Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes and add tests
-4. Run the test suite (`make ci-test`)
-5. Run linting (`make ci-lint`)
+4. Run the test suite (`make test`)
+5. Run linting (`make lint`)
 6. Commit your changes (`git commit -m 'Add amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
