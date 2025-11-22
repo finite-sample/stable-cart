@@ -6,8 +6,10 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
+from typing import Literal
+
 import numpy as np
-from typing import Literal, Optional
+
 from .base_stable_tree import BaseStableTree
 
 
@@ -75,7 +77,7 @@ class LessGreedyHybridTree(BaseStableTree):
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         # Configure defaults that reflect LessGreedy's personality
         super().__init__(

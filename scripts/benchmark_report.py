@@ -8,9 +8,9 @@ Creates publication-ready reports with tables, analysis, and recommendations.
 
 import os
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any
+
 import pandas as pd
-import numpy as np
 
 
 def format_number(value: float, precision: int = 3) -> str:
@@ -42,11 +42,11 @@ def create_performance_table(results_df: pd.DataFrame, task: str) -> str:
 
     # Create table header
     models = sorted(task_data["model"].unique())
-    table = f"| Dataset | " + " | ".join(models) + " |\n"
+    table = "| Dataset | " + " | ".join(models) + " |\n"
     table += "|" + "---|" * (len(models) + 1) + "\n"
 
     # Add rows for each metric
-    for metric, metric_name in zip(metrics, metric_names):
+    for metric, metric_name in zip(metrics, metric_names, strict=True):
         if metric not in task_data.columns:
             continue
 
@@ -215,7 +215,7 @@ def generate_markdown_report(
     summary_df: pd.DataFrame,
     stability_df: pd.DataFrame,
     output_dir: str,
-    benchmark_config: Dict[str, Any],
+    benchmark_config: dict[str, Any],
 ) -> str:
     """
     Generate comprehensive markdown benchmark report.

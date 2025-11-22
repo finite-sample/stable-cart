@@ -7,18 +7,19 @@ different defaults to maintain their distinct personalities.
 """
 
 import time
-from typing import Optional, Tuple, Literal
+from typing import Literal
+
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.metrics import r2_score, accuracy_score
-from sklearn.utils.validation import check_X_y, check_array
+from sklearn.metrics import accuracy_score, r2_score
+from sklearn.utils.validation import check_array, check_X_y
 
+from .split_strategies import HybridStrategy, create_split_strategy
 from .stability_utils import (
     honest_data_partition,
-    winsorize_features,
     stabilize_leaf_estimate,
+    winsorize_features,
 )
-from .split_strategies import HybridStrategy, create_split_strategy
 
 
 class BaseStableTree(BaseEstimator):
@@ -72,7 +73,7 @@ class BaseStableTree(BaseEstimator):
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
         enable_winsorization: bool = False,
-        winsor_quantiles: Tuple[float, float] = (0.01, 0.99),
+        winsor_quantiles: tuple[float, float] = (0.01, 0.99),
         enable_feature_standardization: bool = False,
         # === 6. CANDIDATE DIVERSITY ===
         enable_oblique_splits: bool = False,
@@ -101,12 +102,12 @@ class BaseStableTree(BaseEstimator):
         enable_explicit_variance_penalty: bool = False,
         variance_penalty_weight: float = 0.1,
         # === ADVANCED CONFIGURATION ===
-        split_strategy: Optional[str] = None,
+        split_strategy: str | None = None,
         algorithm_focus: Literal["speed", "accuracy", "stability"] = "stability",
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
         # === OTHER ===
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
         # === ADDITIONAL PARAMETERS FOR CROSS-METHOD LEARNING ===
         enable_threshold_binning: bool = False,
         enable_gain_margin_logic: bool = False,

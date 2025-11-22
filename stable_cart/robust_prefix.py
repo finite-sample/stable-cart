@@ -2,21 +2,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, List, Literal
+from typing import Literal
+
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.utils.validation import check_is_fitted
 from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import train_test_split
-
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.utils.validation import check_is_fitted
 
 # ============================================================================
 # Preprocessing utilities
 # ============================================================================
 
 
-def _winsorize_fit(X: np.ndarray, q: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
+def _winsorize_fit(X: np.ndarray, q: tuple[float, float]) -> tuple[np.ndarray, np.ndarray]:
     """Return per-feature (low, high) quantiles for winsorization."""
     if X.shape[0] == 0:
         raise ValueError("Cannot winsorize empty array")
@@ -32,7 +32,7 @@ def _winsorize_apply(X: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarra
 
 def _stratified_bootstrap(
     X: np.ndarray, y: np.ndarray, rng: np.random.RandomState
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Class-stratified bootstrap (for classification)."""
     idxs = []
     for c in np.unique(y):
@@ -46,7 +46,7 @@ def _stratified_bootstrap(
 
 def _regular_bootstrap(
     X: np.ndarray, y: np.ndarray, rng: np.random.RandomState
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Regular bootstrap (for regression)."""
     n = len(X)
     idx = rng.choice(n, size=n, replace=True)
@@ -68,7 +68,7 @@ def _robust_stump_regression(
     subsample_frac: float,
     max_bins: int,
     rng: np.random.RandomState,
-) -> Optional[Tuple[int, float]]:
+) -> tuple[int, float] | None:
     """
     Consensus split selection for regression via bootstrap validation.
 
@@ -84,8 +84,8 @@ def _robust_stump_regression(
 
     from collections import defaultdict
 
-    bucket_losses: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
-    bucket_thresholds: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
+    bucket_losses: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
+    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
 
     m = max(10, int(subsample_frac * n))
 
@@ -147,7 +147,7 @@ def _robust_stump_classification(
     subsample_frac: float,
     max_bins: int,
     rng: np.random.RandomState,
-) -> Optional[Tuple[int, float]]:
+) -> tuple[int, float] | None:
     """
     Consensus split selection for classification via bootstrap validation.
 
@@ -159,8 +159,8 @@ def _robust_stump_classification(
 
     from collections import defaultdict
 
-    bucket_losses: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
-    bucket_thresholds: Dict[Tuple[int, int, float, float], List[float]] = defaultdict(list)
+    bucket_losses: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
+    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
 
     m = max(10, int(subsample_frac * n))
 
@@ -304,23 +304,21 @@ class RobustPrefixHonestTree(BaseEstimator):
     val_frac: float = 0.2
     est_frac: float = 0.4
     smoothing: float = 1.0
-    winsor_quantiles: Tuple[float, float] = (0.01, 0.99)
+    winsor_quantiles: tuple[float, float] = (0.01, 0.99)
     consensus_B: int = 12
     consensus_subsample_frac: float = 0.8
     consensus_max_bins: int = 24
-    random_state: Optional[int] = None
+    random_state: int | None = None
 
     # Learned state
-    _lo_: Optional[np.ndarray] = None
-    _hi_: Optional[np.ndarray] = None
-    _prefix_nodes_: Optional[
-        List[Tuple[int, Optional[int], Optional[float], Optional[int], Optional[int]]]
-    ] = None
-    _region_models_: Optional[Dict[int, object]] = None
-    _region_leaf_values_: Optional[Dict[int, Dict[int, float]]] = None  # regression: leaf means
-    _region_leaf_probs_: Optional[Dict[int, Dict[int, float]]] = None  # classification: P(y=1)
-    _global_prior_: Optional[float] = None  # p0 for classification, global mean for regression
-    classes_: Optional[np.ndarray] = None
+    _lo_: np.ndarray | None = None
+    _hi_: np.ndarray | None = None
+    _prefix_nodes_: list[tuple[int, int | None, float | None, int | None, int | None]] | None = None
+    _region_models_: dict[int, object] | None = None
+    _region_leaf_values_: dict[int, dict[int, float]] | None = None  # regression: leaf means
+    _region_leaf_probs_: dict[int, dict[int, float]] | None = None  # classification: P(y=1)
+    _global_prior_: float | None = None  # p0 for classification, global mean for regression
+    classes_: np.ndarray | None = None
 
     def __post_init__(self):
         """Validate parameters."""
@@ -338,7 +336,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         else:
             return DecisionTreeClassifier
 
-    def _route_mask(self, X: np.ndarray, path: List[Tuple[int, float, str]]) -> np.ndarray:
+    def _route_mask(self, X: np.ndarray, path: list[tuple[int, float, str]]) -> np.ndarray:
         """Apply routing path to get mask for samples reaching a node."""
         m = np.ones(len(X), dtype=bool)
         for f, t, side in path:
@@ -420,7 +418,7 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         # Build locked prefix (level-order BFS)
         self._prefix_nodes_ = []
-        node_queue: List[Tuple[int, List[Tuple[int, float, str]]]] = [(0, [])]
+        node_queue: list[tuple[int, list[tuple[int, float, str]]]] = [(0, [])]
         level = 0
 
         # Select consensus function
@@ -477,10 +475,10 @@ class RobustPrefixHonestTree(BaseEstimator):
             level += 1
 
         # Collect terminal prefix regions
-        terminal_paths: List[Tuple[int, List[Tuple[int, float, str]]]] = []
+        terminal_paths: list[tuple[int, list[tuple[int, float, str]]]] = []
         locked = {nid: (f, t, L, R) for (nid, f, t, L, R) in self._prefix_nodes_}
 
-        def gather(nid: int, path: List[Tuple[int, float, str]], lvl: int):
+        def gather(nid: int, path: list[tuple[int, float, str]], lvl: int):
             if nid not in locked or locked[nid][0] is None or lvl == self.top_levels:
                 terminal_paths.append((nid, path))
                 return
@@ -508,7 +506,7 @@ class RobustPrefixHonestTree(BaseEstimator):
 
     def _fit_classification_regions(
         self,
-        terminal_paths: List[Tuple[int, List]],
+        terminal_paths: list[tuple[int, list]],
         X_split: np.ndarray,
         y_split: np.ndarray,
         X_est: np.ndarray,
@@ -537,7 +535,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             self._region_models_[nid] = subtree
 
             # Estimate leaf probabilities on EST with m-smoothing
-            leaf_probs: Dict[int, float] = {}
+            leaf_probs: dict[int, float] = {}
             Xleaf, yleaf = (Xe, ye) if len(ye) > 0 else (Xs, ys)
             leaves = subtree.apply(Xleaf)
 
@@ -563,7 +561,7 @@ class RobustPrefixHonestTree(BaseEstimator):
 
     def _fit_regression_regions(
         self,
-        terminal_paths: List[Tuple[int, List]],
+        terminal_paths: list[tuple[int, list]],
         X_split: np.ndarray,
         y_split: np.ndarray,
         X_est: np.ndarray,
@@ -592,7 +590,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             self._region_models_[nid] = subtree
 
             # Estimate leaf values on EST with shrinkage to parent
-            leaf_values: Dict[int, float] = {}
+            leaf_values: dict[int, float] = {}
             Xleaf, yleaf = (Xe, ye) if len(ye) > 0 else (Xs, ys)
             leaves = subtree.apply(Xleaf)
 
@@ -747,7 +745,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         score : float
             R² score (regression) or accuracy (classification).
         """
-        from sklearn.metrics import r2_score, accuracy_score
+        from sklearn.metrics import accuracy_score, r2_score
 
         y_pred = self.predict(X)
 

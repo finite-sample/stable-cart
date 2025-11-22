@@ -1,19 +1,18 @@
 """Unit tests for LessGreedyHybridTree and related utilities."""
 
-import pytest
 import numpy as np
+import pytest
+from sklearn.base import clone
 from sklearn.datasets import make_regression
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.base import clone
 
 from stable_cart.less_greedy_tree import (
     LessGreedyHybridTree,
-    _sse,
     _ComparableFloat,
+    _sse,
 )
-
 
 # Tolerance for floating-point comparisons
 TOL = 1e-6

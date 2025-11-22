@@ -6,7 +6,8 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-from typing import Literal, Optional
+from typing import Literal
+
 from .base_stable_tree import BaseStableTree
 
 
@@ -80,7 +81,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         # Configure defaults that reflect Bootstrap method's personality
         super().__init__(

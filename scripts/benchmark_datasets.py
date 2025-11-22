@@ -10,23 +10,23 @@ Provides both real-world and synthetic datasets for:
 Focus on datasets that highlight prediction stability differences between algorithms.
 """
 
+from collections.abc import Callable
+
 import numpy as np
 import pandas as pd
-from typing import Tuple, Dict, Callable, Optional
 from sklearn.datasets import (
+    fetch_california_housing,
+    load_breast_cancer,
+    load_diabetes,
+    load_digits,
+    load_iris,
+    load_wine,
     make_friedman1,
     make_friedman2,
     make_friedman3,
-    load_breast_cancer,
-    load_wine,
-    load_iris,
-    load_digits,
-    fetch_california_housing,
-    load_diabetes,
 )
-from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
-
+from sklearn.preprocessing import StandardScaler
 
 # ============================================================================
 # SYNTHETIC REGRESSION DATASETS
@@ -35,7 +35,7 @@ from sklearn.model_selection import train_test_split
 
 def friedman1_dataset(
     n_samples: int = 3000, noise: float = 1.0, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Friedman #1: y = 10 sin(πx₁x₂) + 20(x₃-0.5)² + 10x₄ + 5x₅ + ε
     Standard nonlinear benchmark with clear feature importance hierarchy.
@@ -48,7 +48,7 @@ def friedman1_dataset(
 
 def friedman2_dataset(
     n_samples: int = 3000, noise: float = 1.0, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Friedman #2: y = (x₁² + (x₂x₃ - 1/(x₂x₄))²)^0.5 + ε
     Highly nonlinear with multiplicative interactions.
@@ -59,7 +59,7 @@ def friedman2_dataset(
 
 def friedman3_dataset(
     n_samples: int = 3000, noise: float = 1.0, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Friedman #3: y = arctan((x₂x₃ - 1/(x₂x₄))/x₁) + ε
     Bounded target with complex interactions.
@@ -70,7 +70,7 @@ def friedman3_dataset(
 
 def quadrant_interaction_dataset(
     n_samples: int = 3000, noise: float = 0.5, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Quadrant-based interaction: ideal for tree methods.
     Clear region-specific patterns that trees can capture well.
@@ -104,7 +104,7 @@ def high_dimensional_sparse_dataset(
     n_informative: int = 5,
     noise: float = 1.0,
     random_state: int = 42,
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     High-dimensional sparse signal: many irrelevant features.
     Tests feature selection and overfitting resistance.
@@ -130,7 +130,7 @@ def high_dimensional_sparse_dataset(
 
 def heteroscedastic_dataset(
     n_samples: int = 3000, noise_scale: float = 1.0, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Heteroscedastic noise: variance depends on features.
     Tests robustness to non-constant noise.
@@ -156,7 +156,7 @@ def heteroscedastic_dataset(
 
 def xor_nonlinear_dataset(
     n_samples: int = 3000, n_features: int = 8, noise: float = 0.7, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     XOR pattern with additional nonlinear features.
     Tests interaction detection capability.
@@ -179,7 +179,7 @@ def xor_nonlinear_dataset(
 # ============================================================================
 
 
-def california_housing_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def california_housing_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """California housing prices: medium-scale real dataset."""
     data = fetch_california_housing()
     X, y = data.data, data.target
@@ -191,7 +191,7 @@ def california_housing_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.n
     return X, y
 
 
-def diabetes_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def diabetes_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Diabetes progression: small medical dataset."""
     data = load_diabetes()
     X, y = data.data, data.target
@@ -205,7 +205,7 @@ def diabetes_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
 # ============================================================================
 
 
-def breast_cancer_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def breast_cancer_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Breast cancer detection: binary classification."""
     data = load_breast_cancer()
     X, y = data.data, data.target
@@ -217,7 +217,7 @@ def breast_cancer_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarra
     return X, y
 
 
-def wine_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def wine_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Wine classification: 3-class problem with continuous features."""
     data = load_wine()
     X, y = data.data, data.target
@@ -229,7 +229,7 @@ def wine_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
     return X, y
 
 
-def iris_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def iris_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Iris classification: classic small 3-class dataset."""
     data = load_iris()
     X, y = data.data, data.target
@@ -241,7 +241,7 @@ def iris_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
     return X, y
 
 
-def digits_binary_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def digits_binary_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Digits 0 vs rest: binary classification from multi-class."""
     data = load_digits()
     X, y = data.data, (data.target == 0).astype(int)
@@ -253,7 +253,7 @@ def digits_binary_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarra
     return X, y
 
 
-def digits_multiclass_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+def digits_multiclass_dataset(random_state: int = 42) -> tuple[np.ndarray, np.ndarray]:
     """Digits multi-class: 10-class classification."""
     data = load_digits()
     X, y = data.data, data.target
@@ -269,7 +269,7 @@ def digits_multiclass_dataset(random_state: int = 42) -> Tuple[np.ndarray, np.nd
 # DATASET REGISTRY
 # ============================================================================
 
-REGRESSION_DATASETS: Dict[str, Callable] = {
+REGRESSION_DATASETS: dict[str, Callable] = {
     "friedman1": friedman1_dataset,
     "friedman2": friedman2_dataset,
     "friedman3": friedman3_dataset,
@@ -281,7 +281,7 @@ REGRESSION_DATASETS: Dict[str, Callable] = {
     "diabetes": diabetes_dataset,
 }
 
-CLASSIFICATION_DATASETS: Dict[str, Callable] = {
+CLASSIFICATION_DATASETS: dict[str, Callable] = {
     "breast_cancer": breast_cancer_dataset,
     "wine": wine_dataset,
     "iris": iris_dataset,
@@ -341,7 +341,7 @@ def get_dataset_info() -> pd.DataFrame:
 
 def load_dataset(
     name: str, test_size: float = 0.3, random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, str]:
     """
     Load a dataset and split into train/test.
 
@@ -380,7 +380,7 @@ def load_dataset(
     return X_train, X_test, y_train, y_test, task
 
 
-def get_dataset_recommendations() -> Dict[str, list]:
+def get_dataset_recommendations() -> dict[str, list]:
     """Get recommended dataset subsets for different benchmark scenarios."""
     return {
         "quick": ["friedman1", "quadrant_interaction", "breast_cancer", "iris"],

@@ -14,10 +14,10 @@ and are useful for comparing different tree algorithms, ensemble methods, or par
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
-    roc_auc_score,
-    mean_squared_error,
     mean_absolute_error,
+    mean_squared_error,
     r2_score,
+    roc_auc_score,
 )
 from sklearn.preprocessing import label_binarize
 

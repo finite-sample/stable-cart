@@ -9,10 +9,11 @@ Usage:
 
 import argparse
 import os
-import pandas as pd
+
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import pandas as pd
+import seaborn as sns
 
 # Set publication style
 plt.style.use("seaborn-v0_8-darkgrid")
@@ -128,7 +129,7 @@ def plot_accuracy_stability_tradeoff(df_acc, df_stab, output_dir):
         fontsize=10,
         ha="left",
         va="top",
-        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3),
+        bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.3},
     )
 
     plt.tight_layout()
@@ -275,14 +276,14 @@ def main():
     print(f"\nLoading results from: {args.input}")
     df_acc, df_stab = load_results(args.input)
 
-    print(f"\nGenerating visualizations...")
+    print("\nGenerating visualizations...")
     plot_accuracy_comparison(df_acc, output_dir)
     plot_stability_comparison(df_stab, output_dir)
     plot_accuracy_stability_tradeoff(df_acc, df_stab, output_dir)
     plot_relative_improvements(df_stab, output_dir)
     plot_tree_size_comparison(df_acc, output_dir)
 
-    print(f"\nGenerating summary statistics...")
+    print("\nGenerating summary statistics...")
     generate_summary_table(df_acc, df_stab, output_dir)
 
     print(f"\n{'='*80}")

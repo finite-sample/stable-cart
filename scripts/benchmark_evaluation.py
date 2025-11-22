@@ -7,34 +7,36 @@ Key focus: Bootstrap prediction variance as the primary stability metric, comple
 standard discrimination metrics (accuracy, RMSE, etc.).
 """
 
+import time
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pandas as pd
-import time
-from typing import Dict, List, Tuple, Callable, Any, Optional
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import (
     accuracy_score,
-    roc_auc_score,
     f1_score,
-    mean_squared_error,
     mean_absolute_error,
+    mean_squared_error,
     r2_score,
+    roc_auc_score,
 )
-from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
 from stable_cart import (
-    LessGreedyHybridTree,
     BootstrapVariancePenalizedTree,
+    LessGreedyHybridTree,
     RobustPrefixHonestTree,
 )
-
 
 # ============================================================================
 # MODEL FACTORIES
 # ============================================================================
 
 
-def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]:
+def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]:
     """Get factory functions for unified models that support both regression and classification."""
     if task == "regression":
         return {
@@ -153,7 +155,7 @@ def bootstrap_prediction_variance(
     task: str,
     n_bootstrap: int = 20,
     random_state: int = 42,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Measure bootstrap prediction variance - primary stability metric.
 
@@ -225,7 +227,7 @@ def bootstrap_prediction_variance(
 # ============================================================================
 
 
-def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     """Standard regression metrics."""
     return {
         "mse": float(mean_squared_error(y_true, y_pred)),
@@ -236,8 +238,8 @@ def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -
 
 
 def evaluate_discrimination_classification(
-    y_true: np.ndarray, y_pred: np.ndarray, y_proba: Optional[np.ndarray] = None
-) -> Dict[str, float]:
+    y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray | None = None
+) -> dict[str, float]:
     """Standard classification metrics."""
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
@@ -267,7 +269,7 @@ def evaluate_discrimination_classification(
 # ============================================================================
 
 
-def get_model_characteristics(model: Any) -> Dict[str, float]:
+def get_model_characteristics(model: Any) -> dict[str, float]:
     """Extract model characteristics like size, training time, etc."""
     characteristics = {}
 
@@ -316,7 +318,7 @@ def evaluate_single_model(
     task: str,
     n_bootstrap: int = 20,
     random_state: int = 42,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Comprehensive evaluation of a single model.
 
@@ -371,7 +373,7 @@ def evaluate_dataset(
     X_test: np.ndarray,
     y_test: np.ndarray,
     task: str,
-    models_to_run: Optional[List[str]] = None,
+    models_to_run: list[str] | None = None,
     n_bootstrap: int = 20,
     random_state: int = 42,
 ) -> pd.DataFrame:
@@ -457,7 +459,7 @@ def cross_validation_stability(
     task: str,
     cv_folds: int = 5,
     random_state: int = 42,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Alternative stability metric: prediction variance across CV folds.
 
@@ -472,7 +474,7 @@ def cross_validation_stability(
 
     for train_idx, val_idx in cv.split(X, y):
         X_train_cv, X_val_cv = X[train_idx], X[val_idx]
-        y_train_cv, y_val_cv = y[train_idx], y[val_idx]
+        y_train_cv, _ = y[train_idx], y[val_idx]
 
         model = model_factory()
         model.fit(X_train_cv, y_train_cv)
@@ -502,7 +504,8 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = X[:350], X[350:], y[:350], y[350:]
 
     # Test single model evaluation
-    factory = lambda: DecisionTreeClassifier(max_depth=5, random_state=42)
+    def factory():
+        return DecisionTreeClassifier(max_depth=5, random_state=42)
     results = evaluate_single_model(
         "TestCART", factory, X_train, y_train, X_test, y_test, "classification", n_bootstrap=5
     )

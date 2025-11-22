@@ -9,20 +9,16 @@ focusing on out-of-sample prediction variance as the primary stability metric.
 
 import argparse
 import os
-import time
 from datetime import datetime
-from typing import List, Optional
-import pandas as pd
-import numpy as np
 
-from benchmark_datasets import load_dataset, get_dataset_recommendations, ALL_DATASETS
+import pandas as pd
+from benchmark_datasets import ALL_DATASETS, get_dataset_recommendations, load_dataset
 from benchmark_evaluation import evaluate_dataset
-from benchmark_report import generate_markdown_report
 
 
 def run_comprehensive_benchmark(
-    datasets: List[str],
-    models: Optional[List[str]] = None,
+    datasets: list[str],
+    models: list[str] | None = None,
     output_dir: str = "./benchmark_results",
     n_bootstrap: int = 20,
     random_state: int = 42,
@@ -58,7 +54,7 @@ def run_comprehensive_benchmark(
         n_bootstrap = max(5, n_bootstrap // 4)
 
     print(f"\n{'='*80}")
-    print(f"COMPREHENSIVE TREE ALGORITHM BENCHMARK")
+    print("COMPREHENSIVE TREE ALGORITHM BENCHMARK")
     print(f"{'='*80}")
     print(f"Datasets: {len(datasets)} selected")
     print(f"Bootstrap samples: {n_bootstrap}")
@@ -115,7 +111,7 @@ def run_comprehensive_benchmark(
     combined_results.to_csv(detailed_path, index=False)
 
     print(f"{'='*80}")
-    print(f"BENCHMARK COMPLETED")
+    print("BENCHMARK COMPLETED")
     print(f"{'='*80}")
     print(f"Total datasets processed: {len(all_results)}")
     print(f"Total model evaluations: {len(combined_results)}")

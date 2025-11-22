@@ -5,10 +5,11 @@ These are the fundamental "atoms" of tree stability that can be composed
 across different methods.
 """
 
-import numpy as np
-from typing import Tuple, List, Optional, Literal, Union
 from dataclasses import dataclass
-from sklearn.linear_model import LassoCV, RidgeCV, ElasticNetCV, LogisticRegressionCV
+from typing import Literal
+
+import numpy as np
+from sklearn.linear_model import ElasticNetCV, LassoCV, LogisticRegressionCV, RidgeCV
 from sklearn.model_selection import train_test_split
 
 
@@ -22,21 +23,21 @@ class SplitCandidate:
     left_indices: np.ndarray
     right_indices: np.ndarray
     is_oblique: bool = False
-    oblique_weights: Optional[np.ndarray] = None
-    validation_score: Optional[float] = None
-    variance_estimate: Optional[float] = None
-    consensus_support: Optional[float] = None
+    oblique_weights: np.ndarray | None = None
+    validation_score: float | None = None
+    variance_estimate: float | None = None
+    consensus_support: float | None = None
 
 
 @dataclass
 class StabilityMetrics:
     """Container for stability diagnostic information."""
 
-    prefix_consensus_scores: List[float]
+    prefix_consensus_scores: list[float]
     validation_consistency: float
-    leaf_variance_estimates: List[float]
-    split_margins: List[float]
-    bootstrap_variance: Optional[float] = None
+    leaf_variance_estimates: list[float]
+    split_margins: list[float]
+    bootstrap_variance: float | None = None
 
 
 # ============================================================================
@@ -52,8 +53,8 @@ def bootstrap_consensus_split(
     threshold: float = 0.5,
     enable_quantile_binning: bool = True,
     max_bins: int = 24,
-    random_state: Optional[int] = None,
-) -> Tuple[Optional[SplitCandidate], List[SplitCandidate]]:
+    random_state: int | None = None,
+) -> tuple[SplitCandidate | None, list[SplitCandidate]]:
     """
     Find consensus split using bootstrap voting with quantile-binned thresholds.
 
@@ -138,7 +139,7 @@ def _bin_threshold(threshold: float, feature_values: np.ndarray, max_bins: int) 
     return bins[closest_idx]
 
 
-def enable_deterministic_tiebreaking(candidates: List[SplitCandidate]) -> List[SplitCandidate]:
+def enable_deterministic_tiebreaking(candidates: list[SplitCandidate]) -> list[SplitCandidate]:
     """Sort candidates deterministically to break ties consistently."""
     return sorted(
         candidates,
@@ -151,8 +152,8 @@ def enable_deterministic_tiebreaking(candidates: List[SplitCandidate]) -> List[S
 
 
 def apply_margin_veto(
-    candidates: List[SplitCandidate], margin_threshold: float = 0.03
-) -> List[SplitCandidate]:
+    candidates: list[SplitCandidate], margin_threshold: float = 0.03
+) -> list[SplitCandidate]:
     """Veto splits where the margin between best candidates is too small."""
     if len(candidates) < 2:
         return candidates
@@ -182,11 +183,11 @@ def validation_checked_split_selection(
     y_split: np.ndarray,
     X_val: np.ndarray,
     y_val: np.ndarray,
-    candidates: List[SplitCandidate],
+    candidates: list[SplitCandidate],
     metric: Literal["median", "one_se", "variance_penalized"] = "variance_penalized",
     consistency_weight: float = 1.0,
     task: str = "regression",
-) -> Optional[SplitCandidate]:
+) -> SplitCandidate | None:
     """
     Evaluate split candidates on validation data and select based on consistency.
     """
@@ -243,8 +244,8 @@ def _evaluate_split_performance(y: np.ndarray, left_mask: np.ndarray, task: str)
 
 
 def _select_by_variance_penalty(
-    candidates: List[SplitCandidate], penalty_weight: float
-) -> Optional[SplitCandidate]:
+    candidates: list[SplitCandidate], penalty_weight: float
+) -> SplitCandidate | None:
     """Select split using validation score minus variance penalty."""
     if not candidates:
         return None
@@ -280,9 +281,9 @@ def honest_data_partition(
     est_frac: float = 0.2,
     enable_stratification: bool = True,
     task: str = "regression",
-    random_state: Optional[int] = None,
-) -> Tuple[
-    Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]
+    random_state: int | None = None,
+) -> tuple[
+    tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]
 ]:
     """
     Partition data into SPLIT/VAL/EST subsets with optional stratification.
@@ -351,7 +352,7 @@ def stabilize_leaf_estimate(
     smoothing: float = 1.0,
     task: str = "regression",
     min_samples: int = 5,
-) -> Union[float, np.ndarray]:
+) -> float | np.ndarray:
     """
     Stabilize leaf estimates using various smoothing strategies.
     """
@@ -440,9 +441,9 @@ def _stabilize_classification_leaf(
 
 def winsorize_features(
     X: np.ndarray,
-    quantiles: Tuple[float, float] = (0.01, 0.99),
-    fitted_bounds: Optional[Tuple[np.ndarray, np.ndarray]] = None,
-) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    quantiles: tuple[float, float] = (0.01, 0.99),
+    fitted_bounds: tuple[np.ndarray, np.ndarray] | None = None,
+) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """
     Winsorize features to reduce outlier influence.
 
@@ -475,8 +476,8 @@ def generate_oblique_candidates(
     enable_correlation_gating: bool = True,
     min_correlation: float = 0.3,
     task: str = "regression",
-    random_state: Optional[int] = None,
-) -> List[SplitCandidate]:
+    random_state: int | None = None,
+) -> list[SplitCandidate]:
     """
     Generate oblique split candidates using linear projections.
     """
@@ -550,7 +551,7 @@ def beam_search_splits(
     enable_ambiguity_gating: bool = True,
     ambiguity_threshold: float = 0.05,
     task: str = "regression",
-) -> List[SplitCandidate]:
+) -> list[SplitCandidate]:
     """
     Use beam search to find splits with lookahead.
     """
@@ -577,8 +578,8 @@ def beam_search_splits(
 
 
 def _perform_beam_search(
-    X: np.ndarray, y: np.ndarray, initial_candidates: List[SplitCandidate], depth: int, task: str
-) -> List[SplitCandidate]:
+    X: np.ndarray, y: np.ndarray, initial_candidates: list[SplitCandidate], depth: int, task: str
+) -> list[SplitCandidate]:
     """Simplified beam search implementation."""
     if depth <= 1:
         return initial_candidates
@@ -624,7 +625,7 @@ def estimate_split_variance(
     split_candidate: SplitCandidate,
     n_bootstrap: int = 10,
     task: str = "regression",
-    random_state: Optional[int] = None,
+    random_state: int | None = None,
 ) -> float:
     """
     Estimate variance that would be introduced by this split.
@@ -664,7 +665,7 @@ def estimate_split_variance(
 
 def _find_candidate_splits(
     X: np.ndarray, y: np.ndarray, max_candidates: int = 20
-) -> List[SplitCandidate]:
+) -> list[SplitCandidate]:
     """Find basic axis-aligned split candidates."""
     candidates = []
     n_features = X.shape[1]
@@ -740,7 +741,7 @@ def _gini_impurity(y: np.ndarray) -> float:
     return 1.0 - np.sum(probabilities**2)
 
 
-def _select_by_median_score(candidates: List[SplitCandidate]) -> Optional[SplitCandidate]:
+def _select_by_median_score(candidates: list[SplitCandidate]) -> SplitCandidate | None:
     """Select candidate with best median validation score."""
     if not candidates:
         return None
@@ -752,7 +753,7 @@ def _select_by_median_score(candidates: List[SplitCandidate]) -> Optional[SplitC
     return max(scored, key=lambda c: c.validation_score)
 
 
-def _select_by_one_se_rule(candidates: List[SplitCandidate]) -> Optional[SplitCandidate]:
+def _select_by_one_se_rule(candidates: list[SplitCandidate]) -> SplitCandidate | None:
     """Select using one-standard-error rule."""
     if not candidates:
         return None

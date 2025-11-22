@@ -1,14 +1,16 @@
 """Unit tests for BootstrapVariancePenalizedTree."""
 
-import pytest
 import numpy as np
+import pytest
 from sklearn.datasets import make_regression
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from stable_cart.bootstrap_variance_tree import BootstrapVariancePenalizedTree, SimpleTree
-
+from stable_cart.bootstrap_variance_tree import (
+    BootstrapVariancePenalizedTree,
+    SimpleTree,
+)
 
 # Tolerance for floating-point comparisons
 TOL = 1e-6

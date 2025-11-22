@@ -9,13 +9,13 @@ This encourages the tree to make splits that lead to more stable predictions
 across different bootstrap samples of the training data.
 """
 
-import numpy as np
 import time
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
+import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.metrics import r2_score, accuracy_score
 from sklearn.linear_model import Lasso, LogisticRegressionCV
+from sklearn.metrics import accuracy_score, r2_score
 
 from stable_cart.less_greedy_tree import _sse
 
@@ -131,7 +131,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         self.fit_time_sec_: float = 0.0
         self.splits_scanned_: int = 0
         self.bootstrap_evaluations_: int = 0
-        self.classes_: Optional[np.ndarray] = None
+        self.classes_: np.ndarray | None = None
 
         # Task-adaptive loss functions
         if self.task == "regression":
@@ -320,7 +320,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             idx = np.where(valid)[0]
             g = parent_loss - children_loss[idx]
 
-            for i, gi in zip(idx, g):
+            for i, gi in zip(idx, g, strict=True):
                 gains.append((float(gi), int(j), float(thr[i])))
 
         if not gains:
@@ -390,7 +390,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         best_score = np.inf
         best_split = None
 
-        for gain, feat, thr in cand_axis[:5]:  # Limit evaluation for efficiency
+        for _gain, feat, thr in cand_axis[:5]:  # Limit evaluation for efficiency
             # Check if split is valid
             mask_s = Xs[:, feat] <= thr
             if (

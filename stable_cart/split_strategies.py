@@ -6,20 +6,21 @@ This allows different tree methods to compose split strategies flexibly.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Literal
+from typing import Literal
+
 import numpy as np
 
 from .stability_utils import (
     SplitCandidate,
-    bootstrap_consensus_split,
-    validation_checked_split_selection,
-    generate_oblique_candidates,
-    beam_search_splits,
+    _find_candidate_splits,
     apply_margin_veto,
+    beam_search_splits,
+    bootstrap_consensus_split,
     enable_deterministic_tiebreaking,
     estimate_split_variance,
+    generate_oblique_candidates,
     should_stop_splitting,
-    _find_candidate_splits,
+    validation_checked_split_selection,
 )
 
 
@@ -31,11 +32,11 @@ class SplitStrategy(ABC):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """
         Find the best split for the given data.
 
@@ -88,11 +89,11 @@ class AxisAlignedStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Find best axis-aligned split."""
         candidates = _find_candidate_splits(X, y, self.max_candidates)
 
@@ -144,9 +145,9 @@ class ConsensusStrategy(SplitStrategy):
         consensus_threshold: float = 0.5,
         enable_quantile_binning: bool = True,
         max_bins: int = 24,
-        fallback_strategy: Optional[SplitStrategy] = None,
+        fallback_strategy: SplitStrategy | None = None,
         task: str = "regression",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         self.consensus_samples = consensus_samples
         self.consensus_threshold = consensus_threshold
@@ -160,11 +161,11 @@ class ConsensusStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Find consensus split using bootstrap voting."""
         best_split, all_candidates = bootstrap_consensus_split(
             X,
@@ -203,9 +204,9 @@ class ObliqueStrategy(SplitStrategy):
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation: float = 0.3,
-        fallback_strategy: Optional[SplitStrategy] = None,
+        fallback_strategy: SplitStrategy | None = None,
         task: str = "regression",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         self.oblique_regularization = oblique_regularization
         self.enable_correlation_gating = enable_correlation_gating
@@ -218,11 +219,11 @@ class ObliqueStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Find best oblique split."""
         oblique_candidates = generate_oblique_candidates(
             X,
@@ -268,7 +269,7 @@ class LookaheadStrategy(SplitStrategy):
         enable_ambiguity_gating: bool = True,
         ambiguity_threshold: float = 0.05,
         min_samples_for_lookahead: int = 100,
-        fallback_strategy: Optional[SplitStrategy] = None,
+        fallback_strategy: SplitStrategy | None = None,
         task: str = "regression",
     ):
         self.lookahead_depth = lookahead_depth
@@ -283,11 +284,11 @@ class LookaheadStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Find split using lookahead beam search."""
         if len(X) < self.min_samples_for_lookahead:
             # Fall back for small datasets
@@ -329,9 +330,9 @@ class VariancePenalizedStrategy(SplitStrategy):
         variance_penalty_weight: float = 1.0,
         variance_estimation_samples: int = 10,
         stopping_strategy: Literal["one_se", "variance_penalty", "both"] = "variance_penalty",
-        base_strategy: Optional[SplitStrategy] = None,
+        base_strategy: SplitStrategy | None = None,
         task: str = "regression",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         self.variance_penalty_weight = variance_penalty_weight
         self.variance_estimation_samples = variance_estimation_samples
@@ -344,11 +345,11 @@ class VariancePenalizedStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Find split with explicit variance penalty."""
         # Get candidates from base strategy
         base_split = self.base_strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
@@ -403,7 +404,7 @@ class CompositeStrategy(SplitStrategy):
 
     def __init__(
         self,
-        strategies: List[SplitStrategy],
+        strategies: list[SplitStrategy],
         selection_metric: Literal["gain", "validation", "variance_penalized"] = "validation",
         task: str = "regression",
     ):
@@ -418,11 +419,11 @@ class CompositeStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Try all strategies and select the best split."""
         candidates = []
 
@@ -479,7 +480,7 @@ class HybridStrategy(SplitStrategy):
         self,
         focus: Literal["speed", "stability", "accuracy"] = "stability",
         task: str = "regression",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         self.focus = focus
         self.task = task
@@ -520,11 +521,11 @@ class HybridStrategy(SplitStrategy):
         self,
         X: np.ndarray,
         y: np.ndarray,
-        X_val: Optional[np.ndarray] = None,
-        y_val: Optional[np.ndarray] = None,
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
         depth: int = 0,
         **kwargs,
-    ) -> Optional[SplitCandidate]:
+    ) -> SplitCandidate | None:
         """Delegate to the configured strategy."""
         return self.strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
 

@@ -1,21 +1,21 @@
 """Unit tests for RobustPrefixHonestTree."""
 
-import pytest
 import numpy as np
-from sklearn.datasets import make_classification, load_breast_cancer, make_regression
-from sklearn.model_selection import train_test_split, cross_val_score
+import pytest
+from sklearn.datasets import load_breast_cancer, make_classification, make_regression
+from sklearn.exceptions import NotFittedError
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
 from stable_cart.robust_prefix import (
     RobustPrefixHonestTree,
-    _winsorize_fit,
-    _winsorize_apply,
-    _stratified_bootstrap,
     _robust_stump_classification,
+    _stratified_bootstrap,
+    _winsorize_apply,
+    _winsorize_fit,
 )
-
 
 # Tolerance for floating-point comparisons
 TOL = 1e-6
@@ -438,7 +438,7 @@ def test_robust_prefix_predict_before_fit_error():
 
     model = RobustPrefixHonestTree(task="classification", random_state=42)
 
-    with pytest.raises(Exception):  # check_is_fitted raises NotFittedError
+    with pytest.raises(TypeError):  # Actual error when model not fitted
         model.predict(X)
 
 

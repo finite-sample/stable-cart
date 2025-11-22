@@ -12,17 +12,16 @@ This tree trades some accuracy for substantially improved prediction stability v
 - Leaf smoothing: Shrinkage to parent (regression) or m-estimate (classification)
 """
 
-from dataclasses import dataclass
-from typing import Any, Literal
 import operator
 import time
+from dataclasses import dataclass
+from typing import Any, Literal
+
 import numpy as np
-
 from sklearn.base import BaseEstimator
-from sklearn.metrics import r2_score, accuracy_score
-from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV, LogisticRegressionCV
-
+from sklearn.metrics import accuracy_score, r2_score
+from sklearn.preprocessing import StandardScaler
 
 # ============================================================================
 # Scoring Functions (Task-Specific)
@@ -322,7 +321,7 @@ class LessGreedyHybridTree(BaseEstimator):
             idx = np.where(valid)[0]
             g = parent_loss - children_loss[idx]
 
-            for i, gi in zip(idx, g):
+            for i, gi in zip(idx, g, strict=True):
                 gains.append((float(gi), int(j), float(thr[i])))
 
         if not gains:

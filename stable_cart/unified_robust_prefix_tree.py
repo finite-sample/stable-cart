@@ -6,8 +6,10 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
+from typing import Literal
+
 import numpy as np
-from typing import Literal, Optional, Tuple
+
 from .base_stable_tree import BaseStableTree
 
 
@@ -46,7 +48,7 @@ class RobustPrefixHonestTree(BaseStableTree):
         enable_stratified_sampling: bool = True,  # Signature feature
         # === OUTLIER ROBUSTNESS ===
         enable_winsorization: bool = True,  # Signature feature
-        winsor_quantiles: Tuple[float, float] = (0.01, 0.99),
+        winsor_quantiles: tuple[float, float] = (0.01, 0.99),
         # === THRESHOLD DISCRETIZATION ===
         enable_threshold_binning: bool = True,  # Signature feature: reduce micro-jitter
         max_threshold_bins: int = 24,
@@ -78,7 +80,7 @@ class RobustPrefixHonestTree(BaseStableTree):
         leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "m_estimate",
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         # Compute split_frac from val_frac and est_frac
         split_frac = 1.0 - val_frac - est_frac

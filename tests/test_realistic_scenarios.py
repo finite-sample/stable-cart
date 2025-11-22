@@ -1,15 +1,16 @@
 """End-to-end tests for stable_cart package."""
 
 import json
+
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.datasets import make_regression, make_classification
+from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # Import from package (not direct module imports)
-from stable_cart import LessGreedyHybridTree, prediction_stability, evaluate_models
+from stable_cart import LessGreedyHybridTree, evaluate_models, prediction_stability
 
 
 @pytest.mark.e2e
@@ -61,7 +62,7 @@ def test_regression_end_to_end(tmp_path):
     assert stab_path.exists() and stab_path.stat().st_size > 0
 
     # Sanity checks
-    for name, d in perf.items():
+    for _name, d in perf.items():
         assert np.isfinite(d["rmse"]) and d["rmse"] >= 0
         assert np.isfinite(d["mae"]) and d["mae"] >= 0
         assert np.isfinite(d["r2"])
@@ -99,7 +100,7 @@ def test_classification_stability():
 @pytest.mark.e2e
 def test_sklearn_ecosystem_integration():
     """Test that our models work with the sklearn ecosystem."""
-    from sklearn.model_selection import cross_val_score, GridSearchCV
+    from sklearn.model_selection import GridSearchCV, cross_val_score
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
 

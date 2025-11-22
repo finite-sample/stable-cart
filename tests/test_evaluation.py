@@ -1,13 +1,12 @@
 """Updated tests for evaluation.py with improved function names and edge cases."""
 
-import pytest
 import numpy as np
-from sklearn.datasets import make_regression, make_classification
+import pytest
+from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from stable_cart.evaluation import prediction_stability, evaluate_models
-
+from stable_cart.evaluation import evaluate_models, prediction_stability
 
 # Tolerance for floating-point comparisons
 TOL = 1e-6
