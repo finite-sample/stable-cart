@@ -67,8 +67,6 @@ dev = [
     "pytest-xdist>=3.0",
     "ruff>=0.7.0",
     "mypy>=1.0",
-    "black>=24.0",
-    "isort>=5.0",
     "pre-commit>=3.0",
     "matplotlib>=3.3.0",
 ]
@@ -132,16 +130,6 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["stable_cart"]
 
-# Black configuration
-[tool.black]
-line-length = 88
-target-version = ["py311", "py312", "py313"]
-
-# isort configuration
-[tool.isort]
-profile = "black"
-line_length = 88
-known_first_party = ["stable_cart"]
 
 # mypy configuration
 [tool.mypy]
@@ -196,35 +184,4 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ["py311", "py312", "py313"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/'''
 
-[tool.isort]
-profile = "black"
-line_length = 100
-skip_gitignore = true
-
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E203", "W503"]
-
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
