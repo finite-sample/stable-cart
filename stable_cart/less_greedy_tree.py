@@ -297,7 +297,9 @@ class LessGreedyHybridTree(BaseEstimator):
                 left_impurity = self._loss_fn(ys[: i + 1])
                 right_impurity = self._loss_fn(ys[i + 1 :])
                 # Weighted by size
-                impurities[i] = (nL[i] / n) * left_impurity + (nR[i] / n) * right_impurity
+                impurities[i] = (nL[i] / n) * left_impurity + (
+                    nR[i] / n
+                ) * right_impurity
 
             self.splits_scanned_ += int(valid.sum())
             return impurities, valid
@@ -312,7 +314,9 @@ class LessGreedyHybridTree(BaseEstimator):
             order = np.argsort(Xs[:, j], kind="mergesort")
             xs = Xs[order, j]
             ys_ord = ys[order]
-            children_loss, valid = self._children_sse_vec(xs, ys_ord, self.min_samples_leaf)
+            children_loss, valid = self._children_sse_vec(
+                xs, ys_ord, self.min_samples_leaf
+            )
 
             if not valid.any():
                 continue
@@ -369,10 +373,20 @@ class LessGreedyHybridTree(BaseEstimator):
 
             mask_v = Xv[:, f] <= t
             lossL = self._best_kstep_val_loss(
-                Xs[mask_s], ys[mask_s], Xv[mask_v], yv[mask_v], depth_remaining - 1, topk
+                Xs[mask_s],
+                ys[mask_s],
+                Xv[mask_v],
+                yv[mask_v],
+                depth_remaining - 1,
+                topk,
             )
             lossR = self._best_kstep_val_loss(
-                Xs[~mask_s], ys[~mask_s], Xv[~mask_v], yv[~mask_v], depth_remaining - 1, topk
+                Xs[~mask_s],
+                ys[~mask_s],
+                Xv[~mask_v],
+                yv[~mask_v],
+                depth_remaining - 1,
+                topk,
             )
 
             # Weighted
@@ -490,10 +504,20 @@ class LessGreedyHybridTree(BaseEstimator):
 
                 mask_v = Xv[:, f] <= t
                 lossL = self._best_kstep_val_loss(
-                    Xs[mask_s], ys[mask_s], Xv[mask_v], yv[mask_v], k_here - 1, self.beam_topk
+                    Xs[mask_s],
+                    ys[mask_s],
+                    Xv[mask_v],
+                    yv[mask_v],
+                    k_here - 1,
+                    self.beam_topk,
                 )
                 lossR = self._best_kstep_val_loss(
-                    Xs[~mask_s], ys[~mask_s], Xv[~mask_v], yv[~mask_v], k_here - 1, self.beam_topk
+                    Xs[~mask_s],
+                    ys[~mask_s],
+                    Xv[~mask_v],
+                    yv[~mask_v],
+                    k_here - 1,
+                    self.beam_topk,
                 )
 
                 nL, nR = mask_v.sum(), (~mask_v).sum()
@@ -518,7 +542,9 @@ class LessGreedyHybridTree(BaseEstimator):
             # Only try oblique if features are correlated
             if max_abs_corr >= self.min_abs_corr:
                 try:
-                    w, scaler, alpha = self._fit_oblique_projection(Xs, ys, self.oblique_cv)
+                    w, scaler, alpha = self._fit_oblique_projection(
+                        Xs, ys, self.oblique_cv
+                    )
 
                     if np.count_nonzero(w) > 0:
                         # Project data
@@ -543,8 +569,9 @@ class LessGreedyHybridTree(BaseEstimator):
                             # Check if oblique beats axis by margin
                             if not np.isfinite(
                                 axis_gain_top
-                            ) or oblique_gain_split >= axis_gain_top * (1.0 + self.gain_margin):
-
+                            ) or oblique_gain_split >= axis_gain_top * (
+                                1.0 + self.gain_margin
+                            ):
                                 # Score on VAL
                                 sv = (Xv - scaler.mean_) / scaler.scale_
                                 s_val = sv @ w
@@ -576,12 +603,32 @@ class LessGreedyHybridTree(BaseEstimator):
 
         if best_kind == "axis":
             return self._make_axis_split(
-                best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
+                best_info,
+                Xs,
+                ys,
+                Xv,
+                yv,
+                Xe,
+                ye,
+                depth,
+                parent_mean_est,
+                n_split,
+                n_val,
             )
 
         if best_kind == "oblique_root":
             return self._make_oblique_split(
-                best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
+                best_info,
+                Xs,
+                ys,
+                Xv,
+                yv,
+                Xe,
+                ye,
+                depth,
+                parent_mean_est,
+                n_split,
+                n_val,
             )
 
         # Fallback
@@ -765,17 +812,21 @@ class LessGreedyHybridTree(BaseEstimator):
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert 0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
         assert (
-            abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8
-        ), "split_frac + val_frac + est_frac must sum to 1"
+            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
+        )
+        assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
+            "split_frac + val_frac + est_frac must sum to 1"
+        )
 
         # Classification-specific setup
         if self.task == "classification":
             y = y.astype(int)
             self.classes_ = np.unique(y)
             if len(self.classes_) > 2:
-                raise ValueError("Multi-class not yet supported. Use binary classification.")
+                raise ValueError(
+                    "Multi-class not yet supported. Use binary classification."
+                )
             self._global_prior_ = float(y.mean())
         else:
             self._global_prior_ = float(y.mean())
@@ -800,7 +851,9 @@ class LessGreedyHybridTree(BaseEstimator):
         self.splits_scanned_ = 0
         parent_mean_est = self._compute_parent_for_child(ye, ys)
 
-        self.tree_ = self._build(Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est)
+        self.tree_ = self._build(
+            Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est
+        )
 
         self.fit_time_sec_ = time.time() - t0
         return self

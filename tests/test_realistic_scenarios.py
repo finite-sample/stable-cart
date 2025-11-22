@@ -42,7 +42,9 @@ def test_regression_end_to_end(tmp_path):
 
     # Predict and persist predictions
     preds = {name: m.predict(Xte) for name, m in models.items()}
-    df_pred = pd.DataFrame({"y_true": yte, **{f"pred_{k}": v for k, v in preds.items()}})
+    df_pred = pd.DataFrame(
+        {"y_true": yte, **{f"pred_{k}": v for k, v in preds.items()}}
+    )
     pred_path = tmp_path / "predictions.csv"
     df_pred.to_csv(pred_path, index=False)
 
@@ -138,7 +140,10 @@ def test_sklearn_ecosystem_integration():
     # Test with GridSearchCV
     param_grid = {"max_depth": [2, 3], "min_samples_leaf": [10, 20]}
     grid = GridSearchCV(
-        DecisionTreeRegressor(random_state=42), param_grid, cv=3, scoring="neg_mean_squared_error"
+        DecisionTreeRegressor(random_state=42),
+        param_grid,
+        cv=3,
+        scoring="neg_mean_squared_error",
     )
     grid.fit(X, y)
     assert hasattr(grid, "best_params_")
@@ -154,7 +159,9 @@ def test_model_persistence():
 
     # Train models
     model1 = DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y)
-    model2 = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42).fit(X, y)
+    model2 = LessGreedyHybridTree(task="regression", max_depth=3, random_state=42).fit(
+        X, y
+    )
 
     # Pickle and unpickle
     for model in [model1, model2]:

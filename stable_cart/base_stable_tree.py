@@ -55,7 +55,9 @@ class BaseStableTree(BaseEstimator):
         enable_stratified_sampling: bool = True,
         # === 2. VALIDATION-CHECKED SPLIT SELECTION ===
         enable_validation_checking: bool = True,
-        validation_metric: Literal["median", "one_se", "variance_penalized"] = "variance_penalized",
+        validation_metric: Literal[
+            "median", "one_se", "variance_penalized"
+        ] = "variance_penalized",
         validation_consistency_weight: float = 1.0,
         # === 1. PREFIX STABILITY ===
         enable_prefix_consensus: bool = False,
@@ -197,7 +199,9 @@ class BaseStableTree(BaseEstimator):
         self.enable_threshold_binning = enable_threshold_binning
         self.enable_gain_margin_logic = enable_gain_margin_logic
         self.enable_beam_search_for_consensus = enable_beam_search_for_consensus
-        self.enable_robust_consensus_for_ambiguous = enable_robust_consensus_for_ambiguous
+        self.enable_robust_consensus_for_ambiguous = (
+            enable_robust_consensus_for_ambiguous
+        )
 
         # Initialize fitted attributes
         self.tree_ = None
@@ -245,7 +249,9 @@ class BaseStableTree(BaseEstimator):
         self._split_strategy_ = self._create_split_strategy()
 
         # === Build Tree Structure ===
-        self.tree_ = self._build_tree(X_split, y_split, X_val, y_val, X_est, y_est, depth=0)
+        self.tree_ = self._build_tree(
+            X_split, y_split, X_val, y_val, X_est, y_est, depth=0
+        )
 
         # Record timing and diagnostics
         self.fit_time_sec_ = time.time() - start_time
@@ -262,7 +268,9 @@ class BaseStableTree(BaseEstimator):
         # Apply same preprocessing as training
         X_processed = self._preprocess_features(X, fitted=True)
 
-        predictions = np.array([self._predict_sample(x, self.tree_) for x in X_processed])
+        predictions = np.array(
+            [self._predict_sample(x, self.tree_) for x in X_processed]
+        )
 
         if self.task == "classification":
             # Convert back to original class labels
@@ -284,7 +292,9 @@ class BaseStableTree(BaseEstimator):
         X_processed = self._preprocess_features(X, fitted=True)
 
         # Get probability of positive class
-        proba_positive = np.array([self._predict_sample(x, self.tree_) for x in X_processed])
+        proba_positive = np.array(
+            [self._predict_sample(x, self.tree_) for x in X_processed]
+        )
 
         # Return as [P(class=0), P(class=1)]
         proba_negative = 1 - proba_positive
@@ -310,8 +320,12 @@ class BaseStableTree(BaseEstimator):
         if node["type"] == "leaf":
             return 1
         else:
-            left_count = self._count_leaves_recursive(node["left"]) if "left" in node else 0
-            right_count = self._count_leaves_recursive(node["right"]) if "right" in node else 0
+            left_count = (
+                self._count_leaves_recursive(node["left"]) if "left" in node else 0
+            )
+            right_count = (
+                self._count_leaves_recursive(node["right"]) if "right" in node else 0
+            )
             return left_count + right_count
 
     # ========================================================================
@@ -325,7 +339,9 @@ class BaseStableTree(BaseEstimator):
         # === 5. DATA REGULARIZATION ===
         if self.enable_winsorization:
             if fitted and self._winsor_bounds_ is not None:
-                X_processed, _ = winsorize_features(X_processed, fitted_bounds=self._winsor_bounds_)
+                X_processed, _ = winsorize_features(
+                    X_processed, fitted_bounds=self._winsor_bounds_
+                )
             else:
                 X_processed, self._winsor_bounds_ = winsorize_features(
                     X_processed, self.winsor_quantiles
@@ -376,7 +392,9 @@ class BaseStableTree(BaseEstimator):
         else:
             # Auto-select based on enabled features and algorithm focus
             return HybridStrategy(
-                focus=self.algorithm_focus, task=self.task, random_state=self.random_state
+                focus=self.algorithm_focus,
+                task=self.task,
+                random_state=self.random_state,
             )
 
     def _build_tree(self, X_split, y_split, X_val, y_val, X_est, y_est, depth=0):
@@ -407,7 +425,10 @@ class BaseStableTree(BaseEstimator):
             return self._make_leaf(y_est, y_split, depth)
 
         # === 7. VARIANCE-AWARE STOPPING ===
-        if self.enable_variance_aware_stopping and best_split.variance_estimate is not None:
+        if (
+            self.enable_variance_aware_stopping
+            and best_split.variance_estimate is not None
+        ):
             should_stop = self._split_strategy_.should_stop(
                 X_split,
                 y_split,
@@ -421,9 +442,15 @@ class BaseStableTree(BaseEstimator):
                 return self._make_leaf(y_est, y_split, depth)
 
         # Apply split to all data partitions
-        left_indices_split, right_indices_split = self._apply_split_to_data(X_split, best_split)
-        left_indices_val, right_indices_val = self._apply_split_to_data(X_val, best_split)
-        left_indices_est, right_indices_est = self._apply_split_to_data(X_est, best_split)
+        left_indices_split, right_indices_split = self._apply_split_to_data(
+            X_split, best_split
+        )
+        left_indices_val, right_indices_val = self._apply_split_to_data(
+            X_val, best_split
+        )
+        left_indices_est, right_indices_est = self._apply_split_to_data(
+            X_est, best_split
+        )
 
         # Check minimum leaf size
         if (
@@ -463,7 +490,9 @@ class BaseStableTree(BaseEstimator):
             "n_samples_split": len(X_split),
             "n_samples_val": len(X_val),
             "n_samples_est": len(X_est),
-            "oblique_weights": best_split.oblique_weights if best_split.is_oblique else None,
+            "oblique_weights": best_split.oblique_weights
+            if best_split.is_oblique
+            else None,
             "consensus_support": getattr(best_split, "consensus_support", None),
             "variance_estimate": getattr(best_split, "variance_estimate", None),
             "left": left_child,

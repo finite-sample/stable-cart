@@ -16,7 +16,9 @@ from sklearn.utils.validation import check_is_fitted
 # ============================================================================
 
 
-def _winsorize_fit(X: np.ndarray, q: tuple[float, float]) -> tuple[np.ndarray, np.ndarray]:
+def _winsorize_fit(
+    X: np.ndarray, q: tuple[float, float]
+) -> tuple[np.ndarray, np.ndarray]:
     """Return per-feature (low, high) quantiles for winsorization."""
     if X.shape[0] == 0:
         raise ValueError("Cannot winsorize empty array")
@@ -85,7 +87,9 @@ def _robust_stump_regression(
     from collections import defaultdict
 
     bucket_losses: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
-    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
+    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(
+        list
+    )
 
     m = max(10, int(subsample_frac * n))
 
@@ -160,7 +164,9 @@ def _robust_stump_classification(
     from collections import defaultdict
 
     bucket_losses: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
-    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(list)
+    bucket_thresholds: dict[tuple[int, int, float, float], list[float]] = defaultdict(
+        list
+    )
 
     m = max(10, int(subsample_frac * n))
 
@@ -313,11 +319,19 @@ class RobustPrefixHonestTree(BaseEstimator):
     # Learned state
     _lo_: np.ndarray | None = None
     _hi_: np.ndarray | None = None
-    _prefix_nodes_: list[tuple[int, int | None, float | None, int | None, int | None]] | None = None
+    _prefix_nodes_: (
+        list[tuple[int, int | None, float | None, int | None, int | None]] | None
+    ) = None
     _region_models_: dict[int, object] | None = None
-    _region_leaf_values_: dict[int, dict[int, float]] | None = None  # regression: leaf means
-    _region_leaf_probs_: dict[int, dict[int, float]] | None = None  # classification: P(y=1)
-    _global_prior_: float | None = None  # p0 for classification, global mean for regression
+    _region_leaf_values_: dict[int, dict[int, float]] | None = (
+        None  # regression: leaf means
+    )
+    _region_leaf_probs_: dict[int, dict[int, float]] | None = (
+        None  # classification: P(y=1)
+    )
+    _global_prior_: float | None = (
+        None  # p0 for classification, global mean for regression
+    )
     classes_: np.ndarray | None = None
 
     def __post_init__(self):
@@ -336,7 +350,9 @@ class RobustPrefixHonestTree(BaseEstimator):
         else:
             return DecisionTreeClassifier
 
-    def _route_mask(self, X: np.ndarray, path: list[tuple[int, float, str]]) -> np.ndarray:
+    def _route_mask(
+        self, X: np.ndarray, path: list[tuple[int, float, str]]
+    ) -> np.ndarray:
         """Apply routing path to get mask for samples reaching a node."""
         m = np.ones(len(X), dtype=bool)
         for f, t, side in path:
@@ -405,11 +421,18 @@ class RobustPrefixHonestTree(BaseEstimator):
             )
             rel = self.est_frac / (self.val_frac + self.est_frac)
             X_val, X_est, y_val, y_est = train_test_split(
-                X_tmp, y_tmp, test_size=rel, random_state=rng.randint(0, 10**9), stratify=y_tmp
+                X_tmp,
+                y_tmp,
+                test_size=rel,
+                random_state=rng.randint(0, 10**9),
+                stratify=y_tmp,
             )
         else:
             X_split, X_tmp, y_split, y_tmp = train_test_split(
-                Xw, y, test_size=self.val_frac + self.est_frac, random_state=rng.randint(0, 10**9)
+                Xw,
+                y,
+                test_size=self.val_frac + self.est_frac,
+                random_state=rng.randint(0, 10**9),
             )
             rel = self.est_frac / (self.val_frac + self.est_frac)
             X_val, X_est, y_val, y_est = train_test_split(
@@ -497,10 +520,14 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         if self.task == "classification":
             self._region_leaf_probs_ = {}
-            self._fit_classification_regions(terminal_paths, X_split, y_split, X_est, y_est, remain)
+            self._fit_classification_regions(
+                terminal_paths, X_split, y_split, X_est, y_est, remain
+            )
         else:
             self._region_leaf_values_ = {}
-            self._fit_regression_regions(terminal_paths, X_split, y_split, X_est, y_est, remain)
+            self._fit_regression_regions(
+                terminal_paths, X_split, y_split, X_est, y_est, remain
+            )
 
         return self
 
@@ -524,7 +551,9 @@ class RobustPrefixHonestTree(BaseEstimator):
 
             # Fit structure on SPLIT
             if remain == 0 or len(ys) < 12 or len(np.unique(ys)) < 2:
-                subtree = DecisionTreeClassifier(max_depth=1, random_state=self.random_state)
+                subtree = DecisionTreeClassifier(
+                    max_depth=1, random_state=self.random_state
+                )
             else:
                 subtree = DecisionTreeClassifier(
                     max_depth=remain,
@@ -579,7 +608,9 @@ class RobustPrefixHonestTree(BaseEstimator):
 
             # Fit structure on SPLIT
             if remain == 0 or len(ys) < 12:
-                subtree = DecisionTreeRegressor(max_depth=1, random_state=self.random_state)
+                subtree = DecisionTreeRegressor(
+                    max_depth=1, random_state=self.random_state
+                )
             else:
                 subtree = DecisionTreeRegressor(
                     max_depth=remain,
@@ -620,9 +651,9 @@ class RobustPrefixHonestTree(BaseEstimator):
                     n_leaf = int(m.sum())
                     mu_leaf = float(ys[m].mean())
                     if self.smoothing > 0:
-                        mu_shrunk = (n_leaf * mu_leaf + self.smoothing * parent_mean) / (
-                            n_leaf + self.smoothing
-                        )
+                        mu_shrunk = (
+                            n_leaf * mu_leaf + self.smoothing * parent_mean
+                        ) / (n_leaf + self.smoothing)
                     else:
                         mu_shrunk = mu_leaf
                     leaf_values[int(lid)] = float(mu_shrunk)
@@ -652,7 +683,14 @@ class RobustPrefixHonestTree(BaseEstimator):
     def _predict_regression(self, X: np.ndarray) -> np.ndarray:
         """Regression prediction implementation."""
         check_is_fitted(
-            self, ["_lo_", "_hi_", "_prefix_nodes_", "_region_models_", "_region_leaf_values_"]
+            self,
+            [
+                "_lo_",
+                "_hi_",
+                "_prefix_nodes_",
+                "_region_models_",
+                "_region_leaf_values_",
+            ],
         )
 
         X = np.asarray(X)
@@ -693,7 +731,9 @@ class RobustPrefixHonestTree(BaseEstimator):
             Class probabilities.
         """
         if self.task != "classification":
-            raise AttributeError("predict_proba only available for classification tasks")
+            raise AttributeError(
+                "predict_proba only available for classification tasks"
+            )
 
         check_is_fitted(
             self,
@@ -720,7 +760,8 @@ class RobustPrefixHonestTree(BaseEstimator):
 
             leaves = subtree.apply(Xw[mask])
             p1 = np.array(
-                [self._region_leaf_probs_[nid].get(int(lid), 0.5) for lid in leaves], dtype=float
+                [self._region_leaf_probs_[nid].get(int(lid), 0.5) for lid in leaves],
+                dtype=float,
             )
             p1 = np.clip(p1, 1e-7, 1 - 1e-7)
 

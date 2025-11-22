@@ -61,7 +61,11 @@ def test_bootstrap_variance_regressor_no_penalty(regression_data):
     """Test with zero variance penalty (should behave like standard tree)."""
     X, y = regression_data
     model = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=0.0, n_bootstrap=0, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=0.0,
+        n_bootstrap=0,
+        random_state=42,
     )
     model.fit(X, y)
 
@@ -94,7 +98,11 @@ def test_bootstrap_variance_regressor_sklearn_compatibility(regression_data):
 
     # Test with cross-validation
     model = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=1.0, n_bootstrap=3, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=1.0,
+        n_bootstrap=3,
+        random_state=42,
     )
     scores = cross_val_score(model, X, y, cv=3, scoring="r2")
     assert len(scores) == 3
@@ -124,10 +132,16 @@ def test_bootstrap_variance_regressor_sklearn_compatibility(regression_data):
 def test_bootstrap_variance_regressor_score_method(regression_data):
     """Test the score method."""
     X, y = regression_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=1.0, n_bootstrap=3, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=1.0,
+        n_bootstrap=3,
+        random_state=42,
     )
     model.fit(X_train, y_train)
 
@@ -178,7 +192,9 @@ def test_bootstrap_variance_regressor_invalid_fractions():
         random_state=42,  # Doesn't sum to 1
     )
 
-    with pytest.raises(AssertionError, match="split_frac \\+ val_frac \\+ est_frac must sum to 1"):
+    with pytest.raises(
+        AssertionError, match="split_frac \\+ val_frac \\+ est_frac must sum to 1"
+    ):
         model.fit(X, y)
 
 
@@ -230,17 +246,27 @@ def test_simple_tree_small_data():
 def test_variance_penalty_effect(regression_data):
     """Test that different variance penalties affect bootstrap evaluations."""
     X, y = regression_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     # No penalty model
     model_no_penalty = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=0.0, n_bootstrap=0, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=0.0,
+        n_bootstrap=0,
+        random_state=42,
     )
     model_no_penalty.fit(X_train, y_train)
 
     # High penalty model
     model_high = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=5.0, n_bootstrap=5, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=5.0,
+        n_bootstrap=5,
+        random_state=42,
     )
     model_high.fit(X_train, y_train)
 
@@ -261,13 +287,21 @@ def test_bootstrap_samples_effect(regression_data):
 
     # Few bootstrap samples
     model_few = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=1.0, n_bootstrap=2, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=1.0,
+        n_bootstrap=2,
+        random_state=42,
     )
     model_few.fit(X, y)
 
     # Many bootstrap samples
     model_many = BootstrapVariancePenalizedTree(
-        task="regression", max_depth=3, variance_penalty=1.0, n_bootstrap=10, random_state=42
+        task="regression",
+        max_depth=3,
+        variance_penalty=1.0,
+        n_bootstrap=10,
+        random_state=42,
     )
     model_many.fit(X, y)
 

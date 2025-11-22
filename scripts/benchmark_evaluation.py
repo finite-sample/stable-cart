@@ -44,10 +44,16 @@ def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]
                 max_depth=6, min_samples_leaf=20, random_state=random_state
             ),
             "CART_Pruned": lambda: DecisionTreeRegressor(
-                max_depth=6, min_samples_leaf=20, ccp_alpha=0.01, random_state=random_state
+                max_depth=6,
+                min_samples_leaf=20,
+                ccp_alpha=0.01,
+                random_state=random_state,
             ),
             "RandomForest": lambda: RandomForestRegressor(
-                n_estimators=100, max_depth=6, min_samples_leaf=20, random_state=random_state
+                n_estimators=100,
+                max_depth=6,
+                min_samples_leaf=20,
+                random_state=random_state,
             ),
             "LessGreedyHybrid": lambda: LessGreedyHybridTree(
                 task="regression",
@@ -95,10 +101,16 @@ def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]
                 max_depth=6, min_samples_leaf=20, random_state=random_state
             ),
             "CART_Pruned": lambda: DecisionTreeClassifier(
-                max_depth=6, min_samples_leaf=20, ccp_alpha=0.01, random_state=random_state
+                max_depth=6,
+                min_samples_leaf=20,
+                ccp_alpha=0.01,
+                random_state=random_state,
             ),
             "RandomForest": lambda: RandomForestClassifier(
-                n_estimators=100, max_depth=6, min_samples_leaf=20, random_state=random_state
+                n_estimators=100,
+                max_depth=6,
+                min_samples_leaf=20,
+                random_state=random_state,
             ),
             "LessGreedyHybrid": lambda: LessGreedyHybridTree(
                 task="classification",
@@ -199,10 +211,18 @@ def bootstrap_prediction_variance(
         model.fit(X_boot, y_boot)
 
         # For classification, use probabilities if available; for regression, use predictions
-        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) == 2:
+        if (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y_train)) == 2
+        ):
             # Binary classification - use probability of positive class
             pred = model.predict_proba(X_test)[:, 1]
-        elif task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) > 2:
+        elif (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y_train)) > 2
+        ):
             # Multi-class - use max probability
             proba = model.predict_proba(X_test)
             pred = np.max(proba, axis=1)
@@ -227,7 +247,9 @@ def bootstrap_prediction_variance(
 # ============================================================================
 
 
-def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+def evaluate_discrimination_regression(
+    y_true: np.ndarray, y_pred: np.ndarray
+) -> dict[str, float]:
     """Standard regression metrics."""
     return {
         "mse": float(mean_squared_error(y_true, y_pred)),
@@ -289,7 +311,10 @@ def get_model_characteristics(model: Any) -> dict[str, float]:
             # Average leaves across trees
             if hasattr(model, "estimators_"):
                 avg_leaves = np.mean(
-                    [np.sum(tree.tree_.children_left == -1) for tree in model.estimators_]
+                    [
+                        np.sum(tree.tree_.children_left == -1)
+                        for tree in model.estimators_
+                    ]
                 )
                 characteristics["avg_n_leaves"] = float(avg_leaves)
 
@@ -349,7 +374,9 @@ def evaluate_single_model(
     if task == "regression":
         discrimination_metrics = evaluate_discrimination_regression(y_test, y_pred)
     else:
-        discrimination_metrics = evaluate_discrimination_classification(y_test, y_pred, y_proba)
+        discrimination_metrics = evaluate_discrimination_classification(
+            y_test, y_pred, y_proba
+        )
 
     # 3. Model characteristics
     characteristics = get_model_characteristics(model)
@@ -407,7 +434,9 @@ def evaluate_dataset(
 
     # Filter models if specified
     if models_to_run:
-        model_factories = {k: v for k, v in model_factories.items() if k in models_to_run}
+        model_factories = {
+            k: v for k, v in model_factories.items() if k in models_to_run
+        }
 
     results = []
 
@@ -441,7 +470,12 @@ def evaluate_dataset(
             print(f"✗ Failed: {str(e)}")
             # Add failed entry with NaN values
             results.append(
-                {"dataset": dataset_name, "model": model_name, "task": task, "error": str(e)}
+                {
+                    "dataset": dataset_name,
+                    "model": model_name,
+                    "task": task,
+                    "error": str(e),
+                }
             )
 
     return pd.DataFrame(results)
@@ -479,7 +513,11 @@ def cross_validation_stability(
         model = model_factory()
         model.fit(X_train_cv, y_train_cv)
 
-        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y)) == 2:
+        if (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y)) == 2
+        ):
             pred = model.predict_proba(X_val_cv)[:, 1]
         else:
             pred = model.predict(X_val_cv)
@@ -506,8 +544,16 @@ if __name__ == "__main__":
     # Test single model evaluation
     def factory():
         return DecisionTreeClassifier(max_depth=5, random_state=42)
+
     results = evaluate_single_model(
-        "TestCART", factory, X_train, y_train, X_test, y_test, "classification", n_bootstrap=5
+        "TestCART",
+        factory,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        "classification",
+        n_bootstrap=5,
     )
 
     print("\nSample results:")

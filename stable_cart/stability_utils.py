@@ -86,7 +86,9 @@ def bootstrap_consensus_split(
             # Bin the threshold if enabled
             if enable_quantile_binning:
                 feature_values = X[:, candidate.feature_idx]
-                binned_threshold = _bin_threshold(candidate.threshold, feature_values, max_bins)
+                binned_threshold = _bin_threshold(
+                    candidate.threshold, feature_values, max_bins
+                )
             else:
                 binned_threshold = candidate.threshold
 
@@ -125,7 +127,9 @@ def bootstrap_consensus_split(
     return best_candidate, consensus_candidates
 
 
-def _bin_threshold(threshold: float, feature_values: np.ndarray, max_bins: int) -> float:
+def _bin_threshold(
+    threshold: float, feature_values: np.ndarray, max_bins: int
+) -> float:
     """Bin threshold to quantile grid to reduce micro-jitter."""
     if len(np.unique(feature_values)) <= max_bins:
         return threshold
@@ -139,7 +143,9 @@ def _bin_threshold(threshold: float, feature_values: np.ndarray, max_bins: int) 
     return bins[closest_idx]
 
 
-def enable_deterministic_tiebreaking(candidates: list[SplitCandidate]) -> list[SplitCandidate]:
+def enable_deterministic_tiebreaking(
+    candidates: list[SplitCandidate],
+) -> list[SplitCandidate]:
     """Sort candidates deterministically to break ties consistently."""
     return sorted(
         candidates,
@@ -220,7 +226,9 @@ def validation_checked_split_selection(
         raise ValueError(f"Unknown validation metric: {metric}")
 
 
-def _evaluate_split_performance(y: np.ndarray, left_mask: np.ndarray, task: str) -> float:
+def _evaluate_split_performance(
+    y: np.ndarray, left_mask: np.ndarray, task: str
+) -> float:
     """Evaluate split performance on validation data."""
     if np.sum(left_mask) == 0 or np.sum(~left_mask) == 0:
         return 0.0
@@ -231,7 +239,9 @@ def _evaluate_split_performance(y: np.ndarray, left_mask: np.ndarray, task: str)
         left_var = np.var(y[left_mask]) if np.sum(left_mask) > 1 else 0
         right_var = np.var(y[~left_mask]) if np.sum(~left_mask) > 1 else 0
 
-        weighted_var = (np.sum(left_mask) * left_var + np.sum(~left_mask) * right_var) / len(y)
+        weighted_var = (
+            np.sum(left_mask) * left_var + np.sum(~left_mask) * right_var
+        ) / len(y)
         return total_var - weighted_var
     else:
         # Use reduction in Gini impurity
@@ -239,7 +249,9 @@ def _evaluate_split_performance(y: np.ndarray, left_mask: np.ndarray, task: str)
         left_gini = _gini_impurity(y[left_mask]) if np.sum(left_mask) > 0 else 0
         right_gini = _gini_impurity(y[~left_mask]) if np.sum(~left_mask) > 0 else 0
 
-        weighted_gini = (np.sum(left_mask) * left_gini + np.sum(~left_mask) * right_gini) / len(y)
+        weighted_gini = (
+            np.sum(left_mask) * left_gini + np.sum(~left_mask) * right_gini
+        ) / len(y)
         return total_gini - weighted_gini
 
 
@@ -283,7 +295,9 @@ def honest_data_partition(
     task: str = "regression",
     random_state: int | None = None,
 ) -> tuple[
-    tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]
+    tuple[np.ndarray, np.ndarray],
+    tuple[np.ndarray, np.ndarray],
+    tuple[np.ndarray, np.ndarray],
 ]:
     """
     Partition data into SPLIT/VAL/EST subsets with optional stratification.
@@ -348,7 +362,9 @@ def _create_target_bins(y: np.ndarray, n_bins: int = 5) -> np.ndarray:
 def stabilize_leaf_estimate(
     y_est: np.ndarray,
     y_parent: np.ndarray,
-    strategy: Literal["m_estimate", "shrink_to_parent", "beta_smoothing"] = "m_estimate",
+    strategy: Literal[
+        "m_estimate", "shrink_to_parent", "beta_smoothing"
+    ] = "m_estimate",
     smoothing: float = 1.0,
     task: str = "regression",
     min_samples: int = 5,
@@ -399,14 +415,18 @@ def _stabilize_classification_leaf(
 ) -> np.ndarray:
     """Stabilize classification leaf probabilities."""
     unique_classes = (
-        np.unique(np.concatenate([y_est, y_parent])) if len(y_parent) > 0 else np.unique(y_est)
+        np.unique(np.concatenate([y_est, y_parent]))
+        if len(y_parent) > 0
+        else np.unique(y_est)
     )
     n_classes = len(unique_classes)
 
     # Leaf counts
     leaf_counts = np.bincount(y_est.astype(int), minlength=n_classes)
     parent_counts = (
-        np.bincount(y_parent.astype(int), minlength=n_classes) if len(y_parent) > 0 else leaf_counts
+        np.bincount(y_parent.astype(int), minlength=n_classes)
+        if len(y_parent) > 0
+        else leaf_counts
     )
 
     if strategy == "m_estimate":
@@ -429,7 +449,11 @@ def _stabilize_classification_leaf(
             if np.sum(parent_counts) > 0
             else np.ones(n_classes) / n_classes
         )
-        leaf_probs = leaf_counts / np.sum(leaf_counts) if np.sum(leaf_counts) > 0 else parent_probs
+        leaf_probs = (
+            leaf_counts / np.sum(leaf_counts)
+            if np.sum(leaf_counts) > 0
+            else parent_probs
+        )
         shrinkage_factor = smoothing / (1 + smoothing)
         return (1 - shrinkage_factor) * leaf_probs + shrinkage_factor * parent_probs
 
@@ -578,7 +602,11 @@ def beam_search_splits(
 
 
 def _perform_beam_search(
-    X: np.ndarray, y: np.ndarray, initial_candidates: list[SplitCandidate], depth: int, task: str
+    X: np.ndarray,
+    y: np.ndarray,
+    initial_candidates: list[SplitCandidate],
+    depth: int,
+    task: str,
 ) -> list[SplitCandidate]:
     """Simplified beam search implementation."""
     if depth <= 1:
@@ -645,7 +673,9 @@ def estimate_split_variance(
             projections = X_boot @ split_candidate.oblique_weights
             left_mask = projections <= split_candidate.threshold
         else:
-            left_mask = X_boot[:, split_candidate.feature_idx] <= split_candidate.threshold
+            left_mask = (
+                X_boot[:, split_candidate.feature_idx] <= split_candidate.threshold
+            )
 
         # Evaluate split on this bootstrap sample
         if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:

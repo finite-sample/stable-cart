@@ -69,7 +69,9 @@ def plot_stability_comparison(df_stab, output_dir):
     # Mean prediction std
     ax1 = axes[0]
     sns.barplot(data=df_stab, x="dataset", y="mean_pred_std", hue="model", ax=ax1)
-    ax1.set_title("Mean Prediction Std Dev (Lower = More Stable)", fontsize=14, fontweight="bold")
+    ax1.set_title(
+        "Mean Prediction Std Dev (Lower = More Stable)", fontsize=14, fontweight="bold"
+    )
     ax1.set_xlabel("Dataset", fontsize=12)
     ax1.set_ylabel("Mean Prediction Std", fontsize=12)
     ax1.tick_params(axis="x", rotation=45)
@@ -79,7 +81,9 @@ def plot_stability_comparison(df_stab, output_dir):
     # P90 prediction std
     ax2 = axes[1]
     sns.barplot(data=df_stab, x="dataset", y="p90_pred_std", hue="model", ax=ax2)
-    ax2.set_title("P90 Prediction Std Dev (Lower = More Stable)", fontsize=14, fontweight="bold")
+    ax2.set_title(
+        "P90 Prediction Std Dev (Lower = More Stable)", fontsize=14, fontweight="bold"
+    )
     ax2.set_xlabel("Dataset", fontsize=12)
     ax2.set_ylabel("P90 Prediction Std", fontsize=12)
     ax2.tick_params(axis="x", rotation=45)
@@ -152,9 +156,9 @@ def plot_relative_improvements(df_stab, output_dir):
         ].values[0]
 
         for model in models:
-            model_var = df_stab[(df_stab.dataset == dataset) & (df_stab.model == model)][
-                "mean_pred_std"
-            ].values[0]
+            model_var = df_stab[
+                (df_stab.dataset == dataset) & (df_stab.model == model)
+            ]["mean_pred_std"].values[0]
 
             pct_improvement = (1 - model_var / cart_var) * 100
             improvements.append(
@@ -177,7 +181,9 @@ def plot_relative_improvements(df_stab, output_dir):
     ax.set_xlabel("Dataset", fontsize=12)
     ax.set_ylabel("Stability Improvement vs CART (%)", fontsize=12)
     ax.set_title(
-        "Prediction Stability Improvement Over CART Baseline", fontsize=14, fontweight="bold"
+        "Prediction Stability Improvement Over CART Baseline",
+        fontsize=14,
+        fontweight="bold",
     )
     ax.set_xticks(x)
     ax.set_xticklabels(datasets, rotation=45, ha="right")
@@ -197,7 +203,9 @@ def plot_tree_size_comparison(df_acc, output_dir):
     fig, ax = plt.subplots(figsize=(12, 6))
 
     sns.barplot(data=df_acc, x="dataset", y="leaves", hue="model", ax=ax)
-    ax.set_title("Tree Size Comparison (Number of Leaves)", fontsize=14, fontweight="bold")
+    ax.set_title(
+        "Tree Size Comparison (Number of Leaves)", fontsize=14, fontweight="bold"
+    )
     ax.set_xlabel("Dataset", fontsize=12)
     ax.set_ylabel("Number of Leaves", fontsize=12)
     ax.tick_params(axis="x", rotation=45)
@@ -221,7 +229,9 @@ def generate_summary_table(df_acc, df_stab, output_dir):
     )
 
     stab_summary = (
-        df_stab.groupby("model").agg({"mean_pred_std": "mean", "p90_pred_std": "mean"}).round(4)
+        df_stab.groupby("model")
+        .agg({"mean_pred_std": "mean", "p90_pred_std": "mean"})
+        .round(4)
     )
 
     # Merge summaries
@@ -235,7 +245,14 @@ def generate_summary_table(df_acc, df_stab, output_dir):
 
     # Reorder columns
     summary = summary[
-        ["mse", "r2", "mean_pred_std", "stability_vs_cart_pct", "leaves", "fit_time_sec"]
+        [
+            "mse",
+            "r2",
+            "mean_pred_std",
+            "stability_vs_cart_pct",
+            "leaves",
+            "fit_time_sec",
+        ]
     ]
 
     # Save to CSV
@@ -286,9 +303,9 @@ def main():
     print("\nGenerating summary statistics...")
     generate_summary_table(df_acc, df_stab, output_dir)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"All visualizations saved to: {output_dir}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
 
 if __name__ == "__main__":

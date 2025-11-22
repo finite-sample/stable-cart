@@ -170,7 +170,9 @@ def test_robust_stump_returns_none_on_insufficient_data():
 def test_robust_prefix_basic_fit_predict(binary_classification_data):
     """Test basic fitting and prediction."""
     X, y = binary_classification_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = RobustPrefixHonestTree(
         task="classification",
@@ -184,7 +186,14 @@ def test_robust_prefix_basic_fit_predict(binary_classification_data):
     # Check fitted attributes
     check_is_fitted(
         model,
-        ["_lo_", "_hi_", "_prefix_nodes_", "_region_models_", "_region_leaf_probs_", "classes_"],
+        [
+            "_lo_",
+            "_hi_",
+            "_prefix_nodes_",
+            "_region_models_",
+            "_region_leaf_probs_",
+            "classes_",
+        ],
     )
 
     assert model.classes_.tolist() == [0, 1]
@@ -206,7 +215,9 @@ def test_robust_prefix_basic_fit_predict(binary_classification_data):
 def test_robust_prefix_different_top_levels(binary_classification_data):
     """Test with different prefix depth levels."""
     X, y = binary_classification_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     for top_levels in [0, 1, 2, 3]:
         model = RobustPrefixHonestTree(
@@ -227,7 +238,9 @@ def test_robust_prefix_different_top_levels(binary_classification_data):
 def test_robust_prefix_smoothing(binary_classification_data):
     """Test m-estimate smoothing parameter."""
     X, y = binary_classification_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     # No smoothing
     model_no_smooth = RobustPrefixHonestTree(
@@ -291,7 +304,9 @@ def test_robust_prefix_winsorization(binary_classification_data):
 
 def test_robust_prefix_honest_split():
     """Test that honest split (SPLIT/VAL/EST) is working correctly."""
-    X, y = make_classification(n_samples=300, n_features=10, n_classes=2, random_state=42)
+    X, y = make_classification(
+        n_samples=300, n_features=10, n_classes=2, random_state=42
+    )
 
     model = RobustPrefixHonestTree(
         task="classification",
@@ -337,7 +352,9 @@ def test_robust_prefix_sklearn_compatibility(binary_classification_data):
             ),
         ]
     )
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
     pipe.fit(X_train, y_train)
     predictions = pipe.predict(X_test)
     assert predictions.shape == y_test.shape
@@ -346,7 +363,9 @@ def test_robust_prefix_sklearn_compatibility(binary_classification_data):
 def test_robust_prefix_consensus_parameters(binary_classification_data):
     """Test different consensus parameters."""
     X, y = binary_classification_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     # Few bootstrap samples
     model_few = RobustPrefixHonestTree(
@@ -416,7 +435,9 @@ def test_robust_prefix_multiclass_error():
 
     model = RobustPrefixHonestTree(task="classification", random_state=42)
 
-    with pytest.raises(ValueError, match="Multi-class classification not yet supported"):
+    with pytest.raises(
+        ValueError, match="Multi-class classification not yet supported"
+    ):
         model.fit(X, y)
 
 
@@ -567,7 +588,9 @@ def test_unified_tree_classification_task():
     from sklearn.datasets import make_classification
 
     X, y = make_classification(n_samples=200, n_features=10, random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = RobustPrefixHonestTree(
         task="classification", top_levels=1, max_depth=4, smoothing=1.0, random_state=42
@@ -591,7 +614,9 @@ def test_unified_tree_classification_task():
 def test_unified_tree_regression_task():
     """Test unified tree with regression task."""
     X, y = make_regression(n_samples=200, n_features=10, noise=0.1, random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = RobustPrefixHonestTree(
         task="regression", top_levels=1, max_depth=4, smoothing=1.0, random_state=42
@@ -660,5 +685,7 @@ def test_unified_tree_predict_proba_error_on_regression():
     model = RobustPrefixHonestTree(task="regression", random_state=42)
     model.fit(X, y)
 
-    with pytest.raises(AttributeError, match="predict_proba only available for classification"):
+    with pytest.raises(
+        AttributeError, match="predict_proba only available for classification"
+    ):
         model.predict_proba(X)

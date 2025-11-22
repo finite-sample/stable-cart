@@ -67,7 +67,12 @@ def create_performance_table(results_df: pd.DataFrame, task: str) -> str:
                         best_val = dataset_data[metric].min()
                         if abs(value - best_val) < 1e-6:
                             formatted = f"**{formatted}**"
-                    elif metric in ["r2", "accuracy", "f1_macro", "auc"]:  # Higher is better
+                    elif metric in [
+                        "r2",
+                        "accuracy",
+                        "f1_macro",
+                        "auc",
+                    ]:  # Higher is better
                         best_val = dataset_data[metric].max()
                         if abs(value - best_val) < 1e-6:
                             formatted = f"**{formatted}**"
@@ -91,12 +96,24 @@ def create_stability_summary_table(stability_df: pd.DataFrame) -> str:
     # Calculate average variance reduction by model
     model_summary = (
         stability_df.groupby("model")
-        .agg({"variance_reduction_pct": ["mean", "std", "count"], "relative_variance": "mean"})
+        .agg(
+            {
+                "variance_reduction_pct": ["mean", "std", "count"],
+                "relative_variance": "mean",
+            }
+        )
         .round(2)
     )
 
-    model_summary.columns = ["Avg_Reduction_%", "Std_Reduction", "N_Datasets", "Relative_Variance"]
-    model_summary = model_summary.reset_index().sort_values("Avg_Reduction_%", ascending=False)
+    model_summary.columns = [
+        "Avg_Reduction_%",
+        "Std_Reduction",
+        "N_Datasets",
+        "Relative_Variance",
+    ]
+    model_summary = model_summary.reset_index().sort_values(
+        "Avg_Reduction_%", ascending=False
+    )
 
     # Create markdown table
     table = "| Model | Avg Variance Reduction (%) | Std Dev | Datasets | Relative to CART |\n"
@@ -129,7 +146,9 @@ def create_model_characteristics_table(results_df: pd.DataFrame) -> str:
     if not available_metrics:
         return "No model characteristics available.\n\n"
 
-    summary = results_df.groupby("model")[available_metrics].agg(["mean", "std"]).round(2)
+    summary = (
+        results_df.groupby("model")[available_metrics].agg(["mean", "std"]).round(2)
+    )
     summary.columns = [f"{col[0]}_{col[1]}" for col in summary.columns]
     summary = summary.reset_index()
 
@@ -141,7 +160,9 @@ def create_model_characteristics_table(results_df: pd.DataFrame) -> str:
         table += "Avg Fit Time (s) | "
     table = table.rstrip(" |") + " |\n"
 
-    table += "|" + "---|" * (len([c for c in summary.columns if c != "model"]) + 1) + "\n"
+    table += (
+        "|" + "---|" * (len([c for c in summary.columns if c != "model"]) + 1) + "\n"
+    )
 
     for _, row in summary.iterrows():
         model = row["model"]
@@ -160,7 +181,9 @@ def create_model_characteristics_table(results_df: pd.DataFrame) -> str:
     return table + "\n"
 
 
-def create_dataset_insights(results_df: pd.DataFrame, stability_df: pd.DataFrame) -> str:
+def create_dataset_insights(
+    results_df: pd.DataFrame, stability_df: pd.DataFrame
+) -> str:
     """Generate insights about which methods work best on which datasets."""
     insights = []
 
@@ -168,7 +191,9 @@ def create_dataset_insights(results_df: pd.DataFrame, stability_df: pd.DataFrame
         return "Dataset-specific insights not available without stability analysis.\n\n"
 
     # Find datasets where stable methods show largest improvements
-    dataset_improvements = stability_df.groupby("dataset")["variance_reduction_pct"].max()
+    dataset_improvements = stability_df.groupby("dataset")[
+        "variance_reduction_pct"
+    ].max()
     best_datasets = dataset_improvements.nlargest(3)
     worst_datasets = dataset_improvements.nsmallest(3)
 
@@ -178,7 +203,9 @@ def create_dataset_insights(results_df: pd.DataFrame, stability_df: pd.DataFrame
             (stability_df["dataset"] == dataset)
             & (stability_df["variance_reduction_pct"] == improvement)
         ]["model"].iloc[0]
-        insights.append(f"- **{dataset}**: {improvement:.1f}% reduction with {best_model}")
+        insights.append(
+            f"- **{dataset}**: {improvement:.1f}% reduction with {best_model}"
+        )
 
     insights.append("\n### Challenging Datasets")
     for dataset, improvement in worst_datasets.items():
@@ -187,7 +214,9 @@ def create_dataset_insights(results_df: pd.DataFrame, stability_df: pd.DataFrame
                 f"- **{dataset}**: Stable methods show {abs(improvement):.1f}% worse variance"
             )
         else:
-            insights.append(f"- **{dataset}**: Limited improvement ({improvement:.1f}%)")
+            insights.append(
+                f"- **{dataset}**: Limited improvement ({improvement:.1f}%)"
+            )
 
     # Find most consistent methods
     insights.append("\n### Most Consistent Methods")
@@ -200,7 +229,9 @@ def create_dataset_insights(results_df: pd.DataFrame, stability_df: pd.DataFrame
             model_consistency["mean_improvement"] - model_consistency["std_improvement"]
         )
 
-        top_consistent = model_consistency.sort_values("consistency_score", ascending=False).head(3)
+        top_consistent = model_consistency.sort_values(
+            "consistency_score", ascending=False
+        ).head(3)
         for model, row in top_consistent.iterrows():
             if model != "CART":  # Skip baseline
                 insights.append(

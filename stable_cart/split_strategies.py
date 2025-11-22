@@ -187,7 +187,9 @@ class ConsensusStrategy(SplitStrategy):
             return best_split
 
         # Fall back to simpler strategy if consensus fails
-        return self.fallback_strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
+        return self.fallback_strategy.find_best_split(
+            X, y, X_val, y_val, depth, **kwargs
+        )
 
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
@@ -292,7 +294,9 @@ class LookaheadStrategy(SplitStrategy):
         """Find split using lookahead beam search."""
         if len(X) < self.min_samples_for_lookahead:
             # Fall back for small datasets
-            return self.fallback_strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
+            return self.fallback_strategy.find_best_split(
+                X, y, X_val, y_val, depth, **kwargs
+            )
 
         candidates = beam_search_splits(
             X,
@@ -329,7 +333,9 @@ class VariancePenalizedStrategy(SplitStrategy):
         self,
         variance_penalty_weight: float = 1.0,
         variance_estimation_samples: int = 10,
-        stopping_strategy: Literal["one_se", "variance_penalty", "both"] = "variance_penalty",
+        stopping_strategy: Literal[
+            "one_se", "variance_penalty", "both"
+        ] = "variance_penalty",
         base_strategy: SplitStrategy | None = None,
         task: str = "regression",
         random_state: int | None = None,
@@ -352,7 +358,9 @@ class VariancePenalizedStrategy(SplitStrategy):
     ) -> SplitCandidate | None:
         """Find split with explicit variance penalty."""
         # Get candidates from base strategy
-        base_split = self.base_strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
+        base_split = self.base_strategy.find_best_split(
+            X, y, X_val, y_val, depth, **kwargs
+        )
 
         if base_split is None:
             return None
@@ -370,7 +378,9 @@ class VariancePenalizedStrategy(SplitStrategy):
         base_split.variance_estimate = variance_estimate
 
         # Apply variance penalty to gain
-        penalized_gain = base_split.gain - self.variance_penalty_weight * variance_estimate
+        penalized_gain = (
+            base_split.gain - self.variance_penalty_weight * variance_estimate
+        )
 
         if penalized_gain <= 0:
             return None  # Split not worth the variance cost
@@ -395,7 +405,10 @@ class VariancePenalizedStrategy(SplitStrategy):
 
         # Variance-aware stopping
         return should_stop_splitting(
-            current_gain, variance_estimate, self.variance_penalty_weight, self.stopping_strategy
+            current_gain,
+            variance_estimate,
+            self.variance_penalty_weight,
+            self.stopping_strategy,
         )
 
 
@@ -405,7 +418,9 @@ class CompositeStrategy(SplitStrategy):
     def __init__(
         self,
         strategies: list[SplitStrategy],
-        selection_metric: Literal["gain", "validation", "variance_penalized"] = "validation",
+        selection_metric: Literal[
+            "gain", "validation", "variance_penalized"
+        ] = "validation",
         task: str = "regression",
     ):
         self.strategies = strategies
@@ -442,13 +457,19 @@ class CompositeStrategy(SplitStrategy):
         # Select best based on metric
         if self.selection_metric == "gain":
             return max(candidates, key=lambda c: c.gain)
-        elif self.selection_metric == "validation" and X_val is not None and y_val is not None:
+        elif (
+            self.selection_metric == "validation"
+            and X_val is not None
+            and y_val is not None
+        ):
             return validation_checked_split_selection(
                 X, y, X_val, y_val, candidates, task=self.task
             )
         elif self.selection_metric == "variance_penalized":
             # Prefer candidates with lower variance estimates
-            valid_candidates = [c for c in candidates if c.variance_estimate is not None]
+            valid_candidates = [
+                c for c in candidates if c.variance_estimate is not None
+            ]
             if valid_candidates:
                 return min(
                     valid_candidates, key=lambda c: c.variance_estimate - c.gain
@@ -507,7 +528,9 @@ class HybridStrategy(SplitStrategy):
             self.strategy = CompositeStrategy(
                 [
                     VariancePenalizedStrategy(
-                        base_strategy=ConsensusStrategy(task=task, random_state=random_state),
+                        base_strategy=ConsensusStrategy(
+                            task=task, random_state=random_state
+                        ),
                         task=task,
                         random_state=random_state,
                     ),
@@ -541,7 +564,9 @@ class HybridStrategy(SplitStrategy):
 # ============================================================================
 
 
-def create_split_strategy(strategy_type: str, task: str = "regression", **kwargs) -> SplitStrategy:
+def create_split_strategy(
+    strategy_type: str, task: str = "regression", **kwargs
+) -> SplitStrategy:
     """
     Factory function to create split strategies by name.
 

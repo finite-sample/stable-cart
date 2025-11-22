@@ -71,7 +71,9 @@ class LessGreedyHybridTree(BaseStableTree):
         variance_penalty_weight: float = 0.1,
         # === LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,  # Conservative default for LessGreedy
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "shrink_to_parent",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent"
+        ] = "shrink_to_parent",
         # === MARGIN-BASED LOGIC ===
         enable_gain_margin_logic: bool = True,  # Signature feature
         margin_threshold: float = 0.03,
@@ -144,7 +146,9 @@ class LessGreedyHybridTree(BaseStableTree):
         self.oblique_cv = 5  # Fixed for unified version
 
         # Cross-method enhancement flags
-        self.enable_robust_consensus_for_ambiguous = enable_robust_consensus_for_ambiguous
+        self.enable_robust_consensus_for_ambiguous = (
+            enable_robust_consensus_for_ambiguous
+        )
         self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
 

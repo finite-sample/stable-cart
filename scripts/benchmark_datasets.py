@@ -155,7 +155,10 @@ def heteroscedastic_dataset(
 
 
 def xor_nonlinear_dataset(
-    n_samples: int = 3000, n_features: int = 8, noise: float = 0.7, random_state: int = 42
+    n_samples: int = 3000,
+    n_features: int = 8,
+    noise: float = 0.7,
+    random_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     XOR pattern with additional nonlinear features.
@@ -313,7 +316,9 @@ def get_dataset_info() -> pd.DataFrame:
                 "description": (
                     func.__doc__.split("\n")[1].strip()
                     if func.__doc__ and len(func.__doc__.split("\n")) > 1
-                    else func.__doc__.strip() if func.__doc__ else ""
+                    else func.__doc__.strip()
+                    if func.__doc__
+                    else ""
                 ),
             }
         )
@@ -331,7 +336,9 @@ def get_dataset_info() -> pd.DataFrame:
                 "description": (
                     func.__doc__.split("\n")[1].strip()
                     if func.__doc__ and len(func.__doc__.split("\n")) > 1
-                    else func.__doc__.strip() if func.__doc__ else ""
+                    else func.__doc__.strip()
+                    if func.__doc__
+                    else ""
                 ),
             }
         )

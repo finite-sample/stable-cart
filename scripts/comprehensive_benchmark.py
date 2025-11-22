@@ -53,16 +53,16 @@ def run_comprehensive_benchmark(
     if quick_mode:
         n_bootstrap = max(5, n_bootstrap // 4)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("COMPREHENSIVE TREE ALGORITHM BENCHMARK")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"Datasets: {len(datasets)} selected")
     print(f"Bootstrap samples: {n_bootstrap}")
     print(f"Random seed: {random_state}")
     print(f"Output directory: {output_dir}")
     print(f"Quick mode: {quick_mode}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     all_results = []
 
@@ -110,19 +110,21 @@ def run_comprehensive_benchmark(
     detailed_path = os.path.join(output_dir, "detailed_results.csv")
     combined_results.to_csv(detailed_path, index=False)
 
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("BENCHMARK COMPLETED")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"Total datasets processed: {len(all_results)}")
     print(f"Total model evaluations: {len(combined_results)}")
     print(f"Detailed results saved: {detailed_path}")
     print(f"Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     return combined_results
 
 
-def create_summary_statistics(results_df: pd.DataFrame, output_dir: str) -> pd.DataFrame:
+def create_summary_statistics(
+    results_df: pd.DataFrame, output_dir: str
+) -> pd.DataFrame:
     """Create summary statistics across all datasets."""
     if results_df.empty:
         return pd.DataFrame()
@@ -149,7 +151,9 @@ def create_summary_statistics(results_df: pd.DataFrame, output_dir: str) -> pd.D
 
         # Compute summary stats by model
         task_summary = (
-            task_data.groupby("model")[metrics_to_summarize].agg(["mean", "std"]).round(4)
+            task_data.groupby("model")[metrics_to_summarize]
+            .agg(["mean", "std"])
+            .round(4)
         )
         task_summary.columns = [f"{col[0]}_{col[1]}" for col in task_summary.columns]
         task_summary["task"] = task
@@ -170,7 +174,9 @@ def create_summary_statistics(results_df: pd.DataFrame, output_dir: str) -> pd.D
     return pd.DataFrame()
 
 
-def create_stability_analysis(results_df: pd.DataFrame, output_dir: str) -> pd.DataFrame:
+def create_stability_analysis(
+    results_df: pd.DataFrame, output_dir: str
+) -> pd.DataFrame:
     """Create focused stability analysis comparing to CART baseline."""
     if results_df.empty or "CART" not in results_df["model"].values:
         print("Cannot create stability analysis - no CART baseline found")
@@ -258,7 +264,10 @@ Quick Mode:
 
     # Output directory
     parser.add_argument(
-        "--output", type=str, default="./benchmark_results", help="Output directory for results"
+        "--output",
+        type=str,
+        default="./benchmark_results",
+        help="Output directory for results",
     )
 
     # Bootstrap samples
@@ -270,7 +279,9 @@ Quick Mode:
     )
 
     # Random seed
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
 
     # Quick mode
     parser.add_argument(
@@ -280,7 +291,9 @@ Quick Mode:
     )
 
     # Report generation
-    parser.add_argument("--no-report", action="store_true", help="Skip markdown report generation")
+    parser.add_argument(
+        "--no-report", action="store_true", help="Skip markdown report generation"
+    )
 
     args = parser.parse_args()
 
@@ -350,9 +363,9 @@ Quick Mode:
         except Exception as e:
             print(f"Report generation failed: {str(e)}")
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"ALL BENCHMARK OUTPUTS SAVED TO: {args.output}")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
 
 if __name__ == "__main__":

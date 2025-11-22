@@ -31,7 +31,9 @@ def regression_models_and_data():
 
 @pytest.fixture
 def classification_models_and_data():
-    X, y = make_classification(n_samples=200, n_features=5, n_classes=2, random_state=42)
+    X, y = make_classification(
+        n_samples=200, n_features=5, n_classes=2, random_state=42
+    )
     X_tr, X_oos, y_tr, _ = train_test_split(X, y, test_size=0.5, random_state=42)
     models = {
         "dt1": DecisionTreeClassifier(random_state=0).fit(X_tr, y_tr),
@@ -164,7 +166,9 @@ def test_evaluate_models_continuous():
 
 def test_evaluate_models_categorical():
     """Test evaluate_models for classification."""
-    X, y = make_classification(n_samples=100, n_features=5, n_classes=2, random_state=42)
+    X, y = make_classification(
+        n_samples=100, n_features=5, n_classes=2, random_state=42
+    )
     model = DecisionTreeClassifier(random_state=42).fit(X, y)
     models = {"dt": model}
 
@@ -183,7 +187,9 @@ def test_evaluate_models_multiclass_auc():
     X, y = make_classification(
         n_samples=200, n_features=10, n_classes=3, n_informative=5, random_state=42
     )
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = DecisionTreeClassifier(random_state=42).fit(X_train, y_train)
     models = {"dt": model}
@@ -215,11 +221,17 @@ def test_evaluate_models_without_predict_proba():
 def test_evaluate_models_multiple_models():
     """Test with multiple models."""
     X, y = make_regression(n_samples=150, n_features=5, random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     models = {
-        "shallow": DecisionTreeRegressor(max_depth=3, random_state=42).fit(X_train, y_train),
-        "deep": DecisionTreeRegressor(max_depth=10, random_state=42).fit(X_train, y_train),
+        "shallow": DecisionTreeRegressor(max_depth=3, random_state=42).fit(
+            X_train, y_train
+        ),
+        "deep": DecisionTreeRegressor(max_depth=10, random_state=42).fit(
+            X_train, y_train
+        ),
     }
 
     results = evaluate_models(models, X_test, y_test, task="continuous")
@@ -357,13 +369,21 @@ def test_evaluate_models_nan_predictions():
 def test_full_evaluation_workflow():
     """Test complete workflow: train, evaluate, check stability."""
     X, y = make_classification(n_samples=300, n_features=10, random_state=42)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     # Train multiple models
     models = {
-        "shallow": DecisionTreeClassifier(max_depth=3, random_state=42).fit(X_train, y_train),
-        "medium": DecisionTreeClassifier(max_depth=5, random_state=42).fit(X_train, y_train),
-        "deep": DecisionTreeClassifier(max_depth=10, random_state=42).fit(X_train, y_train),
+        "shallow": DecisionTreeClassifier(max_depth=3, random_state=42).fit(
+            X_train, y_train
+        ),
+        "medium": DecisionTreeClassifier(max_depth=5, random_state=42).fit(
+            X_train, y_train
+        ),
+        "deep": DecisionTreeClassifier(max_depth=10, random_state=42).fit(
+            X_train, y_train
+        ),
     }
 
     # Evaluate performance

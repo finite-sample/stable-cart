@@ -117,7 +117,10 @@ def test_less_greedy_hybrid_sklearn_compatibility(regression_data):
     pipe = Pipeline(
         [
             ("scaler", StandardScaler()),
-            ("model", LessGreedyHybridTree(task="regression", max_depth=3, random_state=42)),
+            (
+                "model",
+                LessGreedyHybridTree(task="regression", max_depth=3, random_state=42),
+            ),
         ]
     )
     pipe.fit(X, y)
@@ -135,7 +138,9 @@ def test_less_greedy_hybrid_sklearn_compatibility(regression_data):
 def test_less_greedy_hybrid_score_method(regression_data):
     """Test the score method returns R²."""
     X, y = regression_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     model = LessGreedyHybridTree(task="regression", max_depth=4, random_state=42)
     model.fit(X_train, y_train)
@@ -152,10 +157,14 @@ def test_less_greedy_hybrid_score_method(regression_data):
 def test_less_greedy_hybrid_different_depths(regression_data):
     """Test with different max_depth values."""
     X, y = regression_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     for depth in [1, 3, 5]:
-        model = LessGreedyHybridTree(task="regression", max_depth=depth, random_state=42)
+        model = LessGreedyHybridTree(
+            task="regression", max_depth=depth, random_state=42
+        )
         model.fit(X_train, y_train)
 
         preds = model.predict(X_test)
@@ -235,7 +244,9 @@ def test_less_greedy_hybrid_lookahead(regression_data):
 def test_less_greedy_hybrid_leaf_shrinkage(regression_data):
     """Test leaf shrinkage functionality."""
     X, y = regression_data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
 
     # No shrinkage
     model_no_shrink = LessGreedyHybridTree(
@@ -309,7 +320,9 @@ def test_less_greedy_hybrid_invalid_fractions():
         random_state=42,
     )
 
-    with pytest.raises(AssertionError, match="split_frac \\+ val_frac \\+ est_frac must sum to 1"):
+    with pytest.raises(
+        AssertionError, match="split_frac \\+ val_frac \\+ est_frac must sum to 1"
+    ):
         model.fit(X, y)
 
 

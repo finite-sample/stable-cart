@@ -311,7 +311,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             order = np.argsort(Xs[:, j], kind="mergesort")
             xs = Xs[order, j]
             ys_ord = ys[order]
-            children_loss, valid = self._children_loss_vec(xs, ys_ord, self.min_samples_leaf)
+            children_loss, valid = self._children_loss_vec(
+                xs, ys_ord, self.min_samples_leaf
+            )
 
             if not valid.any():
                 continue
@@ -400,7 +402,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                 continue
 
             # Compute score with variance penalty
-            score = self._val_score_with_variance_penalty(Xs, ys, Xv, yv, feat, thr, rng)
+            score = self._val_score_with_variance_penalty(
+                Xs, ys, Xv, yv, feat, thr, rng
+            )
 
             if score < best_score:
                 best_score = score
@@ -490,7 +494,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             return model.coef_, model.intercept_
         else:
             # Use LogisticRegressionCV for classification
-            model = LogisticRegressionCV(cv=self.oblique_cv, random_state=rng.randint(0, 10**9))
+            model = LogisticRegressionCV(
+                cv=self.oblique_cv, random_state=rng.randint(0, 10**9)
+            )
             model.fit(X, y)
             return model.coef_[0], model.intercept_[0]
 
@@ -502,10 +508,12 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert 0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
         assert (
-            abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8
-        ), "split_frac + val_frac + est_frac must sum to 1"
+            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
+        )
+        assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
+            "split_frac + val_frac + est_frac must sum to 1"
+        )
 
         t0 = time.time()
         rng = np.random.default_rng(self.random_state)
@@ -561,7 +569,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
     def predict_proba(self, X):
         """Predict class probabilities (classification only)."""
         if self.task != "classification":
-            raise AttributeError("predict_proba only available for classification tasks")
+            raise AttributeError(
+                "predict_proba only available for classification tasks"
+            )
 
         X = np.asarray(X)
         proba_pos = np.array([self._predict_one(x, self.tree_) for x in X])

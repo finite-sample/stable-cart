@@ -21,19 +21,25 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv sync --group dev
 
       - name: Run linting
         run: |
-          black --check stable_cart/ tests/
-          flake8 stable_cart/ tests/ --max-line-length=100 --extend-ignore=E203,W503
+          uv run ruff check
+          uv run ruff format --check
+
+      - name: Run type checking
+        run: |
+          uv run mypy stable_cart/
 
       - name: Run tests
         run: |
-          pytest tests/ -v --cov=stable_cart --cov-report=xml
+          uv run pytest tests/ -v --cov=stable_cart --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

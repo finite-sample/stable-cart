@@ -77,7 +77,9 @@ class RobustPrefixHonestTree(BaseStableTree):
         variance_penalty_weight: float = 0.1,
         # === LEAF STABILIZATION ===
         smoothing: float = 1.0,  # m-estimate smoothing
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "m_estimate",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent"
+        ] = "m_estimate",
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
         random_state: int | None = None,

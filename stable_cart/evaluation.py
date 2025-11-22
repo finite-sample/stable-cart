@@ -221,7 +221,9 @@ def evaluate_models(
                     else:
                         # One-vs-rest macro AUC for multi-class
                         Yb = label_binarize(y, classes=y_unique)
-                        auc = float(roc_auc_score(Yb, proba, average="macro", multi_class="ovr"))
+                        auc = float(
+                            roc_auc_score(Yb, proba, average="macro", multi_class="ovr")
+                        )
                     entry["auc"] = auc
                 except Exception:
                     # Silently skip AUC if computation fails (e.g., single class in y)

@@ -75,7 +75,9 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         min_samples_for_lookahead: int = 100,
         # === LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,  # Conservative default
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "m_estimate",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent"
+        ] = "m_estimate",
         # === MARGIN-BASED LOGIC ===
         enable_gain_margin_logic: bool = True,
         margin_threshold: float = 0.03,
@@ -203,7 +205,9 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
 
 
 # Create the backwards-compatible aliases
-BootstrapVariancePenalizedRegressor = BootstrapVariancePenalizedTree  # Will need task='regression'
+BootstrapVariancePenalizedRegressor = (
+    BootstrapVariancePenalizedTree  # Will need task='regression'
+)
 BootstrapVariancePenalizedClassifier = (
     BootstrapVariancePenalizedTree  # Will need task='classification'
 )
