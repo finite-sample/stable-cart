@@ -3,7 +3,6 @@
 import numpy as np
 import pytest
 from sklearn.datasets import load_breast_cancer, make_classification, make_regression
-from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
