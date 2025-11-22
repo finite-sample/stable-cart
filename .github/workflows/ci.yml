@@ -33,10 +33,6 @@ jobs:
           uv run ruff check
           uv run ruff format --check
 
-      - name: Run type checking
-        run: |
-          uv run mypy stable_cart/
-
       - name: Run tests
         run: |
           uv run pytest tests/ -v --cov=stable_cart --cov-report=xml

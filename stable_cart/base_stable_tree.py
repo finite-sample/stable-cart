@@ -7,12 +7,15 @@ different defaults to maintain their distinct personalities.
 """
 
 import time
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
-from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score, r2_score
-from sklearn.utils.validation import check_array, check_X_y
+from sklearn.base import BaseEstimator  # type: ignore[import-untyped]
+from sklearn.metrics import accuracy_score, r2_score  # type: ignore[import-untyped]
+from sklearn.utils.validation import (  # type: ignore[import-untyped]
+    check_array,
+    check_X_y,
+)
 
 from .split_strategies import HybridStrategy, create_split_strategy
 from .stability_utils import (
@@ -203,14 +206,14 @@ class BaseStableTree(BaseEstimator):
             enable_robust_consensus_for_ambiguous
         )
 
-        # Initialize fitted attributes
-        self.tree_ = None
-        self.classes_ = None
-        self.n_classes_ = None
-        self.fit_time_sec_ = None
-        self._split_strategy_ = None
-        self._winsor_bounds_ = None
-        self._global_prior_ = None
+        # Initialize fitted attributes with proper type annotations
+        self.tree_: dict[str, Any] | None = None
+        self.classes_: np.ndarray | None = None
+        self.n_classes_: int | None = None
+        self.fit_time_sec_: float | None = None
+        self._split_strategy_: HybridStrategy | None = None
+        self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
+        self._global_prior_: float | None = None
 
     def fit(self, X, y):
         """Fit the stable tree to the training data."""
@@ -274,6 +277,9 @@ class BaseStableTree(BaseEstimator):
 
         if self.task == "classification":
             # Convert back to original class labels
+            assert self.classes_ is not None, (
+                "Classes must be defined for classification"
+            )
             return np.where(predictions > 0.5, self.classes_[1], self.classes_[0])
         else:
             return predictions
@@ -400,6 +406,11 @@ class BaseStableTree(BaseEstimator):
     def _build_tree(self, X_split, y_split, X_val, y_val, X_est, y_est, depth=0):
         """Recursively build the tree structure."""
         n_samples = len(X_split)
+
+        # Ensure split strategy is initialized
+        assert self._split_strategy_ is not None, (
+            "Split strategy must be initialized before building tree"
+        )
 
         # Base stopping conditions
         if (
