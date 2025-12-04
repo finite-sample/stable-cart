@@ -31,8 +31,7 @@ jobs:
       
       - name: Install documentation dependencies
         run: |
-          uv venv
-          uv pip install -e ".[docs]"
+          uv sync --group docs
 
       - name: Build documentation
         run: uv run sphinx-build -b html docs docs/_build/html
