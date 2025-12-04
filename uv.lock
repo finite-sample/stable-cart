@@ -2594,15 +2594,6 @@ dependencies = [
     { name = "scikit-learn" },
 ]
 
-[package.optional-dependencies]
-docs = [
-    { name = "furo" },
-    { name = "myst-parser" },
-    { name = "sphinx" },
-    { name = "sphinx-autodoc-typehints" },
-    { name = "sphinx-copybutton" },
-]
-
 [package.dev-dependencies]
 benchmark = [
     { name = "jupyterlab" },
@@ -2616,6 +2607,13 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
 ]
+docs = [
+    { name = "furo" },
+    { name = "myst-parser" },
+    { name = "sphinx" },
+    { name = "sphinx-autodoc-typehints" },
+    { name = "sphinx-copybutton" },
+]
 test = [
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -2624,16 +2622,10 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "furo", marker = "extra == 'docs'", specifier = ">=2024.1.29" },
-    { name = "myst-parser", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "numpy", specifier = ">=1.23.0" },
     { name = "pandas", specifier = ">=1.5.0" },
     { name = "scikit-learn", specifier = ">=1.2.0" },
-    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
-    { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=1.25" },
-    { name = "sphinx-copybutton", marker = "extra == 'docs'", specifier = ">=0.5" },
 ]
-provides-extras = ["docs"]
 
 [package.metadata.requires-dev]
 benchmark = [
@@ -2647,6 +2639,13 @@ dev = [
     { name = "pytest-cov", specifier = ">=4.0" },
     { name = "pytest-xdist", specifier = ">=3.0" },
     { name = "ruff", specifier = ">=0.7.0" },
+]
+docs = [
+    { name = "furo", specifier = ">=2024.1.29" },
+    { name = "myst-parser", specifier = ">=2.0" },
+    { name = "sphinx", specifier = ">=7.0" },
+    { name = "sphinx-autodoc-typehints", specifier = ">=1.25" },
+    { name = "sphinx-copybutton", specifier = ">=0.5" },
 ]
 test = [
     { name = "pytest", specifier = ">=7.0" },
