@@ -2590,7 +2590,6 @@ version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
-    { name = "pandas" },
     { name = "scikit-learn" },
 ]
 
@@ -2615,6 +2614,7 @@ docs = [
     { name = "sphinx-copybutton" },
 ]
 test = [
+    { name = "pandas" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
@@ -2623,7 +2623,6 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=1.23.0" },
-    { name = "pandas", specifier = ">=1.5.0" },
     { name = "scikit-learn", specifier = ">=1.2.0" },
 ]
 
@@ -2648,6 +2647,7 @@ docs = [
     { name = "sphinx-copybutton", specifier = ">=0.5" },
 ]
 test = [
+    { name = "pandas", specifier = ">=1.5.0" },
     { name = "pytest", specifier = ">=7.0" },
     { name = "pytest-cov", specifier = ">=4.0" },
     { name = "pytest-xdist", specifier = ">=3.0" },
