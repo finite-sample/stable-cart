@@ -6,7 +6,7 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -29,6 +29,79 @@ class RobustPrefixHonestTree(BaseStableTree):
     - Winsorization for outlier robustness
     - Stratified honest data partitioning
     - Advanced consensus mechanisms with threshold binning
+
+    Parameters
+    ----------
+    task
+        Prediction task type.
+    max_depth
+        Maximum tree depth.
+    min_samples_leaf
+        Minimum samples per leaf.
+    top_levels
+        Number of prefix levels to lock using robust consensus.
+    consensus_samples
+        Number of bootstrap samples for consensus.
+    consensus_threshold
+        Threshold for consensus decisions.
+    consensus_subsample_frac
+        Subsample fraction per bootstrap.
+    val_frac
+        Fraction of data for validation.
+    est_frac
+        Fraction of data for estimation.
+    enable_stratified_sampling
+        Enable stratified sampling in data partitioning.
+    enable_winsorization
+        Enable feature winsorization.
+    winsor_quantiles
+        Quantile bounds for winsorization.
+    enable_threshold_binning
+        Enable threshold binning to reduce micro-jitter.
+    max_threshold_bins
+        Maximum number of threshold bins.
+    enable_oblique_splits
+        Enable oblique split capability.
+    oblique_strategy
+        Strategy for oblique splits.
+    oblique_regularization
+        Regularization type for oblique splits.
+    enable_correlation_gating
+        Enable correlation-based feature gating.
+    min_correlation_threshold
+        Minimum correlation for feature selection.
+    enable_lookahead
+        Enable lookahead search.
+    lookahead_depth
+        Depth for lookahead search.
+    beam_width
+        Width of beam search.
+    enable_beam_search_for_consensus
+        Enable beam search for consensus.
+    enable_ambiguity_gating
+        Enable ambiguity-based gating.
+    ambiguity_threshold
+        Threshold for ambiguity detection.
+    enable_gain_margin_logic
+        Enable gain margin logic.
+    margin_threshold
+        Threshold for margin-based decisions.
+    enable_bootstrap_variance_tracking
+        Enable bootstrap variance tracking.
+    variance_tracking_samples
+        Number of samples for variance tracking.
+    enable_explicit_variance_penalty
+        Enable explicit variance penalty.
+    variance_penalty_weight
+        Weight for variance penalty.
+    smoothing
+        Smoothing parameter for leaf estimates.
+    leaf_smoothing_strategy
+        Strategy for leaf smoothing.
+    classification_criterion
+        Criterion for classification splits.
+    random_state
+        Random state for reproducibility.
     """
 
     def __init__(
@@ -162,8 +235,27 @@ class RobustPrefixHonestTree(BaseStableTree):
         self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
 
-    def fit(self, X, y):
-        """Fit with robust prefix consensus."""
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "RobustPrefixHonestTree":
+        """
+        Fit with robust prefix consensus.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+
+        Returns
+        -------
+        RobustPrefixHonestTree
+            Fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If multi-class classification is attempted.
+        """
         # Validate for binary classification only
         if self.task == "classification":
             unique_classes = np.unique(y)
@@ -173,14 +265,39 @@ class RobustPrefixHonestTree(BaseStableTree):
                     "RobustPrefixHonestTree currently supports binary classification only."
                 )
 
-        return super().fit(X, y)
+        super().fit(X, y)
+        return self
 
-    def get_params(self, deep=True):
-        """Get parameters for sklearn compatibility."""
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """
+        Get parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        deep
+            Whether to return deep parameter copy.
+
+        Returns
+        -------
+        dict[str, Any]
+            Parameter dictionary.
+        """
         return super().get_params(deep=deep)
 
-    def set_params(self, **params):
-        """Set parameters for sklearn compatibility."""
+    def set_params(self, **params: Any) -> "RobustPrefixHonestTree":
+        """
+        Set parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        **params
+            Parameter values to set.
+
+        Returns
+        -------
+        RobustPrefixHonestTree
+            Self with updated parameters.
+        """
         return super().set_params(**params)
 
 

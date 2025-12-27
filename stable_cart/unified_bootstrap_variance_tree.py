@@ -6,7 +6,9 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-from typing import Literal
+from typing import Any, Literal
+
+import numpy as np
 
 from .base_stable_tree import BaseStableTree
 
@@ -28,6 +30,85 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
     - Explicit bootstrap variance penalty during split selection
     - Honest data partitioning for unbiased estimation
     - Advanced split strategies with variance awareness
+
+    Parameters
+    ----------
+    task
+        Prediction task type.
+    max_depth
+        Maximum tree depth.
+    min_samples_split
+        Minimum samples to split a node.
+    min_samples_leaf
+        Minimum samples per leaf.
+    variance_penalty
+        Weight for bootstrap variance penalty.
+    n_bootstrap
+        Number of bootstrap samples for variance estimation.
+    bootstrap_max_depth
+        Maximum depth for variance estimation trees.
+    enable_variance_aware_stopping
+        Enable variance-aware stopping criteria.
+    split_frac
+        Fraction of data for structure building.
+    val_frac
+        Fraction of data for validation.
+    est_frac
+        Fraction of data for estimation.
+    enable_stratified_sampling
+        Enable stratified sampling in data partitioning.
+    enable_stratified_bootstraps
+        Enable target-stratified bootstrap sampling.
+    bootstrap_stratification_bins
+        Number of bins for regression quantile stratification.
+    enable_winsorization
+        Enable feature winsorization before bootstrap sampling.
+    winsor_quantiles
+        Quantile bounds for winsorization.
+    enable_threshold_binning
+        Enable threshold binning to reduce micro-jitter.
+    max_threshold_bins
+        Maximum number of threshold bins.
+    enable_robust_consensus
+        Enable robust consensus mechanism.
+    consensus_samples
+        Number of samples for consensus.
+    consensus_threshold
+        Threshold for consensus decisions.
+    enable_oblique_splits
+        Enable oblique split capability.
+    oblique_strategy
+        Strategy for oblique splits.
+    oblique_regularization
+        Regularization type for oblique splits.
+    enable_correlation_gating
+        Enable correlation-based feature gating.
+    min_correlation_threshold
+        Minimum correlation for feature selection.
+    enable_lookahead
+        Enable lookahead search.
+    lookahead_depth
+        Depth for lookahead search.
+    beam_width
+        Width of beam search.
+    enable_ambiguity_gating
+        Enable ambiguity-based gating.
+    ambiguity_threshold
+        Threshold for ambiguity detection.
+    min_samples_for_lookahead
+        Minimum samples required for lookahead.
+    leaf_smoothing
+        Smoothing parameter for leaf estimates.
+    leaf_smoothing_strategy
+        Strategy for leaf smoothing.
+    enable_gain_margin_logic
+        Enable gain margin logic.
+    margin_threshold
+        Threshold for margin-based decisions.
+    classification_criterion
+        Criterion for classification splits.
+    random_state
+        Random state for reproducibility.
     """
 
     def __init__(
@@ -157,10 +238,24 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         # Initialize fitted attributes
         self.bootstrap_evaluations_ = 0
 
-    def fit(self, X, y):
-        """Fit with bootstrap variance tracking."""
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "BootstrapVariancePenalizedTree":
+        """
+        Fit with bootstrap variance tracking.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+
+        Returns
+        -------
+        BootstrapVariancePenalizedTree
+            Fitted estimator.
+        """
         # Call parent fit method
-        result = super().fit(X, y)
+        super().fit(X, y)
 
         # Set bootstrap evaluations for backwards compatibility
         if self.enable_explicit_variance_penalty:
@@ -169,10 +264,17 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         else:
             self.bootstrap_evaluations_ = 0
 
-        return result
+        return self
 
-    def _estimate_bootstrap_evaluations(self):
-        """Estimate total bootstrap evaluations performed during training."""
+    def _estimate_bootstrap_evaluations(self) -> int:
+        """
+        Estimate total bootstrap evaluations performed during training.
+
+        Returns
+        -------
+        int
+            Estimated number of bootstrap evaluations.
+        """
         if self.tree_ is None:
             return 0
 
@@ -182,8 +284,20 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
 
         return internal_nodes * self.n_bootstrap * candidates_per_node
 
-    def _count_internal_nodes(self, node):
-        """Count internal (non-leaf) nodes recursively."""
+    def _count_internal_nodes(self, node: dict[str, Any]) -> int:
+        """
+        Count internal (non-leaf) nodes recursively.
+
+        Parameters
+        ----------
+        node
+            Tree node dictionary.
+
+        Returns
+        -------
+        int
+            Number of internal nodes.
+        """
         if node["type"] == "leaf":
             return 0
 
@@ -195,12 +309,36 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
 
         return count
 
-    def get_params(self, deep=True):
-        """Get parameters for sklearn compatibility."""
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """
+        Get parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        deep
+            Whether to return deep parameter copy.
+
+        Returns
+        -------
+        dict[str, Any]
+            Parameter dictionary.
+        """
         return super().get_params(deep=deep)
 
-    def set_params(self, **params):
-        """Set parameters for sklearn compatibility."""
+    def set_params(self, **params: Any) -> "BootstrapVariancePenalizedTree":
+        """
+        Set parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        **params
+            Parameter values to set.
+
+        Returns
+        -------
+        BootstrapVariancePenalizedTree
+            Self with updated parameters.
+        """
         return super().set_params(**params)
 
 

@@ -7,7 +7,9 @@ different defaults to maintain their distinct personalities.
 """
 
 import time
-from typing import Any, Literal
+from typing import Any, Literal, cast
+
+from numpy.typing import NDArray
 
 import numpy as np
 from sklearn.base import BaseEstimator  # type: ignore[import-untyped]
@@ -17,7 +19,7 @@ from sklearn.utils.validation import (  # type: ignore[import-untyped]
     check_X_y,
 )
 
-from .split_strategies import HybridStrategy, create_split_strategy
+from .split_strategies import HybridStrategy, SplitStrategy, create_split_strategy
 from .stability_utils import (
     honest_data_partition,
     stabilize_leaf_estimate,
@@ -41,6 +43,124 @@ class BaseStableTree(BaseEstimator):
     All tree methods inherit from this and configure different defaults
     to maintain their distinct personalities while sharing the unified
     stability infrastructure.
+
+    Parameters
+    ----------
+    task
+        The prediction task type.
+    max_depth
+        Maximum tree depth.
+    min_samples_split
+        Minimum samples required to split an internal node.
+    min_samples_leaf
+        Minimum samples required in a leaf node.
+    enable_honest_estimation
+        Enable honest estimation (separate data for structure vs estimation).
+    split_frac
+        Fraction of data used for building tree structure.
+    val_frac
+        Fraction of data used for validation.
+    est_frac
+        Fraction of data used for estimation.
+    enable_stratified_sampling
+        Use stratified sampling for data partitioning.
+    enable_validation_checking
+        Enable validation-checked split selection.
+    validation_metric
+        Metric for validation-based split selection.
+    validation_consistency_weight
+        Weight for validation consistency in split selection.
+    enable_prefix_consensus
+        Enable prefix stability through consensus on early splits.
+    prefix_levels
+        Number of tree levels to apply prefix consensus.
+    consensus_samples
+        Number of bootstrap samples for consensus building.
+    consensus_threshold
+        Minimum agreement threshold for consensus splits.
+    enable_quantile_grid_thresholds
+        Use quantile-based threshold grids.
+    max_threshold_bins
+        Maximum number of threshold bins per feature.
+    leaf_smoothing
+        Smoothing parameter for leaf value stabilization.
+    leaf_smoothing_strategy
+        Strategy for leaf value stabilization.
+    enable_calibrated_smoothing
+        Use calibrated smoothing based on sample size.
+    min_leaf_samples_for_stability
+        Minimum samples required for stable leaf estimation.
+    enable_winsorization
+        Enable feature winsorization for robustness.
+    winsor_quantiles
+        Quantiles for winsorization bounds.
+    enable_feature_standardization
+        Standardize features before splitting.
+    enable_oblique_splits
+        Enable oblique (linear combination) splits.
+    oblique_strategy
+        Where to apply oblique splits in the tree.
+    oblique_regularization
+        Regularization for oblique split learning.
+    enable_correlation_gating
+        Gate splits based on feature correlations.
+    min_correlation_threshold
+        Minimum correlation for correlation gating.
+    enable_lookahead
+        Enable lookahead for better split selection.
+    lookahead_depth
+        Depth of lookahead search.
+    beam_width
+        Beam width for lookahead search.
+    enable_ambiguity_gating
+        Gate splits in ambiguous regions.
+    ambiguity_threshold
+        Threshold for ambiguity detection.
+    min_samples_for_lookahead
+        Minimum samples required for lookahead.
+    enable_deterministic_preprocessing
+        Use deterministic preprocessing for reproducibility.
+    enable_deterministic_tiebreaks
+        Use deterministic tiebreaking in split selection.
+    enable_margin_vetoes
+        Enable margin-based split vetoing.
+    margin_threshold
+        Threshold for margin-based vetoing.
+    enable_variance_aware_stopping
+        Enable variance-aware stopping criteria.
+    variance_stopping_weight
+        Weight for variance in stopping decisions.
+    variance_stopping_strategy
+        Strategy for variance-aware stopping.
+    enable_bootstrap_variance_tracking
+        Track split variance using bootstrap sampling.
+    variance_tracking_samples
+        Number of bootstrap samples for variance tracking.
+    enable_explicit_variance_penalty
+        Apply explicit variance penalty to splits.
+    variance_penalty_weight
+        Weight for variance penalty.
+    split_strategy
+        Explicit split strategy specification.
+    algorithm_focus
+        Algorithm focus for automatic strategy selection.
+    classification_criterion
+        Splitting criterion for classification.
+    random_state
+        Random state for reproducibility.
+    enable_threshold_binning
+        Enable threshold binning for continuous features.
+    enable_gain_margin_logic
+        Apply margin logic to information gain.
+    enable_beam_search_for_consensus
+        Use beam search for consensus building.
+    enable_robust_consensus_for_ambiguous
+        Use robust consensus in ambiguous regions.
+
+    Raises
+    ------
+    ValueError
+        If split_frac + val_frac + est_frac does not sum to 1.0.
     """
 
     def __init__(
@@ -211,12 +331,31 @@ class BaseStableTree(BaseEstimator):
         self.classes_: np.ndarray | None = None
         self.n_classes_: int | None = None
         self.fit_time_sec_: float | None = None
-        self._split_strategy_: HybridStrategy | None = None
+        self._split_strategy_: SplitStrategy | None = None
         self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
         self._global_prior_: float | None = None
 
-    def fit(self, X, y):
-        """Fit the stable tree to the training data."""
+    def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> 'BaseStableTree':
+        """
+        Fit the stable tree to the training data.
+
+        Parameters
+        ----------
+        X
+            Training feature matrix of shape (n_samples, n_features).
+        y
+            Training target values of shape (n_samples,).
+
+        Returns
+        -------
+        BaseStableTree
+            Fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If multi-class classification is attempted (not yet supported).
+        """
         start_time = time.time()
 
         # Validate inputs
@@ -235,11 +374,11 @@ class BaseStableTree(BaseEstimator):
 
             # Convert to 0/1 for binary classification
             y = (y == self.classes_[1]).astype(int)
-            self._global_prior_ = np.mean(y)
+            self._global_prior_ = float(np.mean(y))
         else:
             self.classes_ = None
             self.n_classes_ = None
-            self._global_prior_ = np.mean(y) if len(y) > 0 else 0.0
+            self._global_prior_ = float(np.mean(y)) if len(y) > 0 else 0.0
 
         # === 5. DATA REGULARIZATION ===
         X_processed = self._preprocess_features(X)
@@ -261,8 +400,25 @@ class BaseStableTree(BaseEstimator):
 
         return self
 
-    def predict(self, X):
-        """Predict targets for samples in X."""
+    def predict(self, X: NDArray[np.floating]) -> NDArray[Any]:
+        """
+        Predict targets for samples in X.
+
+        Parameters
+        ----------
+        X
+            Feature matrix of shape (n_samples, n_features).
+
+        Returns
+        -------
+        NDArray[Any]
+            Predicted values of shape (n_samples,).
+
+        Raises
+        ------
+        ValueError
+            If the tree has not been fitted.
+        """
         check_array(X, accept_sparse=False)
 
         if self.tree_ is None:
@@ -284,8 +440,25 @@ class BaseStableTree(BaseEstimator):
         else:
             return predictions
 
-    def predict_proba(self, X):
-        """Predict class probabilities for classification tasks."""
+    def predict_proba(self, X: NDArray[np.floating]) -> NDArray[np.floating]:
+        """
+        Predict class probabilities for classification tasks.
+
+        Parameters
+        ----------
+        X
+            Feature matrix of shape (n_samples, n_features).
+
+        Returns
+        -------
+        NDArray[np.floating]
+            Class probabilities of shape (n_samples, n_classes).
+
+        Raises
+        ------
+        ValueError
+            If called on regression task or tree not fitted.
+        """
         if self.task != "classification":
             raise ValueError("predict_proba is only available for classification tasks")
 
@@ -306,8 +479,22 @@ class BaseStableTree(BaseEstimator):
         proba_negative = 1 - proba_positive
         return np.column_stack([proba_negative, proba_positive])
 
-    def score(self, X, y):
-        """Return the mean accuracy (classification) or R² (regression)."""
+    def score(self, X: NDArray[np.floating], y: NDArray[Any]) -> float:
+        """
+        Return the mean accuracy (classification) or R² (regression).
+
+        Parameters
+        ----------
+        X
+            Feature matrix for evaluation.
+        y
+            True target values.
+
+        Returns
+        -------
+        float
+            Accuracy for classification, R² for regression.
+        """
         y_pred = self.predict(X)
 
         if self.task == "regression":
@@ -315,14 +502,33 @@ class BaseStableTree(BaseEstimator):
         else:
             return accuracy_score(y, y_pred)
 
-    def count_leaves(self):
-        """Count the number of leaf nodes in the tree."""
+    def count_leaves(self) -> int:
+        """
+        Count the number of leaf nodes in the tree.
+
+        Returns
+        -------
+        int
+            Number of leaf nodes.
+        """
         if self.tree_ is None:
             return 0
         return self._count_leaves_recursive(self.tree_)
 
-    def _count_leaves_recursive(self, node):
-        """Recursively count leaves."""
+    def _count_leaves_recursive(self, node: Any) -> int:
+        """
+        Recursively count leaves.
+
+        Parameters
+        ----------
+        node
+            Tree node to count from.
+
+        Returns
+        -------
+        int
+            Number of leaf nodes in subtree.
+        """
         if node["type"] == "leaf":
             return 1
         else:
@@ -338,8 +544,22 @@ class BaseStableTree(BaseEstimator):
     # INTERNAL METHODS - STABILITY PRIMITIVES
     # ========================================================================
 
-    def _preprocess_features(self, X, fitted=False):
-        """Apply data regularization preprocessing."""
+    def _preprocess_features(self, X: NDArray[np.floating], fitted: bool = False) -> NDArray[np.floating]:
+        """
+        Apply data regularization preprocessing.
+
+        Parameters
+        ----------
+        X
+            Feature matrix to preprocess.
+        fitted
+            Whether to use fitted preprocessing parameters.
+
+        Returns
+        -------
+        NDArray[np.floating]
+            Preprocessed feature matrix.
+        """
         X_processed = X.copy()
 
         # === 5. DATA REGULARIZATION ===
@@ -360,8 +580,22 @@ class BaseStableTree(BaseEstimator):
 
         return X_processed
 
-    def _partition_data(self, X, y):
-        """Partition data using honest splitting."""
+    def _partition_data(self, X: NDArray[np.floating], y: NDArray[Any]) -> tuple[tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]]]:
+        """
+        Partition data using honest splitting.
+
+        Parameters
+        ----------
+        X
+            Feature matrix to partition.
+        y
+            Target values to partition.
+
+        Returns
+        -------
+        tuple[tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]]]
+            Tuple of (split_data, val_data, est_data) where each is (X, y).
+        """
         if not self.enable_honest_estimation:
             # Use all data for both structure and estimation
             return (X, y), (X, y), (X, y)
@@ -377,8 +611,15 @@ class BaseStableTree(BaseEstimator):
             random_state=self.random_state,
         )
 
-    def _create_split_strategy(self):
-        """Create the split strategy based on enabled features."""
+    def _create_split_strategy(self) -> SplitStrategy:
+        """
+        Create the split strategy based on enabled features.
+
+        Returns
+        -------
+        SplitStrategy
+            Configured split strategy instance.
+        """
         if self.split_strategy is not None:
             # Explicit strategy specified
             return create_split_strategy(
@@ -398,13 +639,46 @@ class BaseStableTree(BaseEstimator):
         else:
             # Auto-select based on enabled features and algorithm focus
             return HybridStrategy(
-                focus=self.algorithm_focus,
+                focus=cast(Literal["speed", "accuracy", "stability"], self.algorithm_focus),
                 task=self.task,
                 random_state=self.random_state,
             )
 
-    def _build_tree(self, X_split, y_split, X_val, y_val, X_est, y_est, depth=0):
-        """Recursively build the tree structure."""
+    def _build_tree(
+        self, 
+        X_split: NDArray[np.floating], 
+        y_split: NDArray[Any], 
+        X_val: NDArray[np.floating], 
+        y_val: NDArray[Any], 
+        X_est: NDArray[np.floating], 
+        y_est: NDArray[Any], 
+        depth: int = 0
+    ) -> dict[str, Any]:
+        """
+        Recursively build the tree structure.
+
+        Parameters
+        ----------
+        X_split
+            Features for structure building.
+        y_split
+            Targets for structure building.
+        X_val
+            Features for validation.
+        y_val
+            Targets for validation.
+        X_est
+            Features for estimation.
+        y_est
+            Targets for estimation.
+        depth
+            Current tree depth.
+
+        Returns
+        -------
+        dict[str, Any]
+            Tree node dictionary.
+        """
         n_samples = len(X_split)
 
         # Ensure split strategy is initialized
@@ -510,8 +784,22 @@ class BaseStableTree(BaseEstimator):
             "right": right_child,
         }
 
-    def _apply_split_to_data(self, X, split_candidate):
-        """Apply a split to data and return left/right indices."""
+    def _apply_split_to_data(self, X: NDArray[np.floating], split_candidate: Any) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
+        """
+        Apply a split to data and return left/right indices.
+
+        Parameters
+        ----------
+        X
+            Feature array to split.
+        split_candidate
+            Split candidate containing split information.
+
+        Returns
+        -------
+        tuple[NDArray[np.int_], NDArray[np.int_]]
+            Tuple of (left_indices, right_indices).
+        """
         if split_candidate.is_oblique and split_candidate.oblique_weights is not None:
             projections = X @ split_candidate.oblique_weights
             left_mask = projections <= split_candidate.threshold
@@ -522,8 +810,24 @@ class BaseStableTree(BaseEstimator):
         right_indices = np.where(~left_mask)[0]
         return left_indices, right_indices
 
-    def _make_leaf(self, y_est, y_split, depth):
-        """Create a leaf node with stabilized estimates."""
+    def _make_leaf(self, y_est: NDArray[Any], y_split: NDArray[Any], depth: int) -> dict[str, Any]:
+        """
+        Create a leaf node with stabilized estimates.
+
+        Parameters
+        ----------
+        y_est
+            Target values for estimation.
+        y_split
+            Target values from structure building.
+        depth
+            Current tree depth.
+
+        Returns
+        -------
+        dict[str, Any]
+            Leaf node dictionary.
+        """
         # === 4. LEAF STABILIZATION ===
         if len(y_est) == 0:
             y_est = y_split  # Fallback to split data
@@ -532,7 +836,7 @@ class BaseStableTree(BaseEstimator):
         stabilized_value = stabilize_leaf_estimate(
             y_est,
             y_split,
-            strategy=self.leaf_smoothing_strategy,
+            strategy=cast(Literal["m_estimate", "shrink_to_parent", "beta_smoothing"], self.leaf_smoothing_strategy),
             smoothing=self.leaf_smoothing,
             task=self.task,
             min_samples=self.min_leaf_samples_for_stability,
@@ -565,8 +869,22 @@ class BaseStableTree(BaseEstimator):
                 "n_samples_est": len(y_est),
             }
 
-    def _predict_sample(self, x, node):
-        """Predict a single sample by traversing the tree."""
+    def _predict_sample(self, x: NDArray[np.floating], node: Any) -> float:
+        """
+        Predict a single sample by traversing the tree.
+
+        Parameters
+        ----------
+        x
+            Single sample feature vector.
+        node
+            Current tree node.
+
+        Returns
+        -------
+        float
+            Predicted value or probability.
+        """
         if node["type"] == "leaf":
             if self.task == "regression":
                 return node["value"]

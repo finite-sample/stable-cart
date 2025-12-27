@@ -29,4 +29,4 @@ __all__ = [
     "create_split_strategy",
 ]
 
-__version__ = "0.3.0"  # Major enhancement with unified stability primitives
+__version__ = "0.3.1"  # Enhanced type safety and documentation quality

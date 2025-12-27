@@ -11,7 +11,10 @@ These functions are designed to work with collections of fitted sklearn-compatib
 and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
 """
 
+from typing import Union, cast
+
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.metrics import (
     accuracy_score,
     mean_absolute_error,
@@ -21,12 +24,14 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 
+from ._types import ClassifierDict, ModelDict, ClassifierProtocol
+
 
 # -------------------------------
 # Prediction Stability (OOS)
 # -------------------------------
 def prediction_stability(
-    models: dict[str, object], X_oos: np.ndarray, task: str = "categorical"
+    models: ModelDict, X_oos: NDArray[np.floating], task: str = "categorical"
 ) -> dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
@@ -37,17 +42,17 @@ def prediction_stability(
 
     Parameters
     ----------
-    models : dict[str, fitted_model]
+    models
         Mapping of model name -> fitted model (must have .predict() method).
         Requires at least 2 models.
-    X_oos : np.ndarray
+    X_oos
         Out-of-sample feature matrix to evaluate on.
-    task : {'categorical', 'continuous'}, default='categorical'
+    task
         Type of prediction task.
 
     Returns
     -------
-    scores : dict[str, float]
+    dict[str, float]
         Stability score for each model.
 
         For 'categorical':
@@ -137,7 +142,7 @@ def prediction_stability(
 # Model Performance Evaluation
 # -------------------------------
 def evaluate_models(
-    models: dict[str, object], X: np.ndarray, y: np.ndarray, task: str = "categorical"
+    models: Union[ModelDict, ClassifierDict], X: NDArray[np.floating], y: NDArray[np.floating], task: str = "categorical"
 ) -> dict[str, dict[str, float]]:
     """
     Evaluate predictive performance of multiple models using standard metrics.
@@ -148,18 +153,18 @@ def evaluate_models(
 
     Parameters
     ----------
-    models : dict[str, fitted_model]
+    models
         Model name -> fitted model mapping. Models must have .predict() method.
-    X : np.ndarray
+    X
         Feature matrix for evaluation.
-    y : np.ndarray
+    y
         Ground-truth labels (classification) or targets (regression).
-    task : {'categorical', 'continuous'}, default='categorical'
+    task
         Type of prediction task.
 
     Returns
     -------
-    metrics : dict[str, dict[str, float]]
+    dict[str, dict[str, float]]
         Nested dictionary: {model_name: {metric_name: value}}
 
         For 'categorical':
@@ -215,7 +220,8 @@ def evaluate_models(
             # Compute AUC if model supports probability predictions
             if hasattr(mdl, "predict_proba"):
                 try:
-                    proba = mdl.predict_proba(X)
+                    classifier = cast(ClassifierProtocol, mdl)
+                    proba = classifier.predict_proba(X)
                     if is_binary:
                         auc = float(roc_auc_score(y, proba[:, 1]))
                     else:

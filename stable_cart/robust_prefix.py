@@ -19,7 +19,26 @@ from sklearn.utils.validation import check_is_fitted
 def _winsorize_fit(
     X: np.ndarray, q: tuple[float, float]
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return per-feature (low, high) quantiles for winsorization."""
+    """
+    Return per-feature (low, high) quantiles for winsorization.
+
+    Parameters
+    ----------
+    X
+        Feature array.
+    q
+        Tuple of (low, high) quantiles for clipping.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Tuple of (low_quantiles, high_quantiles) arrays.
+
+    Raises
+    ------
+    ValueError
+        If X is empty.
+    """
     if X.shape[0] == 0:
         raise ValueError("Cannot winsorize empty array")
     lo = np.quantile(X, q[0], axis=0)
@@ -28,14 +47,46 @@ def _winsorize_fit(
 
 
 def _winsorize_apply(X: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarray:
-    """Apply winsorization using pre-computed quantiles."""
+    """
+    Apply winsorization using pre-computed quantiles.
+
+    Parameters
+    ----------
+    X
+        Feature array to winsorize.
+    lo
+        Low quantile bounds per feature.
+    hi
+        High quantile bounds per feature.
+
+    Returns
+    -------
+    np.ndarray
+        Winsorized feature array.
+    """
     return np.minimum(np.maximum(X, lo), hi)
 
 
 def _stratified_bootstrap(
     X: np.ndarray, y: np.ndarray, rng: np.random.RandomState
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Class-stratified bootstrap (for classification)."""
+    """
+    Class-stratified bootstrap (for classification).
+
+    Parameters
+    ----------
+    X
+        Feature array.
+    y
+        Class labels array.
+    rng
+        Random number generator.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Bootstrapped (X, y) arrays.
+    """
     idxs = []
     for c in np.unique(y):
         cidx = np.where(y == c)[0]
@@ -49,7 +100,23 @@ def _stratified_bootstrap(
 def _regular_bootstrap(
     X: np.ndarray, y: np.ndarray, rng: np.random.RandomState
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Regular bootstrap (for regression)."""
+    """
+    Regular bootstrap (for regression).
+
+    Parameters
+    ----------
+    X
+        Feature array.
+    y
+        Target values array.
+    rng
+        Random number generator.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Bootstrapped (X, y) arrays.
+    """
     n = len(X)
     idx = rng.choice(n, size=n, replace=True)
     return X[idx], y[idx]
@@ -79,6 +146,30 @@ def _robust_stump_regression(
     2. Evaluate MSE on validation set
     3. Bin thresholds to remove jitter
     4. Select (feature, threshold) with lowest median validation loss
+
+    Parameters
+    ----------
+    X_split
+        Split subset features.
+    y_split
+        Split subset targets.
+    X_val
+        Validation subset features.
+    y_val
+        Validation subset targets.
+    B
+        Number of bootstrap samples.
+    subsample_frac
+        Fraction of data to use per bootstrap.
+    max_bins
+        Maximum bins for threshold discretization.
+    rng
+        Random number generator.
+
+    Returns
+    -------
+    tuple[int, float] | None
+        Best (feature, threshold) or None if no valid split.
     """
     n = len(X_split)
     if n < 10 or len(X_val) < 8:
@@ -156,6 +247,30 @@ def _robust_stump_classification(
     Consensus split selection for classification via bootstrap validation.
 
     Similar to regression but uses log-loss and stratified bootstrapping.
+
+    Parameters
+    ----------
+    X_split
+        Split subset features.
+    y_split
+        Split subset class labels.
+    X_val
+        Validation subset features.
+    y_val
+        Validation subset class labels.
+    B
+        Number of bootstrap samples.
+    subsample_frac
+        Fraction of data to use per bootstrap.
+    max_bins
+        Maximum bins for threshold discretization.
+    rng
+        Random number generator.
+
+    Returns
+    -------
+    tuple[int, float] | None
+        Best (feature, threshold) or None if no valid split.
     """
     n = len(X_split)
     if n < 10 or len(np.unique(y_split)) < 2 or len(X_val) < 8:
@@ -182,11 +297,11 @@ def _robust_stump_classification(
         # Validation loss
         proba = stump.predict_proba(X_val)
         # Handle single-class stumps
-        if proba.shape[1] == 1:
+        if proba.shape[1] == 1:  # type: ignore[attr-defined]
             cls = stump.classes_[0]
-            p1 = proba[:, 0] if cls == 1 else 1.0 - proba[:, 0]
+            p1 = proba[:, 0] if cls == 1 else 1.0 - proba[:, 0]  # type: ignore[call-overload]
         else:
-            p1 = proba[:, 1] if proba.shape[1] == 2 else proba[:, -1]
+            p1 = proba[:, 1] if proba.shape[1] == 2 else proba[:, -1]  # type: ignore[attr-defined,call-overload]
         p1 = np.clip(p1, 1e-7, 1 - 1e-7)
 
         # For binary: use log_loss directly
@@ -250,7 +365,7 @@ class RobustPrefixHonestTree(BaseEstimator):
 
     Parameters
     ----------
-    task : {'regression', 'classification'}
+    task : {'regression', 'classification'}, default='regression'
         Type of prediction task.
     top_levels : int, default=2
         Number of prefix levels to lock using robust consensus.
@@ -280,6 +395,30 @@ class RobustPrefixHonestTree(BaseEstimator):
 
     Attributes
     ----------
+    task : Literal['regression', 'classification']
+        Type of prediction task.
+    top_levels : int
+        Number of prefix levels to lock using robust consensus.
+    max_depth : int
+        Overall tree depth (prefix + subtree).
+    min_samples_leaf : int
+        Minimum samples per leaf in subtrees.
+    val_frac : float
+        Fraction of data for validation in consensus selection.
+    est_frac : float
+        Fraction of data for honest leaf estimation.
+    smoothing : float
+        Smoothing parameter for leaf estimates.
+    winsor_quantiles : tuple[float, float]
+        Quantiles for winsorization clipping.
+    consensus_B : int
+        Number of bootstrap samples for consensus.
+    consensus_subsample_frac : float
+        Subsample fraction per bootstrap.
+    consensus_max_bins : int
+        Bins for threshold discretization.
+    random_state : int | None
+        Random seed.
     classes_ : ndarray (classification only)
         Unique class labels.
 
@@ -335,7 +474,14 @@ class RobustPrefixHonestTree(BaseEstimator):
     classes_: np.ndarray | None = None
 
     def __post_init__(self):
-        """Validate parameters."""
+        """
+        Validate parameters.
+
+        Raises
+        ------
+        ValueError
+            If parameters are invalid.
+        """
         if self.task not in ["regression", "classification"]:
             raise ValueError("task must be 'regression' or 'classification'")
         if not 0 < self.val_frac < 1 or not 0 < self.est_frac < 1:
@@ -343,8 +489,15 @@ class RobustPrefixHonestTree(BaseEstimator):
         if self.val_frac + self.est_frac >= 1:
             raise ValueError("val_frac + est_frac must be < 1")
 
-    def _get_base_estimator(self):
-        """Return appropriate sklearn tree for task."""
+    def _get_base_estimator(self) -> type:
+        """
+        Return appropriate sklearn tree for task.
+        
+        Returns
+        -------
+        type
+            DecisionTreeRegressor or DecisionTreeClassifier class.
+        """
         if self.task == "regression":
             return DecisionTreeRegressor
         else:
@@ -353,14 +506,40 @@ class RobustPrefixHonestTree(BaseEstimator):
     def _route_mask(
         self, X: np.ndarray, path: list[tuple[int, float, str]]
     ) -> np.ndarray:
-        """Apply routing path to get mask for samples reaching a node."""
+        """
+        Apply routing path to get mask for samples reaching a node.
+
+        Parameters
+        ----------
+        X
+            Feature array.
+        path
+            List of (feature, threshold, side) tuples.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean mask for samples reaching the node.
+        """
         m = np.ones(len(X), dtype=bool)
         for f, t, side in path:
             m &= (X[:, f] <= t) if side == "L" else (X[:, f] > t)
         return m
 
     def _route_node_ids(self, X: np.ndarray) -> np.ndarray:
-        """Route samples through prefix to get terminal region IDs."""
+        """
+        Route samples through prefix to get terminal region IDs.
+
+        Parameters
+        ----------
+        X
+            Feature array.
+
+        Returns
+        -------
+        np.ndarray
+            Array of terminal region IDs for each sample.
+        """
         ids = np.zeros(len(X), dtype=int)
         for nid, f, thr, L, R in self._prefix_nodes_ or []:
             if f is None:
@@ -371,21 +550,26 @@ class RobustPrefixHonestTree(BaseEstimator):
             ids[right] = R
         return ids
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "RobustPrefixHonestTree":
         """
         Fit the robust prefix honest tree.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Training features.
-        y : array-like of shape (n_samples,)
+        y
             Target values.
 
         Returns
         -------
-        self : object
+        RobustPrefixHonestTree
             Fitted estimator.
+        
+        Raises
+        ------
+        ValueError
+            If multi-class classification is attempted.
         """
         X = np.asarray(X)
         y = np.asarray(y)
@@ -455,8 +639,8 @@ class RobustPrefixHonestTree(BaseEstimator):
             next_q = []
             for nid, path in node_queue:
                 # Route data to this node
-                m_split = self._route_mask(X_split, path)
-                m_val = self._route_mask(X_val, path)
+                m_split = self._route_mask(np.asarray(X_split), path)
+                m_val = self._route_mask(np.asarray(X_val), path)
                 Xs, ys = X_split[m_split], y_split[m_split]
                 Xv, yv = X_val[m_val], y_val[m_val]
 
@@ -506,8 +690,11 @@ class RobustPrefixHonestTree(BaseEstimator):
                 terminal_paths.append((nid, path))
                 return
             f, t, L, R = locked[nid]
-            gather(L, path + [(f, t, "L")], lvl + 1)
-            gather(R, path + [(f, t, "R")], lvl + 1)
+            if L is not None and R is not None and f is not None and t is not None:
+                gather(L, path + [(f, t, "L")], lvl + 1)
+                gather(R, path + [(f, t, "R")], lvl + 1)
+            else:
+                terminal_paths.append((nid, path))
 
         if not self._prefix_nodes_:
             terminal_paths.append((0, []))
@@ -521,12 +708,12 @@ class RobustPrefixHonestTree(BaseEstimator):
         if self.task == "classification":
             self._region_leaf_probs_ = {}
             self._fit_classification_regions(
-                terminal_paths, X_split, y_split, X_est, y_est, remain
+                terminal_paths, np.asarray(X_split), np.asarray(y_split), np.asarray(X_est), np.asarray(y_est), remain
             )
         else:
             self._region_leaf_values_ = {}
             self._fit_regression_regions(
-                terminal_paths, X_split, y_split, X_est, y_est, remain
+                terminal_paths, np.asarray(X_split), np.asarray(y_split), np.asarray(X_est), np.asarray(y_est), remain
             )
 
         return self
@@ -540,12 +727,39 @@ class RobustPrefixHonestTree(BaseEstimator):
         y_est: np.ndarray,
         remain: int,
     ):
-        """Fit classification subtrees with m-estimate smoothing."""
+        """
+        Fit classification subtrees with m-estimate smoothing.
+
+        Parameters
+        ----------
+        terminal_paths
+            List of (node_id, path) for terminal prefix regions.
+        X_split
+            Features for structure fitting.
+        y_split
+            Labels for structure fitting.
+        X_est
+            Features for honest estimation.
+        y_est
+            Labels for honest estimation.
+        remain
+            Remaining depth for subtrees.
+            
+        Raises
+        ------
+        ValueError
+            If models or leaf probabilities not initialized.
+        """
+        if self._region_models_ is None or self._region_leaf_probs_ is None:
+            raise ValueError("Models or leaf probabilities not initialized")
+        
         p0 = self._global_prior_
+        if p0 is None:
+            raise ValueError("Global prior not initialized")
 
         for nid, path in terminal_paths:
-            m_split = self._route_mask(X_split, path)
-            m_est = self._route_mask(X_est, path)
+            m_split = self._route_mask(np.asarray(X_split), path)
+            m_est = self._route_mask(np.asarray(X_est), path)
             Xs, ys = X_split[m_split], y_split[m_split]
             Xe, ye = X_est[m_est], y_est[m_est]
 
@@ -597,12 +811,39 @@ class RobustPrefixHonestTree(BaseEstimator):
         y_est: np.ndarray,
         remain: int,
     ):
-        """Fit regression subtrees with shrinkage."""
+        """
+        Fit regression subtrees with shrinkage.
+
+        Parameters
+        ----------
+        terminal_paths
+            List of (node_id, path) for terminal prefix regions.
+        X_split
+            Features for structure fitting.
+        y_split
+            Values for structure fitting.
+        X_est
+            Features for honest estimation.
+        y_est
+            Values for honest estimation.
+        remain
+            Remaining depth for subtrees.
+            
+        Raises
+        ------
+        ValueError
+            If models or leaf values not initialized.
+        """
+        if self._region_models_ is None or self._region_leaf_values_ is None:
+            raise ValueError("Models or leaf values not initialized")
+            
         global_mean = self._global_prior_
+        if global_mean is None:
+            raise ValueError("Global prior not initialized")
 
         for nid, path in terminal_paths:
-            m_split = self._route_mask(X_split, path)
-            m_est = self._route_mask(X_est, path)
+            m_split = self._route_mask(np.asarray(X_split), path)
+            m_est = self._route_mask(np.asarray(X_est), path)
             Xs, ys = X_split[m_split], y_split[m_split]
             Xe, ye = X_est[m_est], y_est[m_est]
 
@@ -666,12 +907,12 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Features.
 
         Returns
         -------
-        y_pred : ndarray of shape (n_samples,)
+        np.ndarray
             Predicted labels or values.
         """
         if self.task == "classification":
@@ -681,7 +922,24 @@ class RobustPrefixHonestTree(BaseEstimator):
             return self._predict_regression(X)
 
     def _predict_regression(self, X: np.ndarray) -> np.ndarray:
-        """Regression prediction implementation."""
+        """
+        Regression prediction implementation.
+
+        Parameters
+        ----------
+        X
+            Features for prediction.
+
+        Returns
+        -------
+        np.ndarray
+            Predicted values.
+            
+        Raises
+        ------
+        ValueError
+            If model has not been fitted properly.
+        """
         check_is_fitted(
             self,
             [
@@ -694,17 +952,22 @@ class RobustPrefixHonestTree(BaseEstimator):
         )
 
         X = np.asarray(X)
+        if self._lo_ is None or self._hi_ is None:
+            raise ValueError("Model has not been fitted properly - winsorization bounds missing")
         Xw = _winsorize_apply(X, self._lo_, self._hi_)
         ids = self._route_node_ids(Xw)
 
         predictions = np.zeros(len(Xw), dtype=float)
+
+        if self._region_models_ is None or self._region_leaf_values_ is None:
+            raise ValueError("Model has not been fitted properly")
 
         for nid, subtree in self._region_models_.items():
             mask = ids == nid
             if not mask.any():
                 continue
 
-            leaves = subtree.apply(Xw[mask])
+            leaves = subtree.apply(Xw[mask])  # type: ignore[attr-defined]
             vals = np.array(
                 [
                     self._region_leaf_values_[nid].get(int(lid), self._global_prior_)
@@ -722,13 +985,20 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Features.
 
         Returns
         -------
-        proba : ndarray of shape (n_samples, n_classes)
+        np.ndarray
             Class probabilities.
+        
+        Raises
+        ------
+        AttributeError
+            If called on regression task.
+        ValueError
+            If model has not been fitted properly.
         """
         if self.task != "classification":
             raise AttributeError(
@@ -748,17 +1018,22 @@ class RobustPrefixHonestTree(BaseEstimator):
         )
 
         X = np.asarray(X)
+        if self._lo_ is None or self._hi_ is None:
+            raise ValueError("Model has not been fitted properly - winsorization bounds missing")
         Xw = _winsorize_apply(X, self._lo_, self._hi_)
         ids = self._route_node_ids(Xw)
 
         proba = np.zeros((len(Xw), 2), dtype=float)
+
+        if self._region_models_ is None or self._region_leaf_probs_ is None:
+            raise ValueError("Model has not been fitted properly")
 
         for nid, subtree in self._region_models_.items():
             mask = ids == nid
             if not mask.any():
                 continue
 
-            leaves = subtree.apply(Xw[mask])
+            leaves = subtree.apply(Xw[mask])  # type: ignore[attr-defined]
             p1 = np.array(
                 [self._region_leaf_probs_[nid].get(int(lid), 0.5) for lid in leaves],
                 dtype=float,
@@ -776,14 +1051,14 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Test features.
-        y : array-like of shape (n_samples,)
+        y
             True labels or values.
 
         Returns
         -------
-        score : float
+        float
             R² score (regression) or accuracy (classification).
         """
         from sklearn.metrics import accuracy_score, r2_score

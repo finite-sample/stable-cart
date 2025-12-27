@@ -6,7 +6,7 @@ This allows different tree methods to compose split strategies flexibly.
 """
 
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 
@@ -42,18 +42,22 @@ class SplitStrategy(ABC):
 
         Parameters
         ----------
-        X, y : np.ndarray
-            Training data for structure learning
-        X_val, y_val : np.ndarray, optional
-            Validation data for split evaluation
-        depth : int
-            Current depth in the tree
+        X
+            Training feature matrix for structure learning.
+        y
+            Training target values for structure learning.
+        X_val
+            Validation feature matrix for split evaluation.
+        y_val
+            Validation target values for split evaluation.
+        depth
+            Current depth in the tree.
         **kwargs
-            Strategy-specific parameters
+            Strategy-specific parameters.
 
         Returns
         -------
-        best_split : SplitCandidate or None
+        SplitCandidate | None
             Best split found, or None if no good split exists
         """
         pass
@@ -64,12 +68,45 @@ class SplitStrategy(ABC):
     ) -> bool:
         """
         Determine if splitting should stop at this node.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
         """
         pass
 
 
 class AxisAlignedStrategy(SplitStrategy):
-    """Traditional axis-aligned splits with optional enhancements."""
+    """
+    Traditional axis-aligned splits with optional enhancements.
+    
+    Parameters
+    ----------
+    max_candidates
+        Maximum number of split candidates to evaluate.
+    enable_deterministic_tiebreaking
+        Enable deterministic tiebreaking for reproducibility.
+    enable_margin_veto
+        Veto splits with insufficient margin between candidates.
+    margin_threshold
+        Minimum margin required for non-vetoed splits.
+    task
+        Task type for split evaluation.
+    """
 
     def __init__(
         self,
@@ -94,7 +131,29 @@ class AxisAlignedStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Find best axis-aligned split."""
+        """
+        Find best axis-aligned split.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best split candidate or None if no valid split found.
+        """
         candidates = _find_candidate_splits(X, y, self.max_candidates)
 
         if not candidates:
@@ -126,7 +185,31 @@ class AxisAlignedStrategy(SplitStrategy):
         min_samples_split: int = 2,
         **kwargs,
     ) -> bool:
-        """Basic stopping criteria."""
+        """
+        Basic stopping criteria.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        current_gain
+            Current best gain.
+        depth
+            Current tree depth.
+        max_depth
+            Maximum tree depth.
+        min_samples_split
+            Minimum samples to split.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop.
+        """
         if depth >= max_depth:
             return True
         if len(X) < min_samples_split:
@@ -137,7 +220,26 @@ class AxisAlignedStrategy(SplitStrategy):
 
 
 class ConsensusStrategy(SplitStrategy):
-    """Bootstrap consensus-based split selection."""
+    """
+    Bootstrap consensus-based split selection.
+    
+    Parameters
+    ----------
+    consensus_samples
+        Number of bootstrap samples for consensus.
+    consensus_threshold
+        Minimum consensus threshold for split acceptance.
+    enable_quantile_binning
+        Enable quantile-based threshold binning.
+    max_bins
+        Maximum number of bins for threshold discretization.
+    fallback_strategy
+        Fallback strategy if consensus fails.
+    task
+        Task type (regression or classification).
+    random_state
+        Random state for reproducibility.
+    """
 
     def __init__(
         self,
@@ -166,7 +268,29 @@ class ConsensusStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Find consensus split using bootstrap voting."""
+        """
+        Find consensus split using bootstrap voting.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best consensus split or None if no valid split found.
+        """
         best_split, all_candidates = bootstrap_consensus_split(
             X,
             y,
@@ -194,12 +318,49 @@ class ConsensusStrategy(SplitStrategy):
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
     ) -> bool:
-        """Use fallback strategy for stopping criteria."""
+        """
+        Use fallback strategy for stopping criteria.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         return self.fallback_strategy.should_stop(X, y, current_gain, depth, **kwargs)
 
 
 class ObliqueStrategy(SplitStrategy):
-    """Oblique splits using linear projections."""
+    """
+    Oblique splits using linear projections.
+    
+    Parameters
+    ----------
+    oblique_regularization
+        Type of regularization for oblique splits.
+    enable_correlation_gating
+        Enable correlation-based gating for oblique splits.
+    min_correlation
+        Minimum correlation threshold for oblique splits.
+    fallback_strategy
+        Fallback strategy if oblique splits fail.
+    task
+        Task type (regression or classification).
+    random_state
+        Random state for reproducibility.
+    """
 
     def __init__(
         self,
@@ -226,11 +387,34 @@ class ObliqueStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Find best oblique split."""
+        """
+        Find best oblique split.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best oblique split or None if no valid split found.
+        """
+        from typing import cast
         oblique_candidates = generate_oblique_candidates(
             X,
             y,
-            strategy=self.oblique_regularization,
+            strategy=cast(Literal["lasso", "ridge", "elastic_net"], self.oblique_regularization),
             enable_correlation_gating=self.enable_correlation_gating,
             min_correlation=self.min_correlation,
             task=self.task,
@@ -257,12 +441,51 @@ class ObliqueStrategy(SplitStrategy):
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
     ) -> bool:
-        """Use fallback strategy for stopping criteria."""
+        """
+        Use fallback strategy for stopping criteria.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         return self.fallback_strategy.should_stop(X, y, current_gain, depth, **kwargs)
 
 
 class LookaheadStrategy(SplitStrategy):
-    """Lookahead with beam search."""
+    """
+    Lookahead with beam search.
+    
+    Parameters
+    ----------
+    lookahead_depth
+        Depth for lookahead search.
+    beam_width
+        Width of beam search.
+    enable_ambiguity_gating
+        Enable ambiguity-based gating.
+    ambiguity_threshold
+        Threshold for ambiguity gating.
+    min_samples_for_lookahead
+        Minimum samples required for lookahead.
+    fallback_strategy
+        Fallback strategy for small datasets.
+    task
+        Task type (regression or classification).
+    """
 
     def __init__(
         self,
@@ -291,7 +514,29 @@ class LookaheadStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Find split using lookahead beam search."""
+        """
+        Find split using lookahead beam search.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best lookahead split or None if no valid split found.
+        """
         if len(X) < self.min_samples_for_lookahead:
             # Fall back for small datasets
             return self.fallback_strategy.find_best_split(
@@ -322,12 +567,49 @@ class LookaheadStrategy(SplitStrategy):
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
     ) -> bool:
-        """Use fallback strategy for stopping criteria."""
+        """
+        Use fallback strategy for stopping criteria.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         return self.fallback_strategy.should_stop(X, y, current_gain, depth, **kwargs)
 
 
 class VariancePenalizedStrategy(SplitStrategy):
-    """Variance-aware split selection with explicit penalties."""
+    """
+    Variance-aware split selection with explicit penalties.
+    
+    Parameters
+    ----------
+    variance_penalty_weight
+        Weight for variance penalty in split selection.
+    variance_estimation_samples
+        Number of samples for variance estimation.
+    stopping_strategy
+        Strategy for variance-aware stopping.
+    base_strategy
+        Base strategy for generating splits.
+    task
+        Task type (regression or classification).
+    random_state
+        Random state for reproducibility.
+    """
 
     def __init__(
         self,
@@ -356,7 +638,29 @@ class VariancePenalizedStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Find split with explicit variance penalty."""
+        """
+        Find split with explicit variance penalty.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best variance-penalized split or None if no valid split found.
+        """
         # Get candidates from base strategy
         base_split = self.base_strategy.find_best_split(
             X, y, X_val, y_val, depth, **kwargs
@@ -398,7 +702,29 @@ class VariancePenalizedStrategy(SplitStrategy):
         variance_estimate: float = 0.0,
         **kwargs,
     ) -> bool:
-        """Variance-aware stopping criteria."""
+        """
+        Variance-aware stopping criteria.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        variance_estimate
+            Estimated variance for the split.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         # Base stopping criteria
         if self.base_strategy.should_stop(X, y, current_gain, depth, **kwargs):
             return True
@@ -408,12 +734,28 @@ class VariancePenalizedStrategy(SplitStrategy):
             current_gain,
             variance_estimate,
             self.variance_penalty_weight,
-            self.stopping_strategy,
+            cast(Literal["one_se", "variance_penalty", "both"], self.stopping_strategy),
         )
 
 
 class CompositeStrategy(SplitStrategy):
-    """Composite strategy that tries multiple approaches and selects the best."""
+    """
+    Composite strategy that tries multiple approaches and selects the best.
+    
+    Parameters
+    ----------
+    strategies
+        List of split strategies to compose.
+    selection_metric
+        Metric for selecting best strategy.
+    task
+        Task type (regression or classification).
+    
+    Raises
+    ------
+    ValueError
+        If no strategies are provided.
+    """
 
     def __init__(
         self,
@@ -439,7 +781,29 @@ class CompositeStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Try all strategies and select the best split."""
+        """
+        Try all strategies and select the best split.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best composite split or None if no valid split found.
+        """
         candidates = []
 
         for strategy in self.strategies:
@@ -482,7 +846,27 @@ class CompositeStrategy(SplitStrategy):
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
     ) -> bool:
-        """Stop if any strategy says to stop."""
+        """
+        Stop if any strategy says to stop.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         return any(
             strategy.should_stop(X, y, current_gain, depth, **kwargs)
             for strategy in self.strategies
@@ -495,6 +879,15 @@ class HybridStrategy(SplitStrategy):
 
     This implements the "algorithm focus" concept where we can emphasize
     speed, stability, or accuracy based on the situation.
+    
+    Parameters
+    ----------
+    focus
+        Algorithm focus: speed, stability, or accuracy.
+    task
+        Task type (regression or classification).
+    random_state
+        Random state for reproducibility.
     """
 
     def __init__(
@@ -549,13 +942,55 @@ class HybridStrategy(SplitStrategy):
         depth: int = 0,
         **kwargs,
     ) -> SplitCandidate | None:
-        """Delegate to the configured strategy."""
+        """
+        Delegate to the configured strategy.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+        X_val
+            Validation features.
+        y_val
+            Validation targets.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional keyword arguments.
+
+        Returns
+        -------
+        SplitCandidate | None
+            Best hybrid split or None if no valid split found.
+        """
         return self.strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
 
     def should_stop(
         self, X: np.ndarray, y: np.ndarray, current_gain: float, depth: int, **kwargs
     ) -> bool:
-        """Delegate to the configured strategy."""
+        """
+        Delegate to the configured strategy.
+
+        Parameters
+        ----------
+        X
+            Feature matrix at current node.
+        y
+            Target values at current node.
+        current_gain
+            Information gain of current best split.
+        depth
+            Current tree depth.
+        **kwargs
+            Additional strategy-specific parameters.
+
+        Returns
+        -------
+        bool
+            True if splitting should stop, False otherwise.
+        """
         return self.strategy.should_stop(X, y, current_gain, depth, **kwargs)
 
 
@@ -572,18 +1007,23 @@ def create_split_strategy(
 
     Parameters
     ----------
-    strategy_type : str
+    strategy_type
         Type of strategy: 'axis_aligned', 'consensus', 'oblique',
         'lookahead', 'variance_penalized', 'composite', 'hybrid'
-    task : str
+    task
         'regression' or 'classification'
     **kwargs
         Strategy-specific parameters
 
     Returns
     -------
-    strategy : SplitStrategy
+    SplitStrategy
         Configured split strategy
+    
+    Raises
+    ------
+    ValueError
+        If unknown strategy type is provided.
     """
     if strategy_type == "axis_aligned":
         return AxisAlignedStrategy(task=task, **kwargs)

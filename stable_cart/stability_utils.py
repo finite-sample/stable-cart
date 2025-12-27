@@ -6,24 +6,50 @@ across different methods.
 """
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.linear_model import ElasticNetCV, LassoCV, LogisticRegressionCV, RidgeCV
 from sklearn.model_selection import train_test_split
 
 
 @dataclass
 class SplitCandidate:
-    """Represents a potential split with all relevant information."""
+    """
+    Represents a potential split with all relevant information.
+
+    Attributes
+    ----------
+    feature_idx
+        Index of the feature to split on.
+    threshold
+        Threshold value for the split.
+    gain
+        Information gain or improvement from this split.
+    left_indices
+        Indices of samples going to left child.
+    right_indices
+        Indices of samples going to right child.
+    is_oblique
+        Whether this is an oblique (linear combination) split.
+    oblique_weights
+        Weights for oblique split, None for axis-aligned splits.
+    validation_score
+        Validation score for this split.
+    variance_estimate
+        Estimated variance for this split.
+    consensus_support
+        Consensus support score from bootstrap sampling.
+    """
 
     feature_idx: int
     threshold: float
     gain: float
-    left_indices: np.ndarray
-    right_indices: np.ndarray
+    left_indices: NDArray[np.int_]
+    right_indices: NDArray[np.int_]
     is_oblique: bool = False
-    oblique_weights: np.ndarray | None = None
+    oblique_weights: NDArray[np.floating] | None = None
     validation_score: float | None = None
     variance_estimate: float | None = None
     consensus_support: float | None = None
@@ -31,7 +57,22 @@ class SplitCandidate:
 
 @dataclass
 class StabilityMetrics:
-    """Container for stability diagnostic information."""
+    """
+    Container for stability diagnostic information.
+
+    Attributes
+    ----------
+    prefix_consensus_scores
+        Consensus scores for prefix-level decisions.
+    validation_consistency
+        Consistency score across validation folds.
+    leaf_variance_estimates
+        Variance estimates for leaf predictions.
+    split_margins
+        Margin scores for split decisions.
+    bootstrap_variance
+        Bootstrap-estimated variance, None if not computed.
+    """
 
     prefix_consensus_scores: list[float]
     validation_consistency: float
@@ -58,12 +99,31 @@ def bootstrap_consensus_split(
     """
     Find consensus split using bootstrap voting with quantile-binned thresholds.
 
+    Parameters
+    ----------
+    X
+        Feature matrix for finding splits.
+    y
+        Target values for split evaluation.
+    n_samples
+        Number of bootstrap samples to use.
+    max_candidates
+        Maximum number of split candidates to evaluate.
+    threshold
+        Minimum consensus threshold for accepting a split.
+    enable_quantile_binning
+        Whether to use quantile-based threshold binning.
+    max_bins
+        Maximum number of bins for threshold discretization.
+    random_state
+        Random state for reproducibility.
+
     Returns
     -------
-    best_split : SplitCandidate or None
-        Consensus split if one achieves threshold support
-    all_candidates : List[SplitCandidate]
-        All evaluated candidates with their consensus scores
+    SplitCandidate | None
+        Consensus split if one achieves threshold support.
+    list[SplitCandidate]
+        All evaluated candidates with their consensus scores.
     """
     if len(X) < 10:  # Too few samples for meaningful consensus
         return None, []
@@ -130,7 +190,23 @@ def bootstrap_consensus_split(
 def _bin_threshold(
     threshold: float, feature_values: np.ndarray, max_bins: int
 ) -> float:
-    """Bin threshold to quantile grid to reduce micro-jitter."""
+    """
+    Bin threshold to quantile grid to reduce micro-jitter.
+
+    Parameters
+    ----------
+    threshold
+        Original threshold value.
+    feature_values
+        Feature values for quantile computation.
+    max_bins
+        Maximum number of quantile bins.
+
+    Returns
+    -------
+    float
+        Binned threshold value.
+    """
     if len(np.unique(feature_values)) <= max_bins:
         return threshold
 
@@ -146,7 +222,19 @@ def _bin_threshold(
 def enable_deterministic_tiebreaking(
     candidates: list[SplitCandidate],
 ) -> list[SplitCandidate]:
-    """Sort candidates deterministically to break ties consistently."""
+    """
+    Sort candidates deterministically to break ties consistently.
+
+    Parameters
+    ----------
+    candidates
+        List of split candidates to sort.
+
+    Returns
+    -------
+    list[SplitCandidate]
+        Sorted candidates with consistent ordering.
+    """
     return sorted(
         candidates,
         key=lambda c: (
@@ -160,7 +248,21 @@ def enable_deterministic_tiebreaking(
 def apply_margin_veto(
     candidates: list[SplitCandidate], margin_threshold: float = 0.03
 ) -> list[SplitCandidate]:
-    """Veto splits where the margin between best candidates is too small."""
+    """
+    Veto splits where the margin between best candidates is too small.
+
+    Parameters
+    ----------
+    candidates
+        List of split candidates to filter.
+    margin_threshold
+        Minimum margin required between best candidates.
+
+    Returns
+    -------
+    list[SplitCandidate]
+        Filtered candidates with sufficient margins.
+    """
     if len(candidates) < 2:
         return candidates
 
@@ -196,6 +298,35 @@ def validation_checked_split_selection(
 ) -> SplitCandidate | None:
     """
     Evaluate split candidates on validation data and select based on consistency.
+    
+    Parameters
+    ----------
+    X_split
+        Training features for split evaluation.
+    y_split
+        Training targets for split evaluation.
+    X_val
+        Validation features for performance evaluation.
+    y_val
+        Validation targets for performance evaluation.
+    candidates
+        List of split candidates to evaluate.
+    metric
+        Selection metric for choosing best candidate.
+    consistency_weight
+        Weight for consistency in selection.
+    task
+        Task type for evaluation.
+    
+    Returns
+    -------
+    SplitCandidate | None
+        Best split candidate or None if no candidates.
+    
+    Raises
+    ------
+    ValueError
+        If unknown validation metric is provided.
     """
     if not candidates:
         return None
@@ -229,7 +360,23 @@ def validation_checked_split_selection(
 def _evaluate_split_performance(
     y: np.ndarray, left_mask: np.ndarray, task: str
 ) -> float:
-    """Evaluate split performance on validation data."""
+    """
+    Evaluate split performance on validation data.
+    
+    Parameters
+    ----------
+    y
+        Target values for evaluation.
+    left_mask
+        Boolean mask for left split.
+    task
+        Task type for evaluation.
+    
+    Returns
+    -------
+    float
+        Performance score for the split.
+    """
     if np.sum(left_mask) == 0 or np.sum(~left_mask) == 0:
         return 0.0
 
@@ -258,7 +405,21 @@ def _evaluate_split_performance(
 def _select_by_variance_penalty(
     candidates: list[SplitCandidate], penalty_weight: float
 ) -> SplitCandidate | None:
-    """Select split using validation score minus variance penalty."""
+    """
+    Select split using validation score minus variance penalty.
+    
+    Parameters
+    ----------
+    candidates
+        List of split candidates to evaluate.
+    penalty_weight
+        Weight for variance penalty.
+    
+    Returns
+    -------
+    SplitCandidate | None
+        Best candidate or None if no candidates.
+    """
     if not candidates:
         return None
 
@@ -286,8 +447,8 @@ def _select_by_variance_penalty(
 
 
 def honest_data_partition(
-    X: np.ndarray,
-    y: np.ndarray,
+    X: NDArray[np.floating],
+    y: NDArray[Any],
     split_frac: float = 0.6,
     val_frac: float = 0.2,
     est_frac: float = 0.2,
@@ -295,22 +456,42 @@ def honest_data_partition(
     task: str = "regression",
     random_state: int | None = None,
 ) -> tuple[
-    tuple[np.ndarray, np.ndarray],
-    tuple[np.ndarray, np.ndarray],
-    tuple[np.ndarray, np.ndarray],
+    tuple[NDArray[np.floating], NDArray[Any]],
+    tuple[NDArray[np.floating], NDArray[Any]],
+    tuple[NDArray[np.floating], NDArray[Any]],
 ]:
     """
     Partition data into SPLIT/VAL/EST subsets with optional stratification.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for partitioning.
+    y
+        Target values for partitioning.
+    split_frac
+        Fraction of data for split subset.
+    val_frac
+        Fraction of data for validation subset.
+    est_frac
+        Fraction of data for estimation subset.
+    enable_stratification
+        Whether to use stratified splitting.
+    task
+        Task type for stratification.
+    random_state
+        Random state for reproducibility.
 
     Returns
     -------
-    (X_split, y_split), (X_val, y_val), (X_est, y_est)
+    tuple[tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]]]
+        Tuple of (X_split, y_split), (X_val, y_val), (X_est, y_est) arrays.
     """
     assert abs(split_frac + val_frac + est_frac - 1.0) < 1e-6, "Fractions must sum to 1"
 
     if enable_stratification and task == "regression":
         # Stratify by target quantiles for regression
-        y_binned = _create_target_bins(y, n_bins=5)
+        y_binned = _create_target_bins(np.asarray(y), n_bins=5)
         stratify = y_binned
     elif enable_stratification and task == "classification":
         stratify = y
@@ -327,7 +508,7 @@ def honest_data_partition(
     est_size_relative = est_frac / (val_frac + est_frac)
 
     if enable_stratification and task == "regression":
-        temp_stratify = _create_target_bins(y_temp, n_bins=5)
+        temp_stratify = _create_target_bins(np.asarray(y_temp), n_bins=5)
     elif enable_stratification and task == "classification":
         temp_stratify = y_temp
     else:
@@ -341,11 +522,29 @@ def honest_data_partition(
         random_state=random_state,
     )
 
-    return (X_split, y_split), (X_val, y_val), (X_est, y_est)
+    return (
+        (np.asarray(X_split), np.asarray(y_split)),
+        (np.asarray(X_val), np.asarray(y_val)),
+        (np.asarray(X_est), np.asarray(y_est))
+    )
 
 
 def _create_target_bins(y: np.ndarray, n_bins: int = 5) -> np.ndarray:
-    """Create stratification bins for regression targets using quantiles."""
+    """
+    Create stratification bins for regression targets using quantiles.
+    
+    Parameters
+    ----------
+    y
+        Target values to bin.
+    n_bins
+        Number of bins to create.
+    
+    Returns
+    -------
+    np.ndarray
+        Binned target values.
+    """
     if len(np.unique(y)) <= n_bins:
         return y.astype(int)
 
@@ -360,17 +559,37 @@ def _create_target_bins(y: np.ndarray, n_bins: int = 5) -> np.ndarray:
 
 
 def stabilize_leaf_estimate(
-    y_est: np.ndarray,
-    y_parent: np.ndarray,
+    y_est: NDArray[Any],
+    y_parent: NDArray[Any],
     strategy: Literal[
         "m_estimate", "shrink_to_parent", "beta_smoothing"
     ] = "m_estimate",
     smoothing: float = 1.0,
     task: str = "regression",
     min_samples: int = 5,
-) -> float | np.ndarray:
+) -> float | NDArray[Any]:
     """
     Stabilize leaf estimates using various smoothing strategies.
+    
+    Parameters
+    ----------
+    y_est
+        Target values in the leaf for estimation.
+    y_parent
+        Target values in the parent node.
+    strategy
+        Smoothing strategy to use.
+    smoothing
+        Smoothing parameter strength.
+    task
+        Task type for smoothing.
+    min_samples
+        Minimum samples threshold for smoothing.
+    
+    Returns
+    -------
+    float | NDArray[Any]
+        Stabilized leaf estimate.
     """
     if len(y_est) == 0:
         # Fall back to parent estimate
@@ -394,9 +613,27 @@ def stabilize_leaf_estimate(
 def _stabilize_regression_leaf(
     y_est: np.ndarray, y_parent: np.ndarray, strategy: str, smoothing: float
 ) -> float:
-    """Stabilize regression leaf estimate."""
-    leaf_mean = np.mean(y_est)
-    parent_mean = np.mean(y_parent) if len(y_parent) > 0 else leaf_mean
+    """
+    Stabilize regression leaf estimate.
+    
+    Parameters
+    ----------
+    y_est
+        Target values in leaf.
+    y_parent
+        Target values in parent.
+    strategy
+        Smoothing strategy.
+    smoothing
+        Smoothing parameter.
+    
+    Returns
+    -------
+    float
+        Stabilized regression estimate.
+    """
+    leaf_mean = float(np.mean(y_est))
+    parent_mean = float(np.mean(y_parent)) if len(y_parent) > 0 else leaf_mean
 
     if strategy == "m_estimate":
         # M-estimate: weighted average with parent
@@ -413,7 +650,25 @@ def _stabilize_regression_leaf(
 def _stabilize_classification_leaf(
     y_est: np.ndarray, y_parent: np.ndarray, strategy: str, smoothing: float
 ) -> np.ndarray:
-    """Stabilize classification leaf probabilities."""
+    """
+    Stabilize classification leaf probabilities.
+    
+    Parameters
+    ----------
+    y_est
+        Class labels in leaf.
+    y_parent
+        Class labels in parent.
+    strategy
+        Smoothing strategy.
+    smoothing
+        Smoothing parameter.
+    
+    Returns
+    -------
+    np.ndarray
+        Stabilized class probabilities.
+    """
     unique_classes = (
         np.unique(np.concatenate([y_est, y_parent]))
         if len(y_parent) > 0
@@ -470,13 +725,20 @@ def winsorize_features(
 ) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """
     Winsorize features to reduce outlier influence.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix to winsorize.
+    quantiles
+        Quantile bounds for winsorization.
+    fitted_bounds
+        Pre-computed bounds for application.
 
     Returns
     -------
-    X_winsorized : np.ndarray
-        Winsorized features
-    bounds : Tuple[np.ndarray, np.ndarray]
-        (lower_bounds, upper_bounds) for future application
+    tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]
+        Winsorized features and (lower_bounds, upper_bounds) for future application.
     """
     if fitted_bounds is not None:
         lower_bounds, upper_bounds = fitted_bounds
@@ -504,6 +766,28 @@ def generate_oblique_candidates(
 ) -> list[SplitCandidate]:
     """
     Generate oblique split candidates using linear projections.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for oblique splits.
+    y
+        Target values for fitting linear model.
+    strategy
+        Regularization strategy for linear model.
+    enable_correlation_gating
+        Whether to gate on feature correlations.
+    min_correlation
+        Minimum correlation for oblique splits.
+    task
+        Task type for model fitting.
+    random_state
+        Random state for reproducibility.
+    
+    Returns
+    -------
+    list[SplitCandidate]
+        List of oblique split candidates.
     """
     if X.shape[1] < 2:
         return []  # Need at least 2 features for oblique splits
@@ -543,7 +827,7 @@ def generate_oblique_candidates(
         # Try different threshold percentiles
         candidates = []
         for percentile in [25, 50, 75]:
-            threshold = np.percentile(projections, percentile)
+            threshold = float(np.percentile(projections, percentile))
             left_mask = projections <= threshold
 
             if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:
@@ -578,6 +862,28 @@ def beam_search_splits(
 ) -> list[SplitCandidate]:
     """
     Use beam search to find splits with lookahead.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for split search.
+    y
+        Target values for split evaluation.
+    depth
+        Depth for lookahead search.
+    beam_width
+        Width of the search beam.
+    enable_ambiguity_gating
+        Whether to enable ambiguity gating.
+    ambiguity_threshold
+        Threshold for ambiguity gating.
+    task
+        Task type for evaluation.
+    
+    Returns
+    -------
+    list[SplitCandidate]
+        List of beam search split candidates.
     """
     if len(X) < 20:  # Too small for meaningful beam search
         return _find_candidate_splits(X, y, max_candidates=beam_width)
@@ -608,7 +914,27 @@ def _perform_beam_search(
     depth: int,
     task: str,
 ) -> list[SplitCandidate]:
-    """Simplified beam search implementation."""
+    """
+    Simplified beam search implementation.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for beam search.
+    y
+        Target values for evaluation.
+    initial_candidates
+        Initial split candidates for search.
+    depth
+        Search depth for beam search.
+    task
+        Task type for evaluation.
+    
+    Returns
+    -------
+    list[SplitCandidate]
+        Beam search results.
+    """
     if depth <= 1:
         return initial_candidates
 
@@ -635,6 +961,22 @@ def should_stop_splitting(
 ) -> bool:
     """
     Determine if splitting should stop based on variance-aware criteria.
+    
+    Parameters
+    ----------
+    current_gain
+        Current information gain from split.
+    variance_estimate
+        Estimated variance for the split.
+    variance_weight
+        Weight for variance penalty.
+    strategy
+        Strategy for variance-aware stopping.
+    
+    Returns
+    -------
+    bool
+        True if splitting should stop.
     """
     if strategy == "variance_penalty":
         return current_gain < variance_weight * variance_estimate
@@ -657,6 +999,26 @@ def estimate_split_variance(
 ) -> float:
     """
     Estimate variance that would be introduced by this split.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for variance estimation.
+    y
+        Target values for evaluation.
+    split_candidate
+        Split candidate to estimate variance for.
+    n_bootstrap
+        Number of bootstrap samples.
+    task
+        Task type for evaluation.
+    random_state
+        Random state for reproducibility.
+    
+    Returns
+    -------
+    float
+        Estimated variance for the split.
     """
     rng = np.random.RandomState(random_state)
     n_samples = len(X)
@@ -696,7 +1058,23 @@ def estimate_split_variance(
 def _find_candidate_splits(
     X: np.ndarray, y: np.ndarray, max_candidates: int = 20
 ) -> list[SplitCandidate]:
-    """Find basic axis-aligned split candidates."""
+    """
+    Find basic axis-aligned split candidates.
+    
+    Parameters
+    ----------
+    X
+        Feature matrix for split finding.
+    y
+        Target values for split evaluation.
+    max_candidates
+        Maximum number of candidates to return.
+    
+    Returns
+    -------
+    list[SplitCandidate]
+        List of split candidates.
+    """
     candidates = []
     n_features = X.shape[1]
 
@@ -730,7 +1108,21 @@ def _find_candidate_splits(
 
 
 def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
-    """Evaluate information gain from a split."""
+    """
+    Evaluate information gain from a split.
+
+    Parameters
+    ----------
+    y
+        Target values array.
+    left_mask
+        Boolean mask for left split.
+
+    Returns
+    -------
+    float
+        Information gain value.
+    """
     if len(y) == 0 or np.sum(left_mask) == 0 or np.sum(~left_mask) == 0:
         return 0.0
 
@@ -762,7 +1154,19 @@ def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
 
 
 def _gini_impurity(y: np.ndarray) -> float:
-    """Calculate Gini impurity."""
+    """
+    Calculate Gini impurity.
+
+    Parameters
+    ----------
+    y
+        Class labels array.
+
+    Returns
+    -------
+    float
+        Gini impurity value.
+    """
     if len(y) == 0:
         return 0.0
 
@@ -772,7 +1176,19 @@ def _gini_impurity(y: np.ndarray) -> float:
 
 
 def _select_by_median_score(candidates: list[SplitCandidate]) -> SplitCandidate | None:
-    """Select candidate with best median validation score."""
+    """
+    Select candidate with best median validation score.
+
+    Parameters
+    ----------
+    candidates
+        List of split candidates.
+
+    Returns
+    -------
+    SplitCandidate | None
+        Best candidate or None if list is empty.
+    """
     if not candidates:
         return None
 
@@ -780,11 +1196,23 @@ def _select_by_median_score(candidates: list[SplitCandidate]) -> SplitCandidate 
     if not scored:
         return None
 
-    return max(scored, key=lambda c: c.validation_score)
+    return max(scored, key=lambda c: c.validation_score or 0.0)
 
 
 def _select_by_one_se_rule(candidates: list[SplitCandidate]) -> SplitCandidate | None:
-    """Select using one-standard-error rule."""
+    """
+    Select using one-standard-error rule.
+
+    Parameters
+    ----------
+    candidates
+        List of split candidates.
+
+    Returns
+    -------
+    SplitCandidate | None
+        Selected candidate or None if list is empty.
+    """
     if not candidates:
         return None
 
@@ -792,13 +1220,13 @@ def _select_by_one_se_rule(candidates: list[SplitCandidate]) -> SplitCandidate |
     if not scored:
         return None
 
-    scores = [c.validation_score for c in scored]
+    scores = [c.validation_score or 0.0 for c in scored]
     best_score = max(scores)
-    score_std = np.std(scores) if len(scores) > 1 else 0
+    score_std = float(np.std(scores)) if len(scores) > 1 else 0.0
 
     # Find simplest model within one SE of best
     threshold = best_score - score_std
-    viable_candidates = [c for c in scored if c.validation_score >= threshold]
+    viable_candidates = [c for c in scored if (c.validation_score or 0.0) >= threshold]
 
     # Return "simplest" (axis-aligned over oblique, lower feature index)
     return min(viable_candidates, key=lambda c: (c.is_oblique, c.feature_idx))
