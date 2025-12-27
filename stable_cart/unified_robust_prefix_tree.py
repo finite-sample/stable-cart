@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 import numpy as np
 
+from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .base_stable_tree import BaseStableTree
 
 
@@ -162,7 +163,7 @@ class RobustPrefixHonestTree(BaseStableTree):
 
         # Configure defaults that reflect RobustPrefix's personality
         super().__init__(
-            task=task,
+            task=Task(task),
             max_depth=max_depth,
             min_samples_split=min_samples_leaf * 2,  # Derive from min_samples_leaf
             min_samples_leaf=min_samples_leaf,
@@ -214,12 +215,12 @@ class RobustPrefixHonestTree(BaseStableTree):
             enable_deterministic_tiebreaks=True,
             # Leaf stabilization - signature feature
             leaf_smoothing=smoothing,
-            leaf_smoothing_strategy=leaf_smoothing_strategy,
+            leaf_smoothing_strategy=LeafSmoothingStrategy(leaf_smoothing_strategy),
             enable_calibrated_smoothing=True,
             # Classification
             classification_criterion=classification_criterion,
             # Focus on maximum stability
-            algorithm_focus="stability",
+            algorithm_focus=AlgorithmFocus.STABILITY,
             random_state=random_state,
         )
 

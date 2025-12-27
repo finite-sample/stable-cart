@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 import numpy as np
 
+from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .base_stable_tree import BaseStableTree
 
 
@@ -168,7 +169,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
     ):
         # Configure defaults that reflect Bootstrap method's personality
         super().__init__(
-            task=task,
+            task=Task(task),
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
@@ -217,11 +218,11 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             margin_threshold=margin_threshold,
             # Leaf stabilization
             leaf_smoothing=leaf_smoothing,
-            leaf_smoothing_strategy=leaf_smoothing_strategy,
+            leaf_smoothing_strategy=LeafSmoothingStrategy(leaf_smoothing_strategy),
             # Classification
             classification_criterion=classification_criterion,
             # Focus on maximum stability
-            algorithm_focus="stability",
+            algorithm_focus=AlgorithmFocus.STABILITY,
             random_state=random_state,
         )
 

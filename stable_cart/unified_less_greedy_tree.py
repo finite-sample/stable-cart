@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 import numpy as np
 
+from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .base_stable_tree import BaseStableTree
 
 
@@ -158,7 +159,7 @@ class LessGreedyHybridTree(BaseStableTree):
     ):
         # Configure defaults that reflect LessGreedy's personality
         super().__init__(
-            task=task,
+            task=Task(task),
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
@@ -204,11 +205,11 @@ class LessGreedyHybridTree(BaseStableTree):
             variance_penalty_weight=variance_penalty_weight,
             # Leaf stabilization - conservative for accuracy
             leaf_smoothing=leaf_smoothing,
-            leaf_smoothing_strategy=leaf_smoothing_strategy,
+            leaf_smoothing_strategy=LeafSmoothingStrategy(leaf_smoothing_strategy),
             # Classification
             classification_criterion=classification_criterion,
             # Focus on balanced accuracy + stability
-            algorithm_focus="accuracy",
+            algorithm_focus=AlgorithmFocus.ACCURACY,
             random_state=random_state,
         )
 

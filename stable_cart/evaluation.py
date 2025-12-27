@@ -11,7 +11,7 @@ These functions are designed to work with collections of fitted sklearn-compatib
 and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
 """
 
-from typing import Union, cast
+from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -220,8 +220,8 @@ def evaluate_models(
             # Compute AUC if model supports probability predictions
             if hasattr(mdl, "predict_proba"):
                 try:
-                    classifier = cast(ClassifierProtocol, mdl)
-                    proba = classifier.predict_proba(X)
+                    # Direct method call - type checker will verify compatibility
+                    proba = mdl.predict_proba(X)  # type: ignore[attr-defined]
                     if is_binary:
                         auc = float(roc_auc_score(y, proba[:, 1]))
                     else:

@@ -15,9 +15,11 @@ This tree trades some accuracy for substantially improved prediction stability v
 import operator
 import time
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import numpy as np
+
+from ._types import AxisSplit, ObliqueSplit
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LassoCV, LogisticRegressionCV
 from sklearn.metrics import accuracy_score, r2_score
@@ -630,7 +632,7 @@ class LessGreedyHybridTree(BaseEstimator):
             if best_axis_immediate[0] + 1e-12 < best_val_loss:
                 best_val_loss = best_axis_immediate[0]
                 best_kind = "axis"
-                best_info = ("k0", best_axis_immediate[1], best_axis_immediate[2])
+                best_info = AxisSplit("k0", best_axis_immediate[1], best_axis_immediate[2])
 
         # Ambiguity gate for lookahead
         do_lookahead = False
@@ -681,10 +683,10 @@ class LessGreedyHybridTree(BaseEstimator):
                 if tot < best_la[0]:
                     best_la = (tot, f, t)
 
-            if np.isfinite(best_la[0]) and best_la[0] + 1e-12 < best_val_loss:
+            if np.isfinite(best_la[0]) and best_la[0] + 1e-12 < best_val_loss and best_la[1] is not None and best_la[2] is not None:
                 best_val_loss = best_la[0]
                 best_kind = "axis"
-                best_info = (f"k{k_here}", best_la[1], best_la[2])
+                best_info = AxisSplit(f"k{k_here}", best_la[1], best_la[2])
 
         # Oblique root with gating
         if self.enable_oblique_root and depth == 0 and Xs.shape[1] >= 2:
@@ -738,7 +740,7 @@ class LessGreedyHybridTree(BaseEstimator):
                                 if loss_obl + 1e-12 < best_val_loss:
                                     best_val_loss = loss_obl
                                     best_kind = "oblique_root"
-                                    best_info = (
+                                    best_info = ObliqueSplit(
                                         float(t),
                                         mean_.astype(float),
                                         scale_.astype(float),
@@ -758,11 +760,9 @@ class LessGreedyHybridTree(BaseEstimator):
             return self._make_leaf(ye, ys, parent_mean_est, n_split, n_val)
 
         if best_kind == "axis":
-            assert isinstance(best_info, tuple) and len(best_info) == 3
-            assert isinstance(best_info[0], str) and isinstance(best_info[1], int) and isinstance(best_info[2], float)
-            axis_info = cast(tuple[str, int, float], best_info)
+            assert isinstance(best_info, AxisSplit)
             return self._make_axis_split(
-                axis_info,
+                best_info,
                 Xs,
                 ys,
                 Xv,
@@ -776,11 +776,9 @@ class LessGreedyHybridTree(BaseEstimator):
             )
 
         if best_kind == "oblique_root":
-            assert isinstance(best_info, tuple) and len(best_info) == 4
-            assert isinstance(best_info[0], float) and isinstance(best_info[1], np.ndarray) and isinstance(best_info[2], np.ndarray) and isinstance(best_info[3], np.ndarray)
-            oblique_info = cast(tuple[float, np.ndarray, np.ndarray, np.ndarray], best_info)
+            assert isinstance(best_info, ObliqueSplit)
             return self._make_oblique_split(
-                oblique_info,
+                best_info,
                 Xs,
                 ys,
                 Xv,
@@ -878,7 +876,7 @@ class LessGreedyHybridTree(BaseEstimator):
             }
 
     def _make_axis_split(
-        self, best_info: tuple[str, int, float], Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
+        self, best_info: AxisSplit, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
     ) -> dict[str, Any]:
         """
         Create axis-aligned split node.
@@ -913,7 +911,7 @@ class LessGreedyHybridTree(BaseEstimator):
         dict[str, Any]
             Split node dictionary.
         """
-        _, f, t = best_info
+        f, t = best_info.feature, best_info.threshold
         mask_s = Xs[:, f] <= t
         mask_v = Xv[:, f] <= t
         mask_e = Xe[:, f] <= t if Xe.size else np.array([], dtype=bool)
@@ -961,7 +959,7 @@ class LessGreedyHybridTree(BaseEstimator):
         return node
 
     def _make_oblique_split(
-        self, best_info: tuple[float, np.ndarray, np.ndarray, np.ndarray], Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
+        self, best_info: ObliqueSplit, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
     ) -> dict[str, Any]:
         """
         Create oblique split node.
@@ -996,7 +994,7 @@ class LessGreedyHybridTree(BaseEstimator):
         dict[str, Any]
             Oblique split node dictionary.
         """
-        t, mean, scale, w = best_info
+        t, mean, scale, w = best_info.threshold, best_info.mean_values, best_info.scale_values, best_info.weights
 
         s_all = (Xs - mean) / scale @ w
         mask_s = s_all <= t

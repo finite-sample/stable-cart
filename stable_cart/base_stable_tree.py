@@ -7,7 +7,7 @@ different defaults to maintain their distinct personalities.
 """
 
 import time
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from numpy.typing import NDArray
 
@@ -19,6 +19,7 @@ from sklearn.utils.validation import (  # type: ignore[import-untyped]
     check_X_y,
 )
 
+from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .split_strategies import HybridStrategy, SplitStrategy, create_split_strategy
 from .stability_utils import (
     honest_data_partition,
@@ -166,7 +167,7 @@ class BaseStableTree(BaseEstimator):
     def __init__(
         self,
         # === TASK AND CORE PARAMETERS ===
-        task: Literal["regression", "classification"] = "regression",
+        task: Task = Task.REGRESSION,
         max_depth: int = 5,
         min_samples_split: int = 40,
         min_samples_leaf: int = 20,
@@ -191,9 +192,7 @@ class BaseStableTree(BaseEstimator):
         max_threshold_bins: int = 24,
         # === 4. LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,
-        leaf_smoothing_strategy: Literal[
-            "m_estimate", "shrink_to_parent", "beta_smoothing"
-        ] = "m_estimate",
+        leaf_smoothing_strategy: LeafSmoothingStrategy = LeafSmoothingStrategy.M_ESTIMATE,
         enable_calibrated_smoothing: bool = False,
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
@@ -228,7 +227,7 @@ class BaseStableTree(BaseEstimator):
         variance_penalty_weight: float = 0.1,
         # === ADVANCED CONFIGURATION ===
         split_strategy: str | None = None,
-        algorithm_focus: Literal["speed", "accuracy", "stability"] = "stability",
+        algorithm_focus: AlgorithmFocus = AlgorithmFocus.STABILITY,
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
         # === OTHER ===
@@ -362,7 +361,7 @@ class BaseStableTree(BaseEstimator):
         X, y = check_X_y(X, y, accept_sparse=False)
 
         # === 1. TASK SETUP ===
-        if self.task == "classification":
+        if self.task == Task.CLASSIFICATION:
             self.classes_ = np.unique(y)
             self.n_classes_ = len(self.classes_)
 
@@ -431,7 +430,7 @@ class BaseStableTree(BaseEstimator):
             [self._predict_sample(x, self.tree_) for x in X_processed]
         )
 
-        if self.task == "classification":
+        if self.task == Task.CLASSIFICATION:
             # Convert back to original class labels
             assert self.classes_ is not None, (
                 "Classes must be defined for classification"
@@ -497,7 +496,7 @@ class BaseStableTree(BaseEstimator):
         """
         y_pred = self.predict(X)
 
-        if self.task == "regression":
+        if self.task == Task.REGRESSION:
             return r2_score(y, y_pred)
         else:
             return accuracy_score(y, y_pred)
@@ -607,7 +606,7 @@ class BaseStableTree(BaseEstimator):
             val_frac=self.val_frac,
             est_frac=self.est_frac,
             enable_stratification=self.enable_stratified_sampling,
-            task=self.task,
+            task=self.task.value,
             random_state=self.random_state,
         )
 
@@ -624,7 +623,7 @@ class BaseStableTree(BaseEstimator):
             # Explicit strategy specified
             return create_split_strategy(
                 self.split_strategy,
-                task=self.task,
+                task=self.task.value,
                 random_state=self.random_state,
                 # Pass relevant parameters
                 oblique_regularization=self.oblique_regularization,
@@ -639,8 +638,8 @@ class BaseStableTree(BaseEstimator):
         else:
             # Auto-select based on enabled features and algorithm focus
             return HybridStrategy(
-                focus=cast(Literal["speed", "accuracy", "stability"], self.algorithm_focus),
-                task=self.task,
+                focus=self.algorithm_focus.value,
+                task=self.task.value,
                 random_state=self.random_state,
             )
 
@@ -836,13 +835,13 @@ class BaseStableTree(BaseEstimator):
         stabilized_value = stabilize_leaf_estimate(
             y_est,
             y_split,
-            strategy=cast(Literal["m_estimate", "shrink_to_parent", "beta_smoothing"], self.leaf_smoothing_strategy),
+            strategy=self.leaf_smoothing_strategy.value,
             smoothing=self.leaf_smoothing,
-            task=self.task,
+            task=self.task.value,
             min_samples=self.min_leaf_samples_for_stability,
         )
 
-        if self.task == "regression":
+        if self.task == Task.REGRESSION:
             return {
                 "type": "leaf",
                 "value": stabilized_value,
@@ -886,7 +885,7 @@ class BaseStableTree(BaseEstimator):
             Predicted value or probability.
         """
         if node["type"] == "leaf":
-            if self.task == "regression":
+            if self.task == Task.REGRESSION:
                 return node["value"]
             else:
                 return node["proba"]

@@ -6,10 +6,11 @@ This allows different tree methods to compose split strategies flexibly.
 """
 
 from abc import ABC, abstractmethod
-from typing import Literal, cast
+from typing import Literal
 
 import numpy as np
 
+from ._types import ObliqueRegularization, StoppingStrategy
 from .stability_utils import (
     SplitCandidate,
     _find_candidate_splits,
@@ -364,7 +365,7 @@ class ObliqueStrategy(SplitStrategy):
 
     def __init__(
         self,
-        oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
+        oblique_regularization: ObliqueRegularization = ObliqueRegularization.LASSO,
         enable_correlation_gating: bool = True,
         min_correlation: float = 0.3,
         fallback_strategy: SplitStrategy | None = None,
@@ -414,7 +415,7 @@ class ObliqueStrategy(SplitStrategy):
         oblique_candidates = generate_oblique_candidates(
             X,
             y,
-            strategy=cast(Literal["lasso", "ridge", "elastic_net"], self.oblique_regularization),
+            strategy=self.oblique_regularization.value,
             enable_correlation_gating=self.enable_correlation_gating,
             min_correlation=self.min_correlation,
             task=self.task,
@@ -615,9 +616,7 @@ class VariancePenalizedStrategy(SplitStrategy):
         self,
         variance_penalty_weight: float = 1.0,
         variance_estimation_samples: int = 10,
-        stopping_strategy: Literal[
-            "one_se", "variance_penalty", "both"
-        ] = "variance_penalty",
+        stopping_strategy: StoppingStrategy = StoppingStrategy.VARIANCE_PENALTY,
         base_strategy: SplitStrategy | None = None,
         task: str = "regression",
         random_state: int | None = None,
@@ -734,7 +733,7 @@ class VariancePenalizedStrategy(SplitStrategy):
             current_gain,
             variance_estimate,
             self.variance_penalty_weight,
-            cast(Literal["one_se", "variance_penalty", "both"], self.stopping_strategy),
+            self.stopping_strategy.value,
         )
 
 
