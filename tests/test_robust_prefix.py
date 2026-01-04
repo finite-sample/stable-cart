@@ -458,7 +458,7 @@ def test_robust_prefix_predict_before_fit_error():
 
     model = RobustPrefixHonestTree(task="classification", random_state=42)
 
-    with pytest.raises(TypeError):  # Actual error when model not fitted
+    with pytest.raises(ValueError):  # Actual error when model not fitted
         model.predict(X)
 
 
