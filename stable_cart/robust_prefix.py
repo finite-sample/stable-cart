@@ -492,7 +492,7 @@ class RobustPrefixHonestTree(BaseEstimator):
     def _get_base_estimator(self) -> type:
         """
         Return appropriate sklearn tree for task.
-        
+
         Returns
         -------
         type
@@ -550,7 +550,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             ids[right] = R
         return ids
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "RobustPrefixHonestTree":
+    def fit(self, X: np.ndarray, y: np.ndarray) -> RobustPrefixHonestTree:
         """
         Fit the robust prefix honest tree.
 
@@ -565,7 +565,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         -------
         RobustPrefixHonestTree
             Fitted estimator.
-        
+
         Raises
         ------
         ValueError
@@ -708,12 +708,22 @@ class RobustPrefixHonestTree(BaseEstimator):
         if self.task == "classification":
             self._region_leaf_probs_ = {}
             self._fit_classification_regions(
-                terminal_paths, np.asarray(X_split), np.asarray(y_split), np.asarray(X_est), np.asarray(y_est), remain
+                terminal_paths,
+                np.asarray(X_split),
+                np.asarray(y_split),
+                np.asarray(X_est),
+                np.asarray(y_est),
+                remain,
             )
         else:
             self._region_leaf_values_ = {}
             self._fit_regression_regions(
-                terminal_paths, np.asarray(X_split), np.asarray(y_split), np.asarray(X_est), np.asarray(y_est), remain
+                terminal_paths,
+                np.asarray(X_split),
+                np.asarray(y_split),
+                np.asarray(X_est),
+                np.asarray(y_est),
+                remain,
             )
 
         return self
@@ -744,7 +754,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             Labels for honest estimation.
         remain
             Remaining depth for subtrees.
-            
+
         Raises
         ------
         ValueError
@@ -752,7 +762,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         """
         if self._region_models_ is None or self._region_leaf_probs_ is None:
             raise ValueError("Models or leaf probabilities not initialized")
-        
+
         p0 = self._global_prior_
         if p0 is None:
             raise ValueError("Global prior not initialized")
@@ -828,7 +838,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             Values for honest estimation.
         remain
             Remaining depth for subtrees.
-            
+
         Raises
         ------
         ValueError
@@ -836,7 +846,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         """
         if self._region_models_ is None or self._region_leaf_values_ is None:
             raise ValueError("Models or leaf values not initialized")
-            
+
         global_mean = self._global_prior_
         if global_mean is None:
             raise ValueError("Global prior not initialized")
@@ -934,7 +944,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         -------
         np.ndarray
             Predicted values.
-            
+
         Raises
         ------
         ValueError
@@ -953,7 +963,9 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         X = np.asarray(X)
         if self._lo_ is None or self._hi_ is None:
-            raise ValueError("Model has not been fitted properly - winsorization bounds missing")
+            raise ValueError(
+                "Model has not been fitted properly - winsorization bounds missing"
+            )
         Xw = _winsorize_apply(X, self._lo_, self._hi_)
         ids = self._route_node_ids(Xw)
 
@@ -992,7 +1004,7 @@ class RobustPrefixHonestTree(BaseEstimator):
         -------
         np.ndarray
             Class probabilities.
-        
+
         Raises
         ------
         AttributeError
@@ -1019,7 +1031,9 @@ class RobustPrefixHonestTree(BaseEstimator):
 
         X = np.asarray(X)
         if self._lo_ is None or self._hi_ is None:
-            raise ValueError("Model has not been fitted properly - winsorization bounds missing")
+            raise ValueError(
+                "Model has not been fitted properly - winsorization bounds missing"
+            )
         Xw = _winsorize_apply(X, self._lo_, self._hi_)
         ids = self._route_node_ids(Xw)
 

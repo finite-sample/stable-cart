@@ -332,7 +332,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         return val_loss + penalty
 
-    def _children_loss_vec(self, xs: np.ndarray, ys: np.ndarray, min_leaf: int) -> tuple[np.ndarray, np.ndarray]:
+    def _children_loss_vec(
+        self, xs: np.ndarray, ys: np.ndarray, min_leaf: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Vectorized computation of children loss along sorted feature (task-adaptive).
 
@@ -395,7 +397,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         self.splits_scanned_ += int(valid.sum())
         return lossL + lossR, valid
 
-    def _topk_axis_candidates(self, Xs: np.ndarray, ys: np.ndarray, topk: int) -> list[tuple[float, int, float]]:
+    def _topk_axis_candidates(
+        self, Xs: np.ndarray, ys: np.ndarray, topk: int
+    ) -> list[tuple[float, int, float]]:
         """
         Find top-k axis-aligned split candidates (task-adaptive).
 
@@ -442,16 +446,16 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         return gains[:topk]
 
     def _build(
-        self, 
-        Xs: np.ndarray, 
-        ys: np.ndarray, 
-        Xv: np.ndarray, 
-        yv: np.ndarray, 
-        Xe: np.ndarray, 
-        ye: np.ndarray, 
-        depth: int, 
-        parent_mean_est: float, 
-        rng: np.random.Generator
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        rng: np.random.Generator,
     ) -> dict[str, Any]:
         """
         Recursively build tree with bootstrap variance penalty.
@@ -651,7 +655,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                 raise ValueError("Multi-class classification not yet supported")
         return y
 
-    def _fit_oblique_projection(self, X: np.ndarray, y: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, float]:
+    def _fit_oblique_projection(
+        self, X: np.ndarray, y: np.ndarray, rng: np.random.Generator
+    ) -> tuple[np.ndarray, float]:
         """
         Fit oblique projection (task-adaptive).
 
@@ -987,7 +993,7 @@ class SimpleTree:
         -------
         np.ndarray
             Predicted values.
-            
+
         Raises
         ------
         ValueError

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol
 
-import numpy as np
 from numpy.typing import NDArray
 
 
@@ -52,7 +51,7 @@ class ClassifierProtocol(PredictorProtocol, Protocol):
 class AlgorithmFocus(Enum):
     """
     Algorithm focus strategies for tree building.
-    
+
     Attributes
     ----------
     SPEED : str
@@ -62,15 +61,16 @@ class AlgorithmFocus(Enum):
     STABILITY : str
         Focus on stability optimization.
     """
+
     SPEED = "speed"
-    ACCURACY = "accuracy" 
+    ACCURACY = "accuracy"
     STABILITY = "stability"
 
 
 class LeafSmoothingStrategy(Enum):
     """
     Strategies for leaf value smoothing.
-    
+
     Attributes
     ----------
     M_ESTIMATE : str
@@ -80,6 +80,7 @@ class LeafSmoothingStrategy(Enum):
     BETA_SMOOTHING : str
         Use beta distribution smoothing.
     """
+
     M_ESTIMATE = "m_estimate"
     SHRINK_TO_PARENT = "shrink_to_parent"
     BETA_SMOOTHING = "beta_smoothing"
@@ -88,7 +89,7 @@ class LeafSmoothingStrategy(Enum):
 class ObliqueRegularization(Enum):
     """
     Regularization strategies for oblique splits.
-    
+
     Attributes
     ----------
     LASSO : str
@@ -98,6 +99,7 @@ class ObliqueRegularization(Enum):
     ELASTIC_NET : str
         Use Elastic Net regularization.
     """
+
     LASSO = "lasso"
     RIDGE = "ridge"
     ELASTIC_NET = "elastic_net"
@@ -106,7 +108,7 @@ class ObliqueRegularization(Enum):
 class StoppingStrategy(Enum):
     """
     Stopping strategies for tree building.
-    
+
     Attributes
     ----------
     ONE_SE : str
@@ -116,15 +118,16 @@ class StoppingStrategy(Enum):
     BOTH : str
         Use both stopping strategies.
     """
+
     ONE_SE = "one_se"
-    VARIANCE_PENALTY = "variance_penalty" 
+    VARIANCE_PENALTY = "variance_penalty"
     BOTH = "both"
 
 
 class Task(Enum):
     """
     Prediction task types.
-    
+
     Attributes
     ----------
     REGRESSION : str
@@ -132,6 +135,7 @@ class Task(Enum):
     CLASSIFICATION : str
         Classification task type.
     """
+
     REGRESSION = "regression"
     CLASSIFICATION = "classification"
 
@@ -141,7 +145,7 @@ class Task(Enum):
 class AxisSplit:
     """
     Result of axis-aligned split selection.
-    
+
     Attributes
     ----------
     split_type : str
@@ -151,16 +155,17 @@ class AxisSplit:
     threshold : float
         Threshold value for split.
     """
+
     split_type: str  # e.g., "k0", "k1", etc.
     feature: int
     threshold: float
 
 
-@dataclass  
+@dataclass
 class ObliqueSplit:
     """
     Result of oblique split selection.
-    
+
     Attributes
     ----------
     threshold : float
@@ -172,6 +177,7 @@ class ObliqueSplit:
     weights : NDArray[Any]
         Oblique split weights.
     """
+
     threshold: float
     mean_values: NDArray[Any]  # scaling mean
     scale_values: NDArray[Any]  # scaling scale

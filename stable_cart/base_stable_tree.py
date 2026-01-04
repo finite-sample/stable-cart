@@ -9,9 +9,8 @@ different defaults to maintain their distinct personalities.
 import time
 from typing import Any, Literal
 
-from numpy.typing import NDArray
-
 import numpy as np
+from numpy.typing import NDArray
 from sklearn.base import BaseEstimator  # type: ignore[import-untyped]
 from sklearn.metrics import accuracy_score, r2_score  # type: ignore[import-untyped]
 from sklearn.utils.validation import (  # type: ignore[import-untyped]
@@ -334,7 +333,7 @@ class BaseStableTree(BaseEstimator):
         self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
         self._global_prior_: float | None = None
 
-    def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> 'BaseStableTree':
+    def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> "BaseStableTree":
         """
         Fit the stable tree to the training data.
 
@@ -543,7 +542,9 @@ class BaseStableTree(BaseEstimator):
     # INTERNAL METHODS - STABILITY PRIMITIVES
     # ========================================================================
 
-    def _preprocess_features(self, X: NDArray[np.floating], fitted: bool = False) -> NDArray[np.floating]:
+    def _preprocess_features(
+        self, X: NDArray[np.floating], fitted: bool = False
+    ) -> NDArray[np.floating]:
         """
         Apply data regularization preprocessing.
 
@@ -579,7 +580,13 @@ class BaseStableTree(BaseEstimator):
 
         return X_processed
 
-    def _partition_data(self, X: NDArray[np.floating], y: NDArray[Any]) -> tuple[tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]], tuple[NDArray[np.floating], NDArray[Any]]]:
+    def _partition_data(
+        self, X: NDArray[np.floating], y: NDArray[Any]
+    ) -> tuple[
+        tuple[NDArray[np.floating], NDArray[Any]],
+        tuple[NDArray[np.floating], NDArray[Any]],
+        tuple[NDArray[np.floating], NDArray[Any]],
+    ]:
         """
         Partition data using honest splitting.
 
@@ -644,14 +651,14 @@ class BaseStableTree(BaseEstimator):
             )
 
     def _build_tree(
-        self, 
-        X_split: NDArray[np.floating], 
-        y_split: NDArray[Any], 
-        X_val: NDArray[np.floating], 
-        y_val: NDArray[Any], 
-        X_est: NDArray[np.floating], 
-        y_est: NDArray[Any], 
-        depth: int = 0
+        self,
+        X_split: NDArray[np.floating],
+        y_split: NDArray[Any],
+        X_val: NDArray[np.floating],
+        y_val: NDArray[Any],
+        X_est: NDArray[np.floating],
+        y_est: NDArray[Any],
+        depth: int = 0,
     ) -> dict[str, Any]:
         """
         Recursively build the tree structure.
@@ -783,7 +790,9 @@ class BaseStableTree(BaseEstimator):
             "right": right_child,
         }
 
-    def _apply_split_to_data(self, X: NDArray[np.floating], split_candidate: Any) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
+    def _apply_split_to_data(
+        self, X: NDArray[np.floating], split_candidate: Any
+    ) -> tuple[NDArray[np.int_], NDArray[np.int_]]:
         """
         Apply a split to data and return left/right indices.
 
@@ -809,7 +818,9 @@ class BaseStableTree(BaseEstimator):
         right_indices = np.where(~left_mask)[0]
         return left_indices, right_indices
 
-    def _make_leaf(self, y_est: NDArray[Any], y_split: NDArray[Any], depth: int) -> dict[str, Any]:
+    def _make_leaf(
+        self, y_est: NDArray[Any], y_split: NDArray[Any], depth: int
+    ) -> dict[str, Any]:
         """
         Create a leaf node with stabilized estimates.
 

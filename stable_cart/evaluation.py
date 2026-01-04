@@ -11,8 +11,6 @@ These functions are designed to work with collections of fitted sklearn-compatib
 and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
 """
 
-from typing import Union
-
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.metrics import (
@@ -24,7 +22,7 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 
-from ._types import ClassifierDict, ModelDict, ClassifierProtocol
+from ._types import ClassifierDict, ModelDict
 
 
 # -------------------------------
@@ -142,7 +140,10 @@ def prediction_stability(
 # Model Performance Evaluation
 # -------------------------------
 def evaluate_models(
-    models: Union[ModelDict, ClassifierDict], X: NDArray[np.floating], y: NDArray[np.floating], task: str = "categorical"
+    models: ModelDict | ClassifierDict,
+    X: NDArray[np.floating],
+    y: NDArray[np.floating],
+    task: str = "categorical",
 ) -> dict[str, dict[str, float]]:
     """
     Evaluate predictive performance of multiple models using standard metrics.

@@ -298,7 +298,7 @@ def validation_checked_split_selection(
 ) -> SplitCandidate | None:
     """
     Evaluate split candidates on validation data and select based on consistency.
-    
+
     Parameters
     ----------
     X_split
@@ -317,12 +317,12 @@ def validation_checked_split_selection(
         Weight for consistency in selection.
     task
         Task type for evaluation.
-    
+
     Returns
     -------
     SplitCandidate | None
         Best split candidate or None if no candidates.
-    
+
     Raises
     ------
     ValueError
@@ -362,7 +362,7 @@ def _evaluate_split_performance(
 ) -> float:
     """
     Evaluate split performance on validation data.
-    
+
     Parameters
     ----------
     y
@@ -371,7 +371,7 @@ def _evaluate_split_performance(
         Boolean mask for left split.
     task
         Task type for evaluation.
-    
+
     Returns
     -------
     float
@@ -407,14 +407,14 @@ def _select_by_variance_penalty(
 ) -> SplitCandidate | None:
     """
     Select split using validation score minus variance penalty.
-    
+
     Parameters
     ----------
     candidates
         List of split candidates to evaluate.
     penalty_weight
         Weight for variance penalty.
-    
+
     Returns
     -------
     SplitCandidate | None
@@ -462,7 +462,7 @@ def honest_data_partition(
 ]:
     """
     Partition data into SPLIT/VAL/EST subsets with optional stratification.
-    
+
     Parameters
     ----------
     X
@@ -525,21 +525,21 @@ def honest_data_partition(
     return (
         (np.asarray(X_split), np.asarray(y_split)),
         (np.asarray(X_val), np.asarray(y_val)),
-        (np.asarray(X_est), np.asarray(y_est))
+        (np.asarray(X_est), np.asarray(y_est)),
     )
 
 
 def _create_target_bins(y: np.ndarray, n_bins: int = 5) -> np.ndarray:
     """
     Create stratification bins for regression targets using quantiles.
-    
+
     Parameters
     ----------
     y
         Target values to bin.
     n_bins
         Number of bins to create.
-    
+
     Returns
     -------
     np.ndarray
@@ -570,7 +570,7 @@ def stabilize_leaf_estimate(
 ) -> float | NDArray[Any]:
     """
     Stabilize leaf estimates using various smoothing strategies.
-    
+
     Parameters
     ----------
     y_est
@@ -585,7 +585,7 @@ def stabilize_leaf_estimate(
         Task type for smoothing.
     min_samples
         Minimum samples threshold for smoothing.
-    
+
     Returns
     -------
     float | NDArray[Any]
@@ -615,7 +615,7 @@ def _stabilize_regression_leaf(
 ) -> float:
     """
     Stabilize regression leaf estimate.
-    
+
     Parameters
     ----------
     y_est
@@ -626,7 +626,7 @@ def _stabilize_regression_leaf(
         Smoothing strategy.
     smoothing
         Smoothing parameter.
-    
+
     Returns
     -------
     float
@@ -652,7 +652,7 @@ def _stabilize_classification_leaf(
 ) -> np.ndarray:
     """
     Stabilize classification leaf probabilities.
-    
+
     Parameters
     ----------
     y_est
@@ -663,7 +663,7 @@ def _stabilize_classification_leaf(
         Smoothing strategy.
     smoothing
         Smoothing parameter.
-    
+
     Returns
     -------
     np.ndarray
@@ -725,7 +725,7 @@ def winsorize_features(
 ) -> tuple[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """
     Winsorize features to reduce outlier influence.
-    
+
     Parameters
     ----------
     X
@@ -766,7 +766,7 @@ def generate_oblique_candidates(
 ) -> list[SplitCandidate]:
     """
     Generate oblique split candidates using linear projections.
-    
+
     Parameters
     ----------
     X
@@ -783,7 +783,7 @@ def generate_oblique_candidates(
         Task type for model fitting.
     random_state
         Random state for reproducibility.
-    
+
     Returns
     -------
     list[SplitCandidate]
@@ -862,7 +862,7 @@ def beam_search_splits(
 ) -> list[SplitCandidate]:
     """
     Use beam search to find splits with lookahead.
-    
+
     Parameters
     ----------
     X
@@ -879,7 +879,7 @@ def beam_search_splits(
         Threshold for ambiguity gating.
     task
         Task type for evaluation.
-    
+
     Returns
     -------
     list[SplitCandidate]
@@ -916,7 +916,7 @@ def _perform_beam_search(
 ) -> list[SplitCandidate]:
     """
     Simplified beam search implementation.
-    
+
     Parameters
     ----------
     X
@@ -929,7 +929,7 @@ def _perform_beam_search(
         Search depth for beam search.
     task
         Task type for evaluation.
-    
+
     Returns
     -------
     list[SplitCandidate]
@@ -961,7 +961,7 @@ def should_stop_splitting(
 ) -> bool:
     """
     Determine if splitting should stop based on variance-aware criteria.
-    
+
     Parameters
     ----------
     current_gain
@@ -972,7 +972,7 @@ def should_stop_splitting(
         Weight for variance penalty.
     strategy
         Strategy for variance-aware stopping.
-    
+
     Returns
     -------
     bool
@@ -999,7 +999,7 @@ def estimate_split_variance(
 ) -> float:
     """
     Estimate variance that would be introduced by this split.
-    
+
     Parameters
     ----------
     X
@@ -1014,7 +1014,7 @@ def estimate_split_variance(
         Task type for evaluation.
     random_state
         Random state for reproducibility.
-    
+
     Returns
     -------
     float
@@ -1060,7 +1060,7 @@ def _find_candidate_splits(
 ) -> list[SplitCandidate]:
     """
     Find basic axis-aligned split candidates.
-    
+
     Parameters
     ----------
     X
@@ -1069,7 +1069,7 @@ def _find_candidate_splits(
         Target values for split evaluation.
     max_candidates
         Maximum number of candidates to return.
-    
+
     Returns
     -------
     list[SplitCandidate]

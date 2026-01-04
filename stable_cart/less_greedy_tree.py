@@ -18,12 +18,12 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
-
-from ._types import AxisSplit, ObliqueSplit
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LassoCV, LogisticRegressionCV
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.preprocessing import StandardScaler
+
+from ._types import AxisSplit, ObliqueSplit
 
 # ============================================================================
 # Scoring Functions (Task-Specific)
@@ -284,7 +284,9 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             raise ValueError("task must be 'regression' or 'classification'")
 
-    def _children_sse_vec(self, xs: np.ndarray, ys: np.ndarray, min_leaf: int) -> tuple[np.ndarray, np.ndarray]:
+    def _children_sse_vec(
+        self, xs: np.ndarray, ys: np.ndarray, min_leaf: int
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Vectorized computation of children loss along sorted feature.
 
@@ -350,7 +352,9 @@ class LessGreedyHybridTree(BaseEstimator):
             self.splits_scanned_ += int(valid.sum())
             return impurities, valid
 
-    def _topk_axis_candidates(self, Xs: np.ndarray, ys: np.ndarray, topk: int) -> list[tuple[float, int, float]]:
+    def _topk_axis_candidates(
+        self, Xs: np.ndarray, ys: np.ndarray, topk: int
+    ) -> list[tuple[float, int, float]]:
         """
         Find top-k axis-aligned split candidates by gain.
 
@@ -412,7 +416,9 @@ class LessGreedyHybridTree(BaseEstimator):
         """
         return self._loss_fn(yv)
 
-    def _val_loss_after_split(self, Xv: np.ndarray, yv: np.ndarray, feat: int, thr: float) -> float:
+    def _val_loss_after_split(
+        self, Xv: np.ndarray, yv: np.ndarray, feat: int, thr: float
+    ) -> float:
         """
         Validation loss after applying split.
 
@@ -445,7 +451,15 @@ class LessGreedyHybridTree(BaseEstimator):
         # Weighted by size
         return (nL / n) * loss_L + (nR / n) * loss_R
 
-    def _best_kstep_val_loss(self, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, depth_remaining: int, topk: int) -> float:
+    def _best_kstep_val_loss(
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        depth_remaining: int,
+        topk: int,
+    ) -> float:
         """
         Best validation loss achievable with k-step lookahead.
 
@@ -572,7 +586,17 @@ class LessGreedyHybridTree(BaseEstimator):
 
         return w, scaler, alpha
 
-    def _build(self, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float) -> dict[str, Any]:
+    def _build(
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+    ) -> dict[str, Any]:
         """
         Recursively build tree.
 
@@ -632,7 +656,9 @@ class LessGreedyHybridTree(BaseEstimator):
             if best_axis_immediate[0] + 1e-12 < best_val_loss:
                 best_val_loss = best_axis_immediate[0]
                 best_kind = "axis"
-                best_info = AxisSplit("k0", best_axis_immediate[1], best_axis_immediate[2])
+                best_info = AxisSplit(
+                    "k0", best_axis_immediate[1], best_axis_immediate[2]
+                )
 
         # Ambiguity gate for lookahead
         do_lookahead = False
@@ -683,7 +709,12 @@ class LessGreedyHybridTree(BaseEstimator):
                 if tot < best_la[0]:
                     best_la = (tot, f, t)
 
-            if np.isfinite(best_la[0]) and best_la[0] + 1e-12 < best_val_loss and best_la[1] is not None and best_la[2] is not None:
+            if (
+                np.isfinite(best_la[0])
+                and best_la[0] + 1e-12 < best_val_loss
+                and best_la[1] is not None
+                and best_la[2] is not None
+            ):
                 best_val_loss = best_la[0]
                 best_kind = "axis"
                 best_info = AxisSplit(f"k{k_here}", best_la[1], best_la[2])
@@ -816,7 +847,14 @@ class LessGreedyHybridTree(BaseEstimator):
             return self._val_loss_leaf(yv)
         return (nL / n) * self._loss_fn(yv[mask]) + (nR / n) * self._loss_fn(yv[~mask])
 
-    def _make_leaf(self, ye: np.ndarray, ys: np.ndarray, parent_mean_est: float, n_split: int, n_val: int) -> dict[str, Any]:
+    def _make_leaf(
+        self,
+        ye: np.ndarray,
+        ys: np.ndarray,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
+    ) -> dict[str, Any]:
         """
         Create a leaf node with task-appropriate value.
 
@@ -876,7 +914,18 @@ class LessGreedyHybridTree(BaseEstimator):
             }
 
     def _make_axis_split(
-        self, best_info: AxisSplit, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
+        self,
+        best_info: AxisSplit,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
     ) -> dict[str, Any]:
         """
         Create axis-aligned split node.
@@ -959,7 +1008,18 @@ class LessGreedyHybridTree(BaseEstimator):
         return node
 
     def _make_oblique_split(
-        self, best_info: ObliqueSplit, Xs: np.ndarray, ys: np.ndarray, Xv: np.ndarray, yv: np.ndarray, Xe: np.ndarray, ye: np.ndarray, depth: int, parent_mean_est: float, n_split: int, n_val: int
+        self,
+        best_info: ObliqueSplit,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
     ) -> dict[str, Any]:
         """
         Create oblique split node.
@@ -994,7 +1054,12 @@ class LessGreedyHybridTree(BaseEstimator):
         dict[str, Any]
             Oblique split node dictionary.
         """
-        t, mean, scale, w = best_info.threshold, best_info.mean_values, best_info.scale_values, best_info.weights
+        t, mean, scale, w = (
+            best_info.threshold,
+            best_info.mean_values,
+            best_info.scale_values,
+            best_info.weights,
+        )
 
         s_all = (Xs - mean) / scale @ w
         mask_s = s_all <= t
@@ -1077,7 +1142,7 @@ class LessGreedyHybridTree(BaseEstimator):
         -------
         LessGreedyHybridTree
             Fitted estimator.
-        
+
         Raises
         ------
         ValueError
@@ -1205,7 +1270,7 @@ class LessGreedyHybridTree(BaseEstimator):
         -------
         np.ndarray
             Class probabilities.
-        
+
         Raises
         ------
         AttributeError
@@ -1249,7 +1314,7 @@ class LessGreedyHybridTree(BaseEstimator):
     def count_leaves(self) -> int:
         """
         Count number of leaves.
-        
+
         Returns
         -------
         int

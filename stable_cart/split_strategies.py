@@ -94,7 +94,7 @@ class SplitStrategy(ABC):
 class AxisAlignedStrategy(SplitStrategy):
     """
     Traditional axis-aligned splits with optional enhancements.
-    
+
     Parameters
     ----------
     max_candidates
@@ -223,7 +223,7 @@ class AxisAlignedStrategy(SplitStrategy):
 class ConsensusStrategy(SplitStrategy):
     """
     Bootstrap consensus-based split selection.
-    
+
     Parameters
     ----------
     consensus_samples
@@ -346,7 +346,7 @@ class ConsensusStrategy(SplitStrategy):
 class ObliqueStrategy(SplitStrategy):
     """
     Oblique splits using linear projections.
-    
+
     Parameters
     ----------
     oblique_regularization
@@ -411,7 +411,6 @@ class ObliqueStrategy(SplitStrategy):
         SplitCandidate | None
             Best oblique split or None if no valid split found.
         """
-        from typing import cast
         oblique_candidates = generate_oblique_candidates(
             X,
             y,
@@ -469,7 +468,7 @@ class ObliqueStrategy(SplitStrategy):
 class LookaheadStrategy(SplitStrategy):
     """
     Lookahead with beam search.
-    
+
     Parameters
     ----------
     lookahead_depth
@@ -595,7 +594,7 @@ class LookaheadStrategy(SplitStrategy):
 class VariancePenalizedStrategy(SplitStrategy):
     """
     Variance-aware split selection with explicit penalties.
-    
+
     Parameters
     ----------
     variance_penalty_weight
@@ -740,7 +739,7 @@ class VariancePenalizedStrategy(SplitStrategy):
 class CompositeStrategy(SplitStrategy):
     """
     Composite strategy that tries multiple approaches and selects the best.
-    
+
     Parameters
     ----------
     strategies
@@ -749,7 +748,7 @@ class CompositeStrategy(SplitStrategy):
         Metric for selecting best strategy.
     task
         Task type (regression or classification).
-    
+
     Raises
     ------
     ValueError
@@ -878,7 +877,7 @@ class HybridStrategy(SplitStrategy):
 
     This implements the "algorithm focus" concept where we can emphasize
     speed, stability, or accuracy based on the situation.
-    
+
     Parameters
     ----------
     focus
@@ -1018,7 +1017,7 @@ def create_split_strategy(
     -------
     SplitStrategy
         Configured split strategy
-    
+
     Raises
     ------
     ValueError
