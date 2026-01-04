@@ -270,8 +270,6 @@ def test_less_greedy_hybrid_leaf_shrinkage(regression_data):
     assert np.std(preds_shrink) <= np.std(preds_no_shrink) * 1.5
 
 
-
-
 def test_less_greedy_hybrid_empty_data_error():
     """Test error handling with empty data."""
     X = np.array([]).reshape(0, 2)

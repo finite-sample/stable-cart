@@ -117,8 +117,6 @@ def _entropy(y: np.ndarray) -> float:
 # ============================================================================
 
 
-
-
 class _ComparableFloat(float):
     """A ``float`` with rich comparisons against ``pytest.approx`` objects."""
 
@@ -666,9 +664,7 @@ class LessGreedyHybridTree(BaseEstimator):
             if best_axis_immediate[0] + 1e-12 < best_val_loss:
                 best_val_loss = best_axis_immediate[0]
                 best_kind = "axis"
-                best_info = AxisSplit(
-                    best_axis_immediate[1], best_axis_immediate[2]
-                )
+                best_info = AxisSplit(best_axis_immediate[1], best_axis_immediate[2])
 
         # Ambiguity gate for lookahead
         do_lookahead = False
@@ -1312,6 +1308,7 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             y_pred = self.predict(X)
             return float(accuracy_score(y, y_pred))
+
 
 # ============================================================================
 # Convenience Wrappers

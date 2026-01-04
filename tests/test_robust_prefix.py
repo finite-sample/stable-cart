@@ -653,8 +653,6 @@ def test_regression_wrapper():
     assert model.task == "regression"
 
 
-
-
 def test_unified_tree_predict_proba_error_on_regression():
     """Test that predict_proba raises error for regression."""
     X, y = make_regression(n_samples=50, n_features=3, random_state=42)

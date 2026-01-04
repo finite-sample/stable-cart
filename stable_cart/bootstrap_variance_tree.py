@@ -193,6 +193,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             self._loss_fn = _gini_impurity  # Could also use _entropy
 
         # Task-adaptive prediction setup
+
     def _compute_bootstrap_variance(
         self,
         Xs: np.ndarray,
@@ -838,6 +839,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             return r2_score(y, y_pred)
         else:  # classification
             return accuracy_score(y, y_pred)
+
 
 class SimpleTree:
     """

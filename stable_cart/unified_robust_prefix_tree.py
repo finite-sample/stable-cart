@@ -298,5 +298,3 @@ class RobustPrefixHonestTree(BaseStableTree):
             Self with updated parameters.
         """
         return super().set_params(**params)
-
-

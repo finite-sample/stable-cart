@@ -234,6 +234,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         self.enable_robust_consensus = enable_robust_consensus
 
         # Initialize fitted attributes
+
     def fit(self, X: np.ndarray, y: np.ndarray) -> "BootstrapVariancePenalizedTree":
         """
         Fit with bootstrap variance tracking.
@@ -254,7 +255,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         super().fit(X, y)
 
         return self
-
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """

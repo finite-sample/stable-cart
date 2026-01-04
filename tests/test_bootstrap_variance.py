@@ -146,8 +146,6 @@ def test_bootstrap_variance_regressor_score_method(regression_data):
     assert -1 <= score <= 1  # R² score range
 
 
-
-
 def test_bootstrap_variance_regressor_empty_data():
     """Test error handling with empty data."""
     X = np.array([]).reshape(0, 2)

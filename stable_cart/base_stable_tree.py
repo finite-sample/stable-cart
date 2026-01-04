@@ -493,7 +493,6 @@ class BaseStableTree(BaseEstimator):
         else:
             return accuracy_score(y, y_pred)
 
-
     # ========================================================================
     # INTERNAL METHODS - STABILITY PRIMITIVES
     # ========================================================================
