@@ -57,17 +57,12 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-xdist>=3.0",
+    "pandas>=1.5.0",
     "ruff>=0.7.0",
     "pre-commit>=3.0",
     "matplotlib>=3.3.0",
     "pydoclint>=0.3.8",
     "pyright>=1.1.300",
-]
-test = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "pytest-xdist>=3.0",
-    "pandas>=1.5.0",
 ]
 benchmark = [
     "seaborn>=0.11.0",
