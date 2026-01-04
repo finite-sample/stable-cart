@@ -7,34 +7,36 @@ Key focus: Bootstrap prediction variance as the primary stability metric, comple
 standard discrimination metrics (accuracy, RMSE, etc.).
 """
 
+import time
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pandas as pd
-import time
-from typing import Dict, List, Tuple, Callable, Any, Optional
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import (
     accuracy_score,
-    roc_auc_score,
     f1_score,
-    mean_squared_error,
     mean_absolute_error,
+    mean_squared_error,
     r2_score,
+    roc_auc_score,
 )
-from sklearn.model_selection import StratifiedKFold, KFold
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
 from stable_cart import (
-    LessGreedyHybridTree,
     BootstrapVariancePenalizedTree,
+    LessGreedyHybridTree,
     RobustPrefixHonestTree,
 )
-
 
 # ============================================================================
 # MODEL FACTORIES
 # ============================================================================
 
 
-def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]:
+def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]:
     """Get factory functions for unified models that support both regression and classification."""
     if task == "regression":
         return {
@@ -42,10 +44,16 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 max_depth=6, min_samples_leaf=20, random_state=random_state
             ),
             "CART_Pruned": lambda: DecisionTreeRegressor(
-                max_depth=6, min_samples_leaf=20, ccp_alpha=0.01, random_state=random_state
+                max_depth=6,
+                min_samples_leaf=20,
+                ccp_alpha=0.01,
+                random_state=random_state,
             ),
             "RandomForest": lambda: RandomForestRegressor(
-                n_estimators=100, max_depth=6, min_samples_leaf=20, random_state=random_state
+                n_estimators=100,
+                max_depth=6,
+                min_samples_leaf=20,
+                random_state=random_state,
             ),
             "LessGreedyHybrid": lambda: LessGreedyHybridTree(
                 task="regression",
@@ -93,10 +101,16 @@ def get_unified_models(task: str, random_state: int = 42) -> Dict[str, Callable]
                 max_depth=6, min_samples_leaf=20, random_state=random_state
             ),
             "CART_Pruned": lambda: DecisionTreeClassifier(
-                max_depth=6, min_samples_leaf=20, ccp_alpha=0.01, random_state=random_state
+                max_depth=6,
+                min_samples_leaf=20,
+                ccp_alpha=0.01,
+                random_state=random_state,
             ),
             "RandomForest": lambda: RandomForestClassifier(
-                n_estimators=100, max_depth=6, min_samples_leaf=20, random_state=random_state
+                n_estimators=100,
+                max_depth=6,
+                min_samples_leaf=20,
+                random_state=random_state,
             ),
             "LessGreedyHybrid": lambda: LessGreedyHybridTree(
                 task="classification",
@@ -153,7 +167,7 @@ def bootstrap_prediction_variance(
     task: str,
     n_bootstrap: int = 20,
     random_state: int = 42,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Measure bootstrap prediction variance - primary stability metric.
 
@@ -197,10 +211,18 @@ def bootstrap_prediction_variance(
         model.fit(X_boot, y_boot)
 
         # For classification, use probabilities if available; for regression, use predictions
-        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) == 2:
+        if (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y_train)) == 2
+        ):
             # Binary classification - use probability of positive class
             pred = model.predict_proba(X_test)[:, 1]
-        elif task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y_train)) > 2:
+        elif (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y_train)) > 2
+        ):
             # Multi-class - use max probability
             proba = model.predict_proba(X_test)
             pred = np.max(proba, axis=1)
@@ -225,7 +247,9 @@ def bootstrap_prediction_variance(
 # ============================================================================
 
 
-def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def evaluate_discrimination_regression(
+    y_true: np.ndarray, y_pred: np.ndarray
+) -> dict[str, float]:
     """Standard regression metrics."""
     return {
         "mse": float(mean_squared_error(y_true, y_pred)),
@@ -236,8 +260,8 @@ def evaluate_discrimination_regression(y_true: np.ndarray, y_pred: np.ndarray) -
 
 
 def evaluate_discrimination_classification(
-    y_true: np.ndarray, y_pred: np.ndarray, y_proba: Optional[np.ndarray] = None
-) -> Dict[str, float]:
+    y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray | None = None
+) -> dict[str, float]:
     """Standard classification metrics."""
     metrics = {
         "accuracy": float(accuracy_score(y_true, y_pred)),
@@ -267,7 +291,7 @@ def evaluate_discrimination_classification(
 # ============================================================================
 
 
-def get_model_characteristics(model: Any) -> Dict[str, float]:
+def get_model_characteristics(model: Any) -> dict[str, float]:
     """Extract model characteristics like size, training time, etc."""
     characteristics = {}
 
@@ -287,7 +311,10 @@ def get_model_characteristics(model: Any) -> Dict[str, float]:
             # Average leaves across trees
             if hasattr(model, "estimators_"):
                 avg_leaves = np.mean(
-                    [np.sum(tree.tree_.children_left == -1) for tree in model.estimators_]
+                    [
+                        np.sum(tree.tree_.children_left == -1)
+                        for tree in model.estimators_
+                    ]
                 )
                 characteristics["avg_n_leaves"] = float(avg_leaves)
 
@@ -316,7 +343,7 @@ def evaluate_single_model(
     task: str,
     n_bootstrap: int = 20,
     random_state: int = 42,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Comprehensive evaluation of a single model.
 
@@ -347,7 +374,9 @@ def evaluate_single_model(
     if task == "regression":
         discrimination_metrics = evaluate_discrimination_regression(y_test, y_pred)
     else:
-        discrimination_metrics = evaluate_discrimination_classification(y_test, y_pred, y_proba)
+        discrimination_metrics = evaluate_discrimination_classification(
+            y_test, y_pred, y_proba
+        )
 
     # 3. Model characteristics
     characteristics = get_model_characteristics(model)
@@ -371,7 +400,7 @@ def evaluate_dataset(
     X_test: np.ndarray,
     y_test: np.ndarray,
     task: str,
-    models_to_run: Optional[List[str]] = None,
+    models_to_run: list[str] | None = None,
     n_bootstrap: int = 20,
     random_state: int = 42,
 ) -> pd.DataFrame:
@@ -405,7 +434,9 @@ def evaluate_dataset(
 
     # Filter models if specified
     if models_to_run:
-        model_factories = {k: v for k, v in model_factories.items() if k in models_to_run}
+        model_factories = {
+            k: v for k, v in model_factories.items() if k in models_to_run
+        }
 
     results = []
 
@@ -439,7 +470,12 @@ def evaluate_dataset(
             print(f"✗ Failed: {str(e)}")
             # Add failed entry with NaN values
             results.append(
-                {"dataset": dataset_name, "model": model_name, "task": task, "error": str(e)}
+                {
+                    "dataset": dataset_name,
+                    "model": model_name,
+                    "task": task,
+                    "error": str(e),
+                }
             )
 
     return pd.DataFrame(results)
@@ -457,7 +493,7 @@ def cross_validation_stability(
     task: str,
     cv_folds: int = 5,
     random_state: int = 42,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Alternative stability metric: prediction variance across CV folds.
 
@@ -472,12 +508,16 @@ def cross_validation_stability(
 
     for train_idx, val_idx in cv.split(X, y):
         X_train_cv, X_val_cv = X[train_idx], X[val_idx]
-        y_train_cv, y_val_cv = y[train_idx], y[val_idx]
+        y_train_cv, _ = y[train_idx], y[val_idx]
 
         model = model_factory()
         model.fit(X_train_cv, y_train_cv)
 
-        if task == "classification" and hasattr(model, "predict_proba") and len(np.unique(y)) == 2:
+        if (
+            task == "classification"
+            and hasattr(model, "predict_proba")
+            and len(np.unique(y)) == 2
+        ):
             pred = model.predict_proba(X_val_cv)[:, 1]
         else:
             pred = model.predict(X_val_cv)
@@ -502,9 +542,18 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = X[:350], X[350:], y[:350], y[350:]
 
     # Test single model evaluation
-    factory = lambda: DecisionTreeClassifier(max_depth=5, random_state=42)
+    def factory():
+        return DecisionTreeClassifier(max_depth=5, random_state=42)
+
     results = evaluate_single_model(
-        "TestCART", factory, X_train, y_train, X_test, y_test, "classification", n_bootstrap=5
+        "TestCART",
+        factory,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        "classification",
+        n_bootstrap=5,
     )
 
     print("\nSample results:")

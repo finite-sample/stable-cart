@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.15,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "stable-cart"
-version = "0.3.0"
+version = "1.0.0"
 description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
@@ -12,7 +12,7 @@ authors = [
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "machine learning",
     "decision trees",
@@ -26,8 +26,7 @@ keywords = [
 ]
 dependencies = [
     "numpy>=1.23.0",
-    "scikit-learn>=1.2.0",
-    "pandas>=1.5.0"
+    "scikit-learn>=1.2.0"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,7 +34,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -52,27 +50,74 @@ Changelog = "https://github.com/finite-sample/stable-cart/blob/main/CHANGELOG.md
 Issues = "https://github.com/finite-sample/stable-cart/issues"
 
 [project.optional-dependencies]
+
+[dependency-groups]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=3.0.0",
-    "black>=22.0.0",
-    "flake8>=4.0.0",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-xdist>=3.0",
+    "pandas>=1.5.0",
+    "ruff>=0.7.0",
+    "pre-commit>=3.0",
     "matplotlib>=3.3.0",
-    "mypy>=1.0.0",
-]
-docs = [
-    "sphinx>=4.0.0",
-    "furo>=2023.3.27",
-    "myst-parser>=0.18.0",
+    "pyright>=1.1.300",
+    "vulture>=2.14",
+    "deadcode>=2.4.1",
 ]
 benchmark = [
     "seaborn>=0.11.0",
     "jupyterlab>=3.0.0",
 ]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1.29",
+    "sphinx-autodoc-typehints>=1.25",
+    "sphinx-copybutton>=0.5",
+    "myst-parser>=2.0",
+]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["stable_cart*"]
+[tool.uv.build-backend]
+module-name = "stable_cart"
+module-root = ""
+
+# Ruff configuration
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".venv",
+    "docs",
+    ".eggs",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # imported but unused
+"tests/*" = ["S101"]  # use of assert
+
+[tool.ruff.lint.isort]
+known-first-party = ["stable_cart"]
+
+
 
 
 [tool.pytest.ini_options]
@@ -112,35 +157,31 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ["py311", "py312", "py313"]
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/'''
+[tool.deptry]
+extend_exclude = ["scripts"]
 
-[tool.isort]
-profile = "black"
-line_length = 100
-skip_gitignore = true
+[tool.pydoclint]
+style = "numpy"
+exclude = '\.git|\.venv|__pycache__|build|dist|docs|tests'
+require-return-section-when-returning-nothing = false
+arg-type-hints-in-signature = true
+arg-type-hints-in-docstring = false
+check-return-types = true
+check-yield-types = true
+skip-checking-short-docstrings = false
 
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E203", "W503"]
+[tool.pyright]
+include = ["stable_cart"]
+exclude = ["**/__pycache__", "**/node_modules", "tests", "docs", "scripts", "build", "dist", ".venv"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+reportOptionalMemberAccess = "error"
+reportOptionalCall = "error"
+reportOptionalIterable = "error"
+reportOptionalContextManager = "error"
+reportOptionalOperand = "error"
+reportTypedDictNotRequiredAccess = "warning"
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+

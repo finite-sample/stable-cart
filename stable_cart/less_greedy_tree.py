@@ -12,16 +12,37 @@ This tree trades some accuracy for substantially improved prediction stability v
 - Leaf smoothing: Shrinkage to parent (regression) or m-estimate (classification)
 """
 
+import operator
 from dataclasses import dataclass
 from typing import Any, Literal
-import operator
-import time
-import numpy as np
 
+import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.metrics import r2_score, accuracy_score
-from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LassoCV, LogisticRegressionCV
+from sklearn.metrics import accuracy_score, r2_score
+from sklearn.preprocessing import StandardScaler
+
+# ============================================================================
+# Data Classes for Split Results
+# ============================================================================
+
+
+@dataclass(slots=True)
+class AxisSplit:
+    """Result of axis-aligned split selection."""
+
+    feature: int
+    threshold: float
+
+
+@dataclass(slots=True)
+class ObliqueSplit:
+    """Result of oblique split selection."""
+
+    threshold: float
+    mean_values: np.ndarray  # scaling mean
+    scale_values: np.ndarray  # scaling scale
+    weights: np.ndarray  # oblique weights
 
 
 # ============================================================================
@@ -30,14 +51,38 @@ from sklearn.linear_model import LassoCV, LogisticRegressionCV
 
 
 def _sse(y: np.ndarray) -> float:
-    """Sum of squared errors around mean (regression)."""
+    """
+    Sum of squared errors around mean (regression).
+
+    Parameters
+    ----------
+    y
+        Target values array.
+
+    Returns
+    -------
+    float
+        Sum of squared errors.
+    """
     if y.size <= 1:
         return 0.0
     return float(np.var(y) * y.size)
 
 
 def _gini_impurity(y: np.ndarray) -> float:
-    """Gini impurity (classification)."""
+    """
+    Gini impurity (classification).
+
+    Parameters
+    ----------
+    y
+        Class labels array.
+
+    Returns
+    -------
+    float
+        Gini impurity value.
+    """
     if y.size <= 1:
         return 0.0
     _, counts = np.unique(y, return_counts=True)
@@ -46,7 +91,19 @@ def _gini_impurity(y: np.ndarray) -> float:
 
 
 def _entropy(y: np.ndarray) -> float:
-    """Entropy (alternative classification criterion)."""
+    """
+    Entropy (alternative classification criterion).
+
+    Parameters
+    ----------
+    y
+        Class labels array.
+
+    Returns
+    -------
+    float
+        Entropy value.
+    """
     if y.size <= 1:
         return 0.0
     _, counts = np.unique(y, return_counts=True)
@@ -58,13 +115,6 @@ def _entropy(y: np.ndarray) -> float:
 # ============================================================================
 # Utilities
 # ============================================================================
-
-
-@dataclass
-class _SplitRec:
-    feature: int
-    threshold: float
-    gain: float
 
 
 class _ComparableFloat(float):
@@ -114,57 +164,49 @@ class LessGreedyHybridTree(BaseEstimator):
 
     Parameters
     ----------
-    task : {'regression', 'classification'}
+    task
         Type of prediction task.
-    max_depth : int, default=5
+    max_depth
         Maximum tree depth.
-    min_samples_split : int, default=40
+    min_samples_split
         Minimum samples to split a node.
-    min_samples_leaf : int, default=20
+    min_samples_leaf
         Minimum samples per leaf.
-    split_frac : float, default=0.6
+    split_frac
         Fraction of data for structure learning (SPLIT).
-    val_frac : float, default=0.2
+    val_frac
         Fraction of data for validation (VAL).
-    est_frac : float, default=0.2
+    est_frac
         Fraction of data for leaf estimation (EST).
-    enable_oblique_root : bool, default=True
+    enable_oblique_root
         Enable linear projections at root node.
-    gain_margin : float, default=0.03
+    gain_margin
         Minimum gain advantage for oblique vs axis-aligned splits.
-    min_abs_corr : float, default=0.3
+    min_abs_corr
         Minimum feature correlation to enable oblique splits.
-    oblique_cv : int, default=5
+    oblique_cv
         CV folds for regularization parameter selection.
-    beam_topk : int, default=12
+    beam_topk
         Beam width for candidate tracking.
-    ambiguity_eps : float, default=0.05
+    ambiguity_eps
         Gain margin for triggering lookahead.
-    min_n_for_lookahead : int, default=600
+    min_n_for_lookahead
         Minimum samples to enable lookahead.
-    root_k : int, default=2
+    root_k
         Lookahead depth at root.
-    inner_k : int, default=1
+    inner_k
         Lookahead depth at inner nodes.
-    leaf_smoothing : float, default=0.0
+    leaf_smoothing
         Smoothing parameter (lambda for regression, m for classification).
-    classification_criterion : {'gini', 'entropy'}, default='gini'
+    classification_criterion
         Split criterion for classification.
-    random_state : int, optional
+    random_state
         Random seed.
 
-    Attributes
-    ----------
-    tree_ : dict
-        Learned tree structure.
-    oblique_info_ : dict or None
-        Information about oblique split if used.
-    fit_time_sec_ : float
-        Training time in seconds.
-    splits_scanned_ : int
-        Number of candidate splits evaluated.
-    classes_ : ndarray (classification only)
-        Unique class labels.
+    Raises
+    ------
+    ValueError
+        If task is not 'regression' or 'classification'.
 
     Examples
     --------
@@ -238,9 +280,6 @@ class LessGreedyHybridTree(BaseEstimator):
 
         # Learned attributes
         self.tree_: dict[str, Any] = {}
-        self.oblique_info_: dict[str, Any] | None = None
-        self.fit_time_sec_: float = 0.0
-        self.splits_scanned_: int = 0
         self.classes_: np.ndarray | None = None
         self._global_prior_: float = 0.0
 
@@ -255,8 +294,26 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             raise ValueError("task must be 'regression' or 'classification'")
 
-    def _children_sse_vec(self, xs, ys, min_leaf):
-        """Vectorized computation of children loss along sorted feature."""
+    def _children_sse_vec(
+        self, xs: np.ndarray, ys: np.ndarray, min_leaf: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Vectorized computation of children loss along sorted feature.
+
+        Parameters
+        ----------
+        xs
+            Sorted feature values.
+        ys
+            Corresponding target values.
+        min_leaf
+            Minimum samples per leaf.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            Combined loss array and validity mask.
+        """
         n = ys.size
         if n < 2 * min_leaf:
             return np.array([]), np.array([], dtype=bool)
@@ -280,7 +337,6 @@ class LessGreedyHybridTree(BaseEstimator):
             sseL = np.where(nL > 0, sumL2 - (sumL * sumL) / nL, np.inf)
             sseR = np.where(nR > 0, sumR2 - (sumR * sumR) / nR, np.inf)
 
-            self.splits_scanned_ += int(valid.sum())
             return sseL + sseR, valid
 
         else:
@@ -298,13 +354,32 @@ class LessGreedyHybridTree(BaseEstimator):
                 left_impurity = self._loss_fn(ys[: i + 1])
                 right_impurity = self._loss_fn(ys[i + 1 :])
                 # Weighted by size
-                impurities[i] = (nL[i] / n) * left_impurity + (nR[i] / n) * right_impurity
+                impurities[i] = (nL[i] / n) * left_impurity + (
+                    nR[i] / n
+                ) * right_impurity
 
-            self.splits_scanned_ += int(valid.sum())
             return impurities, valid
 
-    def _topk_axis_candidates(self, Xs, ys, topk):
-        """Find top-k axis-aligned split candidates by gain."""
+    def _topk_axis_candidates(
+        self, Xs: np.ndarray, ys: np.ndarray, topk: int
+    ) -> list[tuple[float, int, float]]:
+        """
+        Find top-k axis-aligned split candidates by gain.
+
+        Parameters
+        ----------
+        Xs
+            Feature array.
+        ys
+            Target array.
+        topk
+            Number of top candidates to return.
+
+        Returns
+        -------
+        list[tuple[float, int, float]]
+            List of (gain, feature, threshold) tuples.
+        """
         parent_loss = self._loss_fn(ys)
         gains = []
         p = Xs.shape[1]
@@ -313,7 +388,9 @@ class LessGreedyHybridTree(BaseEstimator):
             order = np.argsort(Xs[:, j], kind="mergesort")
             xs = Xs[order, j]
             ys_ord = ys[order]
-            children_loss, valid = self._children_sse_vec(xs, ys_ord, self.min_samples_leaf)
+            children_loss, valid = self._children_sse_vec(
+                xs, ys_ord, self.min_samples_leaf
+            )
 
             if not valid.any():
                 continue
@@ -322,7 +399,7 @@ class LessGreedyHybridTree(BaseEstimator):
             idx = np.where(valid)[0]
             g = parent_loss - children_loss[idx]
 
-            for i, gi in zip(idx, g):
+            for i, gi in zip(idx, g, strict=True):
                 gains.append((float(gi), int(j), float(thr[i])))
 
         if not gains:
@@ -331,12 +408,44 @@ class LessGreedyHybridTree(BaseEstimator):
         gains.sort(key=lambda t: t[0], reverse=True)
         return gains[:topk]
 
-    def _val_loss_leaf(self, yv):
-        """Validation loss if we make this a leaf."""
+    def _val_loss_leaf(self, yv: np.ndarray) -> float:
+        """
+        Validation loss if we make this a leaf.
+
+        Parameters
+        ----------
+        yv
+            Validation targets.
+
+        Returns
+        -------
+        float
+            Validation loss value.
+        """
         return self._loss_fn(yv)
 
-    def _val_loss_after_split(self, Xv, yv, feat, thr):
-        """Validation loss after applying split."""
+    def _val_loss_after_split(
+        self, Xv: np.ndarray, yv: np.ndarray, feat: int, thr: float
+    ) -> float:
+        """
+        Validation loss after applying split.
+
+        Parameters
+        ----------
+        Xv
+            Validation features.
+        yv
+            Validation targets.
+        feat
+            Feature index for split.
+        thr
+            Threshold value for split.
+
+        Returns
+        -------
+        float
+            Validation loss after split.
+        """
         mask = Xv[:, feat] <= thr
         nL, nR = mask.sum(), (~mask).sum()
         n = len(yv)
@@ -350,8 +459,38 @@ class LessGreedyHybridTree(BaseEstimator):
         # Weighted by size
         return (nL / n) * loss_L + (nR / n) * loss_R
 
-    def _best_kstep_val_loss(self, Xs, ys, Xv, yv, depth_remaining, topk):
-        """Best validation loss achievable with k-step lookahead."""
+    def _best_kstep_val_loss(
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        depth_remaining: int,
+        topk: int,
+    ) -> float:
+        """
+        Best validation loss achievable with k-step lookahead.
+
+        Parameters
+        ----------
+        Xs
+            Split features.
+        ys
+            Split targets.
+        Xv
+            Validation features.
+        yv
+            Validation targets.
+        depth_remaining
+            Remaining lookahead depth.
+        topk
+            Number of top candidates to consider.
+
+        Returns
+        -------
+        float
+            Best achievable validation loss.
+        """
         if depth_remaining <= 0 or ys.size < self.min_samples_split:
             return self._val_loss_leaf(yv)
 
@@ -370,10 +509,20 @@ class LessGreedyHybridTree(BaseEstimator):
 
             mask_v = Xv[:, f] <= t
             lossL = self._best_kstep_val_loss(
-                Xs[mask_s], ys[mask_s], Xv[mask_v], yv[mask_v], depth_remaining - 1, topk
+                Xs[mask_s],
+                ys[mask_s],
+                Xv[mask_v],
+                yv[mask_v],
+                depth_remaining - 1,
+                topk,
             )
             lossR = self._best_kstep_val_loss(
-                Xs[~mask_s], ys[~mask_s], Xv[~mask_v], yv[~mask_v], depth_remaining - 1, topk
+                Xs[~mask_s],
+                ys[~mask_s],
+                Xv[~mask_v],
+                yv[~mask_v],
+                depth_remaining - 1,
+                topk,
             )
 
             # Weighted
@@ -392,7 +541,23 @@ class LessGreedyHybridTree(BaseEstimator):
     def _fit_oblique_projection(
         self, Xs: np.ndarray, ys: np.ndarray, cv_folds: int
     ) -> tuple[np.ndarray, StandardScaler, float]:
-        """Fit linear projection for oblique split."""
+        """
+        Fit linear projection for oblique split.
+
+        Parameters
+        ----------
+        Xs
+            Split subset features.
+        ys
+            Split subset targets.
+        cv_folds
+            Number of cross-validation folds.
+
+        Returns
+        -------
+        tuple[np.ndarray, StandardScaler, float]
+            Coefficients, scaler, and alpha value.
+        """
         scaler = StandardScaler()
         Xs_std = scaler.fit_transform(Xs)
 
@@ -429,8 +594,44 @@ class LessGreedyHybridTree(BaseEstimator):
 
         return w, scaler, alpha
 
-    def _build(self, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est):
-        """Recursively build tree."""
+    def _build(
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+    ) -> dict[str, Any]:
+        """
+        Recursively build tree.
+
+        Parameters
+        ----------
+        Xs
+            Split subset features.
+        ys
+            Split subset targets.
+        Xv
+            Validation subset features.
+        yv
+            Validation subset targets.
+        Xe
+            Estimation subset features.
+        ye
+            Estimation subset targets.
+        depth
+            Current tree depth.
+        parent_mean_est
+            Parent mean estimate.
+
+        Returns
+        -------
+        dict[str, Any]
+            Tree node dictionary.
+        """
         n_split = ys.size
         n_val = yv.size
 
@@ -463,7 +664,7 @@ class LessGreedyHybridTree(BaseEstimator):
             if best_axis_immediate[0] + 1e-12 < best_val_loss:
                 best_val_loss = best_axis_immediate[0]
                 best_kind = "axis"
-                best_info = ("k0", best_axis_immediate[1], best_axis_immediate[2])
+                best_info = AxisSplit(best_axis_immediate[1], best_axis_immediate[2])
 
         # Ambiguity gate for lookahead
         do_lookahead = False
@@ -491,10 +692,20 @@ class LessGreedyHybridTree(BaseEstimator):
 
                 mask_v = Xv[:, f] <= t
                 lossL = self._best_kstep_val_loss(
-                    Xs[mask_s], ys[mask_s], Xv[mask_v], yv[mask_v], k_here - 1, self.beam_topk
+                    Xs[mask_s],
+                    ys[mask_s],
+                    Xv[mask_v],
+                    yv[mask_v],
+                    k_here - 1,
+                    self.beam_topk,
                 )
                 lossR = self._best_kstep_val_loss(
-                    Xs[~mask_s], ys[~mask_s], Xv[~mask_v], yv[~mask_v], k_here - 1, self.beam_topk
+                    Xs[~mask_s],
+                    ys[~mask_s],
+                    Xv[~mask_v],
+                    yv[~mask_v],
+                    k_here - 1,
+                    self.beam_topk,
                 )
 
                 nL, nR = mask_v.sum(), (~mask_v).sum()
@@ -504,10 +715,15 @@ class LessGreedyHybridTree(BaseEstimator):
                 if tot < best_la[0]:
                     best_la = (tot, f, t)
 
-            if np.isfinite(best_la[0]) and best_la[0] + 1e-12 < best_val_loss:
+            if (
+                np.isfinite(best_la[0])
+                and best_la[0] + 1e-12 < best_val_loss
+                and best_la[1] is not None
+                and best_la[2] is not None
+            ):
                 best_val_loss = best_la[0]
                 best_kind = "axis"
-                best_info = (f"k{k_here}", best_la[1], best_la[2])
+                best_info = AxisSplit(best_la[1], best_la[2])
 
         # Oblique root with gating
         if self.enable_oblique_root and depth == 0 and Xs.shape[1] >= 2:
@@ -519,11 +735,15 @@ class LessGreedyHybridTree(BaseEstimator):
             # Only try oblique if features are correlated
             if max_abs_corr >= self.min_abs_corr:
                 try:
-                    w, scaler, alpha = self._fit_oblique_projection(Xs, ys, self.oblique_cv)
+                    w, scaler, alpha = self._fit_oblique_projection(
+                        Xs, ys, self.oblique_cv
+                    )
 
                     if np.count_nonzero(w) > 0:
                         # Project data
-                        s = (Xs - scaler.mean_) / scaler.scale_ @ w
+                        mean_ = np.asarray(scaler.mean_)
+                        scale_ = np.asarray(scaler.scale_)
+                        s = (Xs - mean_) / scale_ @ w
                         order = np.argsort(s, kind="mergesort")
                         ss = s[order]
                         ys_ord = ys[order]
@@ -544,10 +764,11 @@ class LessGreedyHybridTree(BaseEstimator):
                             # Check if oblique beats axis by margin
                             if not np.isfinite(
                                 axis_gain_top
-                            ) or oblique_gain_split >= axis_gain_top * (1.0 + self.gain_margin):
-
+                            ) or oblique_gain_split >= axis_gain_top * (
+                                1.0 + self.gain_margin
+                            ):
                                 # Score on VAL
-                                sv = (Xv - scaler.mean_) / scaler.scale_
+                                sv = (Xv - mean_) / scale_
                                 s_val = sv @ w
                                 mask_val = s_val <= t
 
@@ -556,17 +777,12 @@ class LessGreedyHybridTree(BaseEstimator):
                                 if loss_obl + 1e-12 < best_val_loss:
                                     best_val_loss = loss_obl
                                     best_kind = "oblique_root"
-                                    best_info = (
+                                    best_info = ObliqueSplit(
                                         float(t),
-                                        scaler.mean_.astype(float),
-                                        scaler.scale_.astype(float),
+                                        mean_.astype(float),
+                                        scale_.astype(float),
                                         w.astype(float),
                                     )
-                                    self.oblique_info_ = {
-                                        "alpha": alpha,
-                                        "nnz": int(np.count_nonzero(w)),
-                                        "max_abs_corr": max_abs_corr,
-                                    }
                 except Exception:
                     # Oblique split failed, continue with axis
                     pass
@@ -576,28 +792,91 @@ class LessGreedyHybridTree(BaseEstimator):
             return self._make_leaf(ye, ys, parent_mean_est, n_split, n_val)
 
         if best_kind == "axis":
+            assert isinstance(best_info, AxisSplit)
             return self._make_axis_split(
-                best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
+                best_info,
+                Xs,
+                ys,
+                Xv,
+                yv,
+                Xe,
+                ye,
+                depth,
+                parent_mean_est,
+                n_split,
+                n_val,
             )
 
         if best_kind == "oblique_root":
+            assert isinstance(best_info, ObliqueSplit)
             return self._make_oblique_split(
-                best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
+                best_info,
+                Xs,
+                ys,
+                Xv,
+                yv,
+                Xe,
+                ye,
+                depth,
+                parent_mean_est,
+                n_split,
+                n_val,
             )
 
         # Fallback
         return self._make_leaf(ye, ys, parent_mean_est, n_split, n_val)
 
-    def _val_loss_after_split_mask(self, yv, mask):
-        """Helper for computing val loss given a mask."""
+    def _val_loss_after_split_mask(self, yv: np.ndarray, mask: np.ndarray) -> float:
+        """
+        Helper for computing val loss given a mask.
+
+        Parameters
+        ----------
+        yv
+            Validation targets.
+        mask
+            Boolean mask for split.
+
+        Returns
+        -------
+        float
+            Validation loss after applying mask.
+        """
         nL, nR = mask.sum(), (~mask).sum()
         n = len(yv)
         if nL == 0 or nR == 0:
             return self._val_loss_leaf(yv)
         return (nL / n) * self._loss_fn(yv[mask]) + (nR / n) * self._loss_fn(yv[~mask])
 
-    def _make_leaf(self, ye, ys, parent_mean_est, n_split, n_val):
-        """Create a leaf node with task-appropriate value."""
+    def _make_leaf(
+        self,
+        ye: np.ndarray,
+        ys: np.ndarray,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
+    ) -> dict[str, Any]:
+        """
+        Create a leaf node with task-appropriate value.
+
+        Parameters
+        ----------
+        ye
+            Estimation targets.
+        ys
+            Split targets.
+        parent_mean_est
+            Parent mean estimate.
+        n_split
+            Number of split samples.
+        n_val
+            Number of validation samples.
+
+        Returns
+        -------
+        dict[str, Any]
+            Leaf node dictionary.
+        """
         if self.task == "regression":
             mu_leaf = float(ye.mean()) if ye.size > 0 else float(ys.mean())
             lam = self.leaf_smoothing
@@ -636,10 +915,53 @@ class LessGreedyHybridTree(BaseEstimator):
             }
 
     def _make_axis_split(
-        self, best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
-    ):
-        """Create axis-aligned split node."""
-        _, f, t = best_info
+        self,
+        best_info: AxisSplit,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
+    ) -> dict[str, Any]:
+        """
+        Create axis-aligned split node.
+
+        Parameters
+        ----------
+        best_info
+            Best split information tuple.
+        Xs
+            Split features.
+        ys
+            Split targets.
+        Xv
+            Validation features.
+        yv
+            Validation targets.
+        Xe
+            Estimation features.
+        ye
+            Estimation targets.
+        depth
+            Current depth.
+        parent_mean_est
+            Parent mean estimate.
+        n_split
+            Number of split samples.
+        n_val
+            Number of validation samples.
+
+        Returns
+        -------
+        dict[str, Any]
+            Split node dictionary.
+        """
+        f, t = best_info.feature, best_info.threshold
         mask_s = Xs[:, f] <= t
         mask_v = Xv[:, f] <= t
         mask_e = Xe[:, f] <= t if Xe.size else np.array([], dtype=bool)
@@ -687,10 +1009,58 @@ class LessGreedyHybridTree(BaseEstimator):
         return node
 
     def _make_oblique_split(
-        self, best_info, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, n_split, n_val
-    ):
-        """Create oblique split node."""
-        t, mean, scale, w = best_info
+        self,
+        best_info: ObliqueSplit,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        n_split: int,
+        n_val: int,
+    ) -> dict[str, Any]:
+        """
+        Create oblique split node.
+
+        Parameters
+        ----------
+        best_info
+            Oblique split information tuple.
+        Xs
+            Split features.
+        ys
+            Split targets.
+        Xv
+            Validation features.
+        yv
+            Validation targets.
+        Xe
+            Estimation features.
+        ye
+            Estimation targets.
+        depth
+            Current depth.
+        parent_mean_est
+            Parent mean estimate.
+        n_split
+            Number of split samples.
+        n_val
+            Number of validation samples.
+
+        Returns
+        -------
+        dict[str, Any]
+            Oblique split node dictionary.
+        """
+        t, mean, scale, w = (
+            best_info.threshold,
+            best_info.mean_values,
+            best_info.scale_values,
+            best_info.weights,
+        )
 
         s_all = (Xs - mean) / scale @ w
         mask_s = s_all <= t
@@ -736,29 +1106,48 @@ class LessGreedyHybridTree(BaseEstimator):
 
         return node
 
-    def _compute_parent_for_child(self, ye, ys):
-        """Compute parent value for shrinkage."""
+    def _compute_parent_for_child(self, ye: np.ndarray, ys: np.ndarray) -> float:
+        """
+        Compute parent value for shrinkage.
+
+        Parameters
+        ----------
+        ye
+            Estimation targets.
+        ys
+            Split targets.
+
+        Returns
+        -------
+        float
+            Parent value for shrinkage.
+        """
         if self.task == "regression":
             return float(ye.mean()) if ye.size > 0 else float(ys.mean())
         else:
             # For classification, return global prior
             return self._global_prior_
 
-    def fit(self, X, y):
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "LessGreedyHybridTree":
         """
         Fit the tree.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Training features.
-        y : array-like of shape (n_samples,)
+        y
             Target values.
 
         Returns
         -------
-        self : object
+        LessGreedyHybridTree
             Fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If multi-class classification is attempted or data fractions are invalid.
         """
         X = np.asarray(X)
         y = np.asarray(y)
@@ -766,22 +1155,25 @@ class LessGreedyHybridTree(BaseEstimator):
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert 0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
         assert (
-            abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8
-        ), "split_frac + val_frac + est_frac must sum to 1"
+            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
+        )
+        assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
+            "split_frac + val_frac + est_frac must sum to 1"
+        )
 
         # Classification-specific setup
         if self.task == "classification":
             y = y.astype(int)
             self.classes_ = np.unique(y)
             if len(self.classes_) > 2:
-                raise ValueError("Multi-class not yet supported. Use binary classification.")
+                raise ValueError(
+                    "Multi-class not yet supported. Use binary classification."
+                )
             self._global_prior_ = float(y.mean())
         else:
             self._global_prior_ = float(y.mean())
 
-        t0 = time.time()
         rng = np.random.default_rng(self.random_state)
 
         # Honest partition
@@ -798,16 +1190,30 @@ class LessGreedyHybridTree(BaseEstimator):
         Xv, yv = X[iV], y[iV]
         Xe, ye = X[iE], y[iE]
 
-        self.splits_scanned_ = 0
         parent_mean_est = self._compute_parent_for_child(ye, ys)
 
-        self.tree_ = self._build(Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est)
+        self.tree_ = self._build(
+            Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est
+        )
 
-        self.fit_time_sec_ = time.time() - t0
         return self
 
-    def _predict_one(self, x, node):
-        """Predict for single sample."""
+    def _predict_one(self, x: np.ndarray, node: dict[str, Any]) -> float:
+        """
+        Predict for single sample.
+
+        Parameters
+        ----------
+        x
+            Single sample features.
+        node
+            Current tree node.
+
+        Returns
+        -------
+        float
+            Predicted value or probability.
+        """
         if node["type"] == "leaf":
             if self.task == "regression":
                 return node["value"]
@@ -827,18 +1233,18 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             return self._predict_one(x, node["right"])
 
-    def predict(self, X):
+    def predict(self, X: np.ndarray) -> np.ndarray:
         """
         Predict class labels or values.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Features.
 
         Returns
         -------
-        y_pred : ndarray
+        np.ndarray
             Predictions.
         """
         X = np.asarray(X)
@@ -849,19 +1255,24 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             return np.array([self._predict_one(x, self.tree_) for x in X])
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """
         Predict class probabilities (classification only).
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Features.
 
         Returns
         -------
-        proba : ndarray of shape (n_samples, 2)
+        np.ndarray
             Class probabilities.
+
+        Raises
+        ------
+        AttributeError
+            If called on regression task.
         """
         if self.task != "classification":
             raise AttributeError("predict_proba only available for classification")
@@ -873,20 +1284,20 @@ class LessGreedyHybridTree(BaseEstimator):
         proba = np.column_stack([1 - p1, p1])
         return proba
 
-    def score(self, X, y):
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
         """
         Return R² (regression) or accuracy (classification).
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
+        X
             Test features.
-        y : array-like of shape (n_samples,)
+        y
             True labels or values.
 
         Returns
         -------
-        score : float
+        float
             Performance metric.
         """
         y = np.asarray(y)
@@ -897,16 +1308,6 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             y_pred = self.predict(X)
             return float(accuracy_score(y, y_pred))
-
-    def count_leaves(self) -> int:
-        """Count number of leaves."""
-
-        def _c(nd):
-            if nd["type"] == "leaf":
-                return 1
-            return _c(nd["left"]) + _c(nd["right"])
-
-        return _c(self.tree_)
 
 
 # ============================================================================

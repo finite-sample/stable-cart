@@ -9,19 +9,30 @@ This encourages the tree to make splits that lead to more stable predictions
 across different bootstrap samples of the training data.
 """
 
-import numpy as np
-import time
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
+import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.metrics import r2_score, accuracy_score
 from sklearn.linear_model import Lasso, LogisticRegressionCV
+from sklearn.metrics import accuracy_score, r2_score
 
 from stable_cart.less_greedy_tree import _sse
 
 
 def _gini_impurity(y: np.ndarray) -> float:
-    """Compute Gini impurity."""
+    """
+    Compute Gini impurity.
+
+    Parameters
+    ----------
+    y
+        Class labels array.
+
+    Returns
+    -------
+    float
+        Gini impurity value.
+    """
     if len(y) == 0:
         return 0.0
     proportions = np.bincount(y) / len(y)
@@ -29,7 +40,19 @@ def _gini_impurity(y: np.ndarray) -> float:
 
 
 def _entropy(y: np.ndarray) -> float:
-    """Compute entropy."""
+    """
+    Compute entropy.
+
+    Parameters
+    ----------
+    y
+        Class labels array.
+
+    Returns
+    -------
+    float
+        Entropy value.
+    """
     if len(y) == 0:
         return 0.0
     proportions = np.bincount(y) / len(y)
@@ -51,51 +74,85 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
     Parameters
     ----------
-    task : {'regression', 'classification'}, default='regression'
+    task
         The prediction task type.
-
-    variance_penalty : float, default=1.0
+    max_depth
+        Maximum tree depth.
+    min_samples_split
+        Minimum samples required to split an internal node.
+    min_samples_leaf
+        Minimum samples required in a leaf node.
+    split_frac
+        Fraction of data used for building tree structure.
+    val_frac
+        Fraction of data used for validation.
+    est_frac
+        Fraction of data used for estimation.
+    variance_penalty
         Weight for the bootstrap variance penalty term.
         Higher values encourage more stable splits.
-
-    n_bootstrap : int, default=10
+    n_bootstrap
         Number of bootstrap samples to use for variance estimation.
         More samples give better estimates but increase computation.
-
-    bootstrap_max_depth : int, default=2
+    bootstrap_max_depth
         Maximum depth for bootstrap trees used in variance estimation.
         Shallow trees are faster and often sufficient for stability assessment.
+    enable_oblique_root
+        Enable oblique splits at the root level.
+    gain_margin
+        Minimum gain margin required for splits.
+    min_abs_corr
+        Minimum absolute correlation for feature gating.
+    oblique_cv
+        Cross-validation folds for oblique split learning.
+    beam_topk
+        Top-k candidates for beam search.
+    ambiguity_eps
+        Threshold for ambiguity detection.
+    min_n_for_lookahead
+        Minimum samples required for lookahead.
+    root_k
+        Root-level beam width.
+    inner_k
+        Inner beam width.
+    leaf_shrinkage_lambda
+        Shrinkage parameter for leaf estimates.
+    random_state
+        Random state for reproducibility.
 
-    Other parameters follow the same pattern as LessGreedyHybridTree.
+    Raises
+    ------
+    ValueError
+        If parameters are invalid or inconsistent.
     """
 
     def __init__(
         self,
         task: Literal["regression", "classification"] = "regression",
-        max_depth=5,
-        min_samples_split=40,
-        min_samples_leaf=20,
-        split_frac=0.6,
-        val_frac=0.2,
-        est_frac=0.2,
+        max_depth: int = 5,
+        min_samples_split: int = 40,
+        min_samples_leaf: int = 20,
+        split_frac: float = 0.6,
+        val_frac: float = 0.2,
+        est_frac: float = 0.2,
         # Bootstrap variance penalty parameters
-        variance_penalty=1.0,
-        n_bootstrap=10,
-        bootstrap_max_depth=2,
+        variance_penalty: float = 1.0,
+        n_bootstrap: int = 10,
+        bootstrap_max_depth: int = 2,
         # oblique root
-        enable_oblique_root=True,
-        gain_margin=0.03,
-        min_abs_corr=0.3,
-        oblique_cv=5,
+        enable_oblique_root: bool = True,
+        gain_margin: float = 0.03,
+        min_abs_corr: float = 0.3,
+        oblique_cv: int = 5,
         # lookahead (axis-only)
-        beam_topk=12,
-        ambiguity_eps=0.05,
-        min_n_for_lookahead=600,
-        root_k=2,
-        inner_k=1,
+        beam_topk: int = 12,
+        ambiguity_eps: float = 0.05,
+        min_n_for_lookahead: int = 600,
+        root_k: int = 2,
+        inner_k: int = 1,
         # leaf shrinkage
-        leaf_shrinkage_lambda=0.0,
-        random_state=0,
+        leaf_shrinkage_lambda: float = 0.0,
+        random_state: int = 0,
     ):
         if task not in ["regression", "classification"]:
             raise ValueError("task must be 'regression' or 'classification'")
@@ -127,11 +184,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         # Learned attributes
         self.tree_: dict[str, Any] = {}
-        self.oblique_info_: dict[str, Any] | None = None
-        self.fit_time_sec_: float = 0.0
-        self.splits_scanned_: int = 0
-        self.bootstrap_evaluations_: int = 0
-        self.classes_: Optional[np.ndarray] = None
+        self.classes_: np.ndarray | None = None
 
         # Task-adaptive loss functions
         if self.task == "regression":
@@ -140,7 +193,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             self._loss_fn = _gini_impurity  # Could also use _entropy
 
         # Task-adaptive prediction setup
-        self._task_setup_done = False
 
     def _compute_bootstrap_variance(
         self,
@@ -156,17 +208,17 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         Parameters
         ----------
-        Xs : array-like of shape (n_split, n_features)
+        Xs
             Split subset features
-        ys : array-like of shape (n_split,)
+        ys
             Split subset targets
-        Xv : array-like of shape (n_val, n_features)
+        Xv
             Validation subset features
-        feat : int
+        feat
             Feature index for the split
-        thr : float
+        thr
             Threshold value for the split
-        rng : numpy random generator
+        rng
             Random number generator
 
         Returns
@@ -220,7 +272,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         pred_variance = np.var(bootstrap_preds, axis=0)
 
         # Return mean variance across validation samples
-        self.bootstrap_evaluations_ += 1
         return float(np.mean(pred_variance))
 
     def _val_score_with_variance_penalty(
@@ -236,7 +287,27 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         """
         Compute validation score with bootstrap variance penalty.
 
-        Score = validation_SSE + variance_penalty * bootstrap_variance
+        Parameters
+        ----------
+        Xs
+            Split subset features.
+        ys
+            Split subset targets.
+        Xv
+            Validation subset features.
+        yv
+            Validation subset targets.
+        feat
+            Feature index for split.
+        thr
+            Threshold value for split.
+        rng
+            Random number generator.
+
+        Returns
+        -------
+        float
+            Combined validation score with variance penalty.
         """
         # Standard validation loss (task-adaptive)
         mask_val = Xv[:, feat] <= thr
@@ -254,8 +325,26 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         return val_loss + penalty
 
-    def _children_loss_vec(self, xs, ys, min_leaf):
-        """Vectorized computation of children loss along sorted feature (task-adaptive)."""
+    def _children_loss_vec(
+        self, xs: np.ndarray, ys: np.ndarray, min_leaf: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Vectorized computation of children loss along sorted feature (task-adaptive).
+
+        Parameters
+        ----------
+        xs
+            Sorted feature values.
+        ys
+            Corresponding target values.
+        min_leaf
+            Minimum samples per leaf.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            Combined loss array and validity mask.
+        """
         n = ys.size
         if n < 2 * min_leaf:
             return np.array([]), np.array([], dtype=bool)
@@ -298,11 +387,28 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                     lossL[i] = np.inf
                     lossR[i] = np.inf
 
-        self.splits_scanned_ += int(valid.sum())
         return lossL + lossR, valid
 
-    def _topk_axis_candidates(self, Xs, ys, topk):
-        """Find top-k axis-aligned split candidates (task-adaptive)."""
+    def _topk_axis_candidates(
+        self, Xs: np.ndarray, ys: np.ndarray, topk: int
+    ) -> list[tuple[float, int, float]]:
+        """
+        Find top-k axis-aligned split candidates (task-adaptive).
+
+        Parameters
+        ----------
+        Xs
+            Feature array.
+        ys
+            Target array.
+        topk
+            Number of top candidates to return.
+
+        Returns
+        -------
+        list[tuple[float, int, float]]
+            List of (gain, feature, threshold) tuples.
+        """
         parent_loss = self._loss_fn(ys)
         gains = []
         p = Xs.shape[1]
@@ -311,7 +417,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             order = np.argsort(Xs[:, j], kind="mergesort")
             xs = Xs[order, j]
             ys_ord = ys[order]
-            children_loss, valid = self._children_loss_vec(xs, ys_ord, self.min_samples_leaf)
+            children_loss, valid = self._children_loss_vec(
+                xs, ys_ord, self.min_samples_leaf
+            )
 
             if not valid.any():
                 continue
@@ -320,7 +428,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             idx = np.where(valid)[0]
             g = parent_loss - children_loss[idx]
 
-            for i, gi in zip(idx, g):
+            for i, gi in zip(idx, g, strict=True):
                 gains.append((float(gi), int(j), float(thr[i])))
 
         if not gains:
@@ -329,8 +437,47 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         gains.sort(key=lambda t: t[0], reverse=True)
         return gains[:topk]
 
-    def _build(self, Xs, ys, Xv, yv, Xe, ye, depth, parent_mean_est, rng):
-        """Recursively build tree with bootstrap variance penalty."""
+    def _build(
+        self,
+        Xs: np.ndarray,
+        ys: np.ndarray,
+        Xv: np.ndarray,
+        yv: np.ndarray,
+        Xe: np.ndarray,
+        ye: np.ndarray,
+        depth: int,
+        parent_mean_est: float,
+        rng: np.random.Generator,
+    ) -> dict[str, Any]:
+        """
+        Recursively build tree with bootstrap variance penalty.
+
+        Parameters
+        ----------
+        Xs
+            Split subset features.
+        ys
+            Split subset targets.
+        Xv
+            Validation subset features.
+        yv
+            Validation subset targets.
+        Xe
+            Estimation subset features.
+        ye
+            Estimation subset targets.
+        depth
+            Current tree depth.
+        parent_mean_est
+            Parent mean estimate for shrinkage.
+        rng
+            Random number generator.
+
+        Returns
+        -------
+        dict[str, Any]
+            Tree node dictionary.
+        """
         n_split = ys.size
         n_val = yv.size
 
@@ -390,7 +537,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         best_score = np.inf
         best_split = None
 
-        for gain, feat, thr in cand_axis[:5]:  # Limit evaluation for efficiency
+        for _gain, feat, thr in cand_axis[:5]:  # Limit evaluation for efficiency
             # Check if split is valid
             mask_s = Xs[:, feat] <= thr
             if (
@@ -400,7 +547,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                 continue
 
             # Compute score with variance penalty
-            score = self._val_score_with_variance_penalty(Xs, ys, Xv, yv, feat, thr, rng)
+            score = self._val_score_with_variance_penalty(
+                Xs, ys, Xv, yv, feat, thr, rng
+            )
 
             if score < best_score:
                 best_score = score
@@ -472,8 +621,25 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         return node
 
-    def _setup_task_specific(self, y):
-        """Setup task-specific attributes."""
+    def _setup_task_specific(self, y: np.ndarray) -> np.ndarray:
+        """
+        Setup task-specific attributes.
+
+        Parameters
+        ----------
+        y
+            Target array.
+
+        Returns
+        -------
+        np.ndarray
+            Processed target array.
+
+        Raises
+        ------
+        ValueError
+            If multi-class classification is attempted.
+        """
         if self.task == "classification":
             y = np.asarray(y, dtype=int)
             self.classes_ = np.unique(y)
@@ -481,33 +647,73 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                 raise ValueError("Multi-class classification not yet supported")
         return y
 
-    def _fit_oblique_projection(self, X, y, rng):
-        """Fit oblique projection (task-adaptive)."""
+    def _fit_oblique_projection(
+        self, X: np.ndarray, y: np.ndarray, rng: np.random.Generator
+    ) -> tuple[np.ndarray, float]:
+        """
+        Fit oblique projection (task-adaptive).
+
+        Parameters
+        ----------
+        X
+            Feature array.
+        y
+            Target array.
+        rng
+            Random number generator.
+
+        Returns
+        -------
+        tuple[np.ndarray, float]
+            Coefficients and intercept.
+        """
         if self.task == "regression":
             # Use Lasso for regression
-            model = Lasso(alpha=0.01, random_state=rng.randint(0, 10**9))
+            model = Lasso(alpha=0.01, random_state=rng.integers(0, 10**9))
             model.fit(X, y)
             return model.coef_, model.intercept_
         else:
             # Use LogisticRegressionCV for classification
-            model = LogisticRegressionCV(cv=self.oblique_cv, random_state=rng.randint(0, 10**9))
+            model = LogisticRegressionCV(
+                cv=self.oblique_cv, random_state=rng.integers(0, 10**9)
+            )
             model.fit(X, y)
             return model.coef_[0], model.intercept_[0]
 
-    def fit(self, X, y):
-        """Fit the bootstrap variance penalized tree."""
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "BootstrapVariancePenalizedTree":
+        """
+        Fit the bootstrap variance penalized tree.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+
+        Returns
+        -------
+        BootstrapVariancePenalizedTree
+            Fitted estimator.
+
+        Raises
+        ------
+        ValueError
+            If X and y are incompatible or data fractions are invalid.
+        """
         X = np.asarray(X)
         y = self._setup_task_specific(y)
 
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert 0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
         assert (
-            abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8
-        ), "split_frac + val_frac + est_frac must sum to 1"
+            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
+        )
+        assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
+            "split_frac + val_frac + est_frac must sum to 1"
+        )
 
-        t0 = time.time()
         rng = np.random.default_rng(self.random_state)
 
         # Split data into SPLIT/VAL/EST
@@ -523,10 +729,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         Xs, ys = X[iS], y[iS]
         Xv, yv = X[iV], y[iV]
         Xe, ye = X[iE], y[iE]
-
-        self.splits_scanned_ = 0
-        self.bootstrap_evaluations_ = 0
-
         if self.task == "regression":
             parent_mean_est = float(ye.mean()) if ye.size > 0 else float(ys.mean())
         else:  # classification
@@ -536,11 +738,24 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est, rng=rng
         )
 
-        self.fit_time_sec_ = time.time() - t0
         return self
 
-    def _predict_one(self, x, node):
-        """Predict for a single sample."""
+    def _predict_one(self, x: np.ndarray, node: dict[str, Any]) -> float:
+        """
+        Predict for a single sample.
+
+        Parameters
+        ----------
+        x
+            Single sample features.
+        node
+            Current tree node.
+
+        Returns
+        -------
+        float
+            Predicted value.
+        """
         if node["type"] == "leaf":
             return node["value"]
 
@@ -549,8 +764,20 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         else:
             return self._predict_one(x, node["right"])
 
-    def predict(self, X):
-        """Predict for multiple samples (task-adaptive)."""
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predict for multiple samples (task-adaptive).
+
+        Parameters
+        ----------
+        X
+            Input features.
+
+        Returns
+        -------
+        np.ndarray
+            Predicted values or class labels.
+        """
         X = np.asarray(X)
         if self.task == "regression":
             return np.array([self._predict_one(x, self.tree_) for x in X])
@@ -558,10 +785,29 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             probas = self.predict_proba(X)
             return (probas[:, 1] >= 0.5).astype(int)
 
-    def predict_proba(self, X):
-        """Predict class probabilities (classification only)."""
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predict class probabilities (classification only).
+
+        Parameters
+        ----------
+        X
+            Input features.
+
+        Returns
+        -------
+        np.ndarray
+            Class probabilities.
+
+        Raises
+        ------
+        AttributeError
+            If called on regression task.
+        """
         if self.task != "classification":
-            raise AttributeError("predict_proba only available for classification tasks")
+            raise AttributeError(
+                "predict_proba only available for classification tasks"
+            )
 
         X = np.asarray(X)
         proba_pos = np.array([self._predict_one(x, self.tree_) for x in X])
@@ -571,8 +817,22 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         proba = np.column_stack([1 - proba_pos, proba_pos])
         return proba
 
-    def score(self, X, y):
-        """Compute score (task-adaptive: R² for regression, accuracy for classification)."""
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
+        """
+        Compute score (task-adaptive: R² for regression, accuracy for classification).
+
+        Parameters
+        ----------
+        X
+            Input features.
+        y
+            True targets.
+
+        Returns
+        -------
+        float
+            Score value.
+        """
         y = np.asarray(y)
         y_pred = self.predict(X)
         if self.task == "regression":
@@ -580,24 +840,21 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         else:  # classification
             return accuracy_score(y, y_pred)
 
-    def count_leaves(self) -> int:
-        """Count the number of leaves in the tree."""
-
-        def _count(node):
-            if node["type"] == "leaf":
-                return 1
-            return _count(node["left"]) + _count(node["right"])
-
-        return _count(self.tree_)
-
 
 class SimpleTree:
     """
     A very simple decision tree for bootstrap variance estimation.
     This is much faster than using full sklearn trees.
+
+    Parameters
+    ----------
+    max_depth
+        Maximum tree depth.
+    min_samples_leaf
+        Minimum samples per leaf.
     """
 
-    def __init__(self, max_depth=2, min_samples_leaf=5):
+    def __init__(self, max_depth: int = 2, min_samples_leaf: int = 5):
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self.tree_ = None
@@ -649,13 +906,41 @@ class SimpleTree:
             "right": self._build(X[~mask], y[~mask], depth + 1),
         }
 
-    def fit(self, X, y):
-        """Fit the simple tree."""
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "SimpleTree":
+        """
+        Fit the simple tree.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+
+        Returns
+        -------
+        SimpleTree
+            Fitted estimator.
+        """
         self.tree_ = self._build(X, y, 0)
         return self
 
-    def _predict_one(self, x, node):
-        """Predict for single sample."""
+    def _predict_one(self, x: np.ndarray, node: dict[str, Any]) -> float:
+        """
+        Predict for single sample.
+
+        Parameters
+        ----------
+        x
+            Single sample features.
+        node
+            Current tree node.
+
+        Returns
+        -------
+        float
+            Predicted value.
+        """
         if node["type"] == "leaf":
             return node["value"]
 
@@ -664,11 +949,25 @@ class SimpleTree:
         else:
             return self._predict_one(x, node["right"])
 
-    def predict(self, X):
-        """Predict for multiple samples."""
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predict for multiple samples.
+
+        Parameters
+        ----------
+        X
+            Input features.
+
+        Returns
+        -------
+        np.ndarray
+            Predicted values.
+
+        Raises
+        ------
+        ValueError
+            If model has not been fitted yet.
+        """
+        if self.tree_ is None:
+            raise ValueError("Model has not been fitted yet. Call fit() first.")
         return np.array([self._predict_one(x, self.tree_) for x in X])
-
-
-# ============================================================================
-# Backwards-compatible wrapper classes
-# ============================================================================

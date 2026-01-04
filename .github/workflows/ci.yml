@@ -16,24 +16,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7.1.4
         with:
-          python-version: ${{ matrix.python-version }}
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv sync --group dev
 
       - name: Run linting
         run: |
-          black --check stable_cart/ tests/
-          flake8 stable_cart/ tests/ --max-line-length=100 --extend-ignore=E203,W503
+          uv run ruff check
+          uv run ruff format --check
 
       - name: Run tests
         run: |
-          pytest tests/ -v --cov=stable_cart --cov-report=xml
+          uv run pytest tests/ -v --cov=stable_cart --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

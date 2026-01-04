@@ -1,0 +1,13 @@
+model,pred_variance_mean_mean,pred_variance_mean_std,mse_mean,mse_std,rmse_mean,rmse_std,r2_mean,r2_std,n_leaves_mean,n_leaves_std,fit_time_sec_mean,fit_time_sec_std,task,n_datasets,accuracy_mean,accuracy_std,f1_macro_mean,f1_macro_std,auc_mean,auc_std
+BootstrapVariancePenalized,0.0229,,25.7278,,5.0723,,-0.0007,,,,0.1139,,regression,1,,,,,,
+CART,2.3806,,7.1407,,2.6722,,0.7223,,55.0,,0.0103,,regression,1,,,,,,
+CART_Pruned,2.3823,,7.1413,,2.6723,,0.7222,,54.0,,0.0097,,regression,1,,,,,,
+LessGreedyHybrid,0.0229,,25.7278,,5.0723,,-0.0007,,,,0.0089,,regression,1,,,,,,
+RandomForest,0.3716,,5.4633,,2.3374,,0.7875,,,,0.5711,,regression,1,,,,,,
+RobustPrefixHonest,0.1861,,25.7101,,5.0705,,-0.0,,,,0.0938,,regression,1,,,,,,
+BootstrapVariancePenalized,0.0002,,,,,,,,,,0.0067,,classification,1,0.6257,,0.3849,,0.5,
+CART,0.0164,,,,,,,,6.0,,0.0027,,classification,1,0.9181,,0.9131,,0.9693,
+CART_Pruned,0.0186,,,,,,,,3.0,,0.0027,,classification,1,0.9181,,0.9131,,0.9261,
+LessGreedyHybrid,0.0244,,,,,,,,,,0.0834,,classification,1,0.9883,,0.9874,,0.9952,
+RandomForest,0.0014,,,,,,,,,,0.0713,,classification,1,0.9298,,0.9251,,0.9841,
+RobustPrefixHonest,0.0003,,,,,,,,,,0.0056,,classification,1,0.6257,,0.3849,,0.5,

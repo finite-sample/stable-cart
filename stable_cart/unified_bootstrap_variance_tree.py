@@ -6,7 +6,10 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-from typing import Literal, Optional
+from typing import Any, Literal
+
+import numpy as np
+
 from .base_stable_tree import BaseStableTree
 
 
@@ -27,6 +30,85 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
     - Explicit bootstrap variance penalty during split selection
     - Honest data partitioning for unbiased estimation
     - Advanced split strategies with variance awareness
+
+    Parameters
+    ----------
+    task
+        Prediction task type.
+    max_depth
+        Maximum tree depth.
+    min_samples_split
+        Minimum samples to split a node.
+    min_samples_leaf
+        Minimum samples per leaf.
+    variance_penalty
+        Weight for bootstrap variance penalty.
+    n_bootstrap
+        Number of bootstrap samples for variance estimation.
+    bootstrap_max_depth
+        Maximum depth for variance estimation trees.
+    enable_variance_aware_stopping
+        Enable variance-aware stopping criteria.
+    split_frac
+        Fraction of data for structure building.
+    val_frac
+        Fraction of data for validation.
+    est_frac
+        Fraction of data for estimation.
+    enable_stratified_sampling
+        Enable stratified sampling in data partitioning.
+    enable_stratified_bootstraps
+        Enable target-stratified bootstrap sampling.
+    bootstrap_stratification_bins
+        Number of bins for regression quantile stratification.
+    enable_winsorization
+        Enable feature winsorization before bootstrap sampling.
+    winsor_quantiles
+        Quantile bounds for winsorization.
+    enable_threshold_binning
+        Enable threshold binning to reduce micro-jitter.
+    max_threshold_bins
+        Maximum number of threshold bins.
+    enable_robust_consensus
+        Enable robust consensus mechanism.
+    consensus_samples
+        Number of samples for consensus.
+    consensus_threshold
+        Threshold for consensus decisions.
+    enable_oblique_splits
+        Enable oblique split capability.
+    oblique_strategy
+        Strategy for oblique splits.
+    oblique_regularization
+        Regularization type for oblique splits.
+    enable_correlation_gating
+        Enable correlation-based feature gating.
+    min_correlation_threshold
+        Minimum correlation for feature selection.
+    enable_lookahead
+        Enable lookahead search.
+    lookahead_depth
+        Depth for lookahead search.
+    beam_width
+        Width of beam search.
+    enable_ambiguity_gating
+        Enable ambiguity-based gating.
+    ambiguity_threshold
+        Threshold for ambiguity detection.
+    min_samples_for_lookahead
+        Minimum samples required for lookahead.
+    leaf_smoothing
+        Smoothing parameter for leaf estimates.
+    leaf_smoothing_strategy
+        Strategy for leaf smoothing.
+    enable_gain_margin_logic
+        Enable gain margin logic.
+    margin_threshold
+        Threshold for margin-based decisions.
+    classification_criterion
+        Criterion for classification splits.
+    random_state
+        Random state for reproducibility.
     """
 
     def __init__(
@@ -74,13 +156,15 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         min_samples_for_lookahead: int = 100,
         # === LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,  # Conservative default
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "m_estimate",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent"
+        ] = "m_estimate",
         # === MARGIN-BASED LOGIC ===
         enable_gain_margin_logic: bool = True,
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         # Configure defaults that reflect Bootstrap method's personality
         super().__init__(
@@ -141,9 +225,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             random_state=random_state,
         )
 
-        # Store Bootstrap-specific parameters for backwards compatibility
-        self.variance_penalty = variance_penalty
-        self.n_bootstrap = n_bootstrap
+        # Store Bootstrap-specific parameters
         self.bootstrap_max_depth = bootstrap_max_depth
 
         # Cross-method enhancement flags
@@ -152,57 +234,56 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         self.enable_robust_consensus = enable_robust_consensus
 
         # Initialize fitted attributes
-        self.bootstrap_evaluations_ = 0
 
-    def fit(self, X, y):
-        """Fit with bootstrap variance tracking."""
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "BootstrapVariancePenalizedTree":
+        """
+        Fit with bootstrap variance tracking.
+
+        Parameters
+        ----------
+        X
+            Training features.
+        y
+            Training targets.
+
+        Returns
+        -------
+        BootstrapVariancePenalizedTree
+            Fitted estimator.
+        """
         # Call parent fit method
-        result = super().fit(X, y)
+        super().fit(X, y)
 
-        # Set bootstrap evaluations for backwards compatibility
-        if self.enable_explicit_variance_penalty:
-            # Estimate number of bootstrap evaluations based on tree structure
-            self.bootstrap_evaluations_ = self._estimate_bootstrap_evaluations()
-        else:
-            self.bootstrap_evaluations_ = 0
+        return self
 
-        return result
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """
+        Get parameters for sklearn compatibility.
 
-    def _estimate_bootstrap_evaluations(self):
-        """Estimate total bootstrap evaluations performed during training."""
-        if self.tree_ is None:
-            return 0
+        Parameters
+        ----------
+        deep
+            Whether to return deep parameter copy.
 
-        # Rough estimate: internal nodes * n_bootstrap * candidate evaluations
-        internal_nodes = self._count_internal_nodes(self.tree_)
-        candidates_per_node = 10  # Rough estimate
-
-        return internal_nodes * self.n_bootstrap * candidates_per_node
-
-    def _count_internal_nodes(self, node):
-        """Count internal (non-leaf) nodes recursively."""
-        if node["type"] == "leaf":
-            return 0
-
-        count = 1  # This node
-        if "left" in node:
-            count += self._count_internal_nodes(node["left"])
-        if "right" in node:
-            count += self._count_internal_nodes(node["right"])
-
-        return count
-
-    def get_params(self, deep=True):
-        """Get parameters for sklearn compatibility."""
+        Returns
+        -------
+        dict[str, Any]
+            Parameter dictionary.
+        """
         return super().get_params(deep=deep)
 
-    def set_params(self, **params):
-        """Set parameters for sklearn compatibility."""
+    def set_params(self, **params: Any) -> "BootstrapVariancePenalizedTree":
+        """
+        Set parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        **params
+            Parameter values to set.
+
+        Returns
+        -------
+        BootstrapVariancePenalizedTree
+            Self with updated parameters.
+        """
         return super().set_params(**params)
-
-
-# Create the backwards-compatible aliases
-BootstrapVariancePenalizedRegressor = BootstrapVariancePenalizedTree  # Will need task='regression'
-BootstrapVariancePenalizedClassifier = (
-    BootstrapVariancePenalizedTree  # Will need task='classification'
-)

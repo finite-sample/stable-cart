@@ -6,8 +6,8 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
-import numpy as np
-from typing import Literal, Optional
+from typing import Any, Literal
+
 from .base_stable_tree import BaseStableTree
 
 
@@ -26,6 +26,81 @@ class LessGreedyHybridTree(BaseStableTree):
     - Optional oblique root splits using regularized linear models
     - Leaf smoothing (shrinkage for regression, m-estimate for classification)
     - Advanced split selection with multiple strategies
+
+    Parameters
+    ----------
+    task
+        Prediction task type.
+    max_depth
+        Maximum tree depth.
+    min_samples_split
+        Minimum samples to split a node.
+    min_samples_leaf
+        Minimum samples per leaf.
+    split_frac
+        Fraction of data for structure building.
+    val_frac
+        Fraction of data for validation.
+    est_frac
+        Fraction of data for estimation.
+    enable_stratified_sampling
+        Enable stratified sampling in data partitioning.
+    enable_oblique_splits
+        Enable oblique split capability.
+    oblique_strategy
+        Strategy for oblique splits.
+    oblique_regularization
+        Regularization type for oblique splits.
+    enable_correlation_gating
+        Enable correlation-based feature gating.
+    min_correlation_threshold
+        Minimum correlation for feature selection.
+    enable_lookahead
+        Enable lookahead search.
+    lookahead_depth
+        Depth for lookahead search.
+    beam_width
+        Width of beam search.
+    enable_ambiguity_gating
+        Enable ambiguity-based gating.
+    ambiguity_threshold
+        Threshold for ambiguity detection.
+    min_samples_for_lookahead
+        Minimum samples required for lookahead.
+    enable_robust_consensus_for_ambiguous
+        Enable robust consensus for ambiguous splits.
+    consensus_samples
+        Number of samples for consensus.
+    consensus_threshold
+        Threshold for consensus decisions.
+    enable_threshold_binning
+        Enable threshold binning to reduce micro-jitter.
+    max_threshold_bins
+        Maximum number of threshold bins.
+    enable_winsorization
+        Enable feature winsorization.
+    winsor_quantiles
+        Quantile bounds for winsorization.
+    enable_bootstrap_variance_tracking
+        Enable bootstrap variance tracking.
+    variance_tracking_samples
+        Number of samples for variance tracking.
+    enable_explicit_variance_penalty
+        Enable explicit variance penalty.
+    variance_penalty_weight
+        Weight for variance penalty.
+    leaf_smoothing
+        Smoothing parameter for leaf estimates.
+    leaf_smoothing_strategy
+        Strategy for leaf smoothing.
+    enable_gain_margin_logic
+        Enable gain margin logic.
+    margin_threshold
+        Threshold for margin-based decisions.
+    classification_criterion
+        Criterion for classification splits.
+    random_state
+        Random state for reproducibility.
     """
 
     def __init__(
@@ -69,13 +144,15 @@ class LessGreedyHybridTree(BaseStableTree):
         variance_penalty_weight: float = 0.1,
         # === LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,  # Conservative default for LessGreedy
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent"] = "shrink_to_parent",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent"
+        ] = "shrink_to_parent",
         # === MARGIN-BASED LOGIC ===
         enable_gain_margin_logic: bool = True,  # Signature feature
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
-        random_state: Optional[int] = None,
+        random_state: int | None = None,
     ):
         # Configure defaults that reflect LessGreedy's personality
         super().__init__(
@@ -133,65 +210,46 @@ class LessGreedyHybridTree(BaseStableTree):
             random_state=random_state,
         )
 
-        # Store LessGreedy-specific parameters for backwards compatibility
-        self.gain_margin = margin_threshold  # Backwards compatibility
-        self.beam_topk = beam_width  # Backwards compatibility
-        self.root_k = lookahead_depth  # Backwards compatibility
+        # Store LessGreedy-specific parameters
         self.inner_k = 1  # Simplified for unified version
-        self.min_abs_corr = min_correlation_threshold  # Backwards compatibility
         self.oblique_cv = 5  # Fixed for unified version
 
         # Cross-method enhancement flags
-        self.enable_robust_consensus_for_ambiguous = enable_robust_consensus_for_ambiguous
+        self.enable_robust_consensus_for_ambiguous = (
+            enable_robust_consensus_for_ambiguous
+        )
         self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
 
-    def get_params(self, deep=True):
-        """Get parameters for sklearn compatibility."""
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """
+        Get parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        deep
+            Whether to return deep parameter copy.
+
+        Returns
+        -------
+        dict[str, Any]
+            Parameter dictionary.
+        """
         # Use the parent method which gets constructor parameters
         return super().get_params(deep=deep)
 
-    def set_params(self, **params):
-        """Set parameters for sklearn compatibility."""
-        # For now, just use the parent method - backwards compatibility can be added later if needed
+    def set_params(self, **params: Any) -> "LessGreedyHybridTree":
+        """
+        Set parameters for sklearn compatibility.
+
+        Parameters
+        ----------
+        **params
+            Parameter values to set.
+
+        Returns
+        -------
+        LessGreedyHybridTree
+            Self with updated parameters.
+        """
         return super().set_params(**params)
-
-    @property
-    def splits_scanned_(self):
-        """Backwards compatibility: approximate split count."""
-        if self.tree_ is None:
-            return 0
-        return self._count_internal_nodes(self.tree_) * self.beam_width
-
-    @property
-    def oblique_info_(self):
-        """Backwards compatibility: oblique split information."""
-        if self.tree_ is None or not self.enable_oblique_splits:
-            return None
-
-        # Check if root has oblique split
-        if (
-            self.tree_.get("type") == "split_oblique"
-            and self.tree_.get("oblique_weights") is not None
-        ):
-            weights = self.tree_["oblique_weights"]
-            return {"alpha": weights, "nnz": int(np.sum(np.abs(weights) > 1e-6))}
-        return None
-
-    def _count_internal_nodes(self, node):
-        """Count internal (non-leaf) nodes recursively."""
-        if node["type"] == "leaf":
-            return 0
-
-        count = 1  # This node
-        if "left" in node:
-            count += self._count_internal_nodes(node["left"])
-        if "right" in node:
-            count += self._count_internal_nodes(node["right"])
-
-        return count
-
-
-# Create the backwards-compatible aliases
-LessGreedyHybridRegressor = LessGreedyHybridTree  # Will need task='regression'
-LessGreedyHybridClassifier = LessGreedyHybridTree  # Will need task='classification'
