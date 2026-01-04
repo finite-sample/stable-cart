@@ -271,11 +271,6 @@ def test_evaluate_models_perfect_predictions():
 
 
 # -------------------------------
-# Test backward compatibility
-# -------------------------------
-
-
-# -------------------------------
 # Test edge cases
 # -------------------------------
 

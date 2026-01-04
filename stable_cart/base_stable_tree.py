@@ -6,7 +6,6 @@ across different tree methods. Each method can inherit from this and configure
 different defaults to maintain their distinct personalities.
 """
 
-import time
 from typing import Any, Literal
 
 import numpy as np
@@ -18,7 +17,6 @@ from sklearn.utils.validation import (  # type: ignore[import-untyped]
     check_X_y,
 )
 
-from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .split_strategies import HybridStrategy, SplitStrategy, create_split_strategy
 from .stability_utils import (
     honest_data_partition,
@@ -166,7 +164,7 @@ class BaseStableTree(BaseEstimator):
     def __init__(
         self,
         # === TASK AND CORE PARAMETERS ===
-        task: Task = Task.REGRESSION,
+        task: str = "regression",
         max_depth: int = 5,
         min_samples_split: int = 40,
         min_samples_leaf: int = 20,
@@ -191,7 +189,7 @@ class BaseStableTree(BaseEstimator):
         max_threshold_bins: int = 24,
         # === 4. LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,
-        leaf_smoothing_strategy: LeafSmoothingStrategy = LeafSmoothingStrategy.M_ESTIMATE,
+        leaf_smoothing_strategy: str = "m_estimate",
         enable_calibrated_smoothing: bool = False,
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
@@ -226,7 +224,7 @@ class BaseStableTree(BaseEstimator):
         variance_penalty_weight: float = 0.1,
         # === ADVANCED CONFIGURATION ===
         split_strategy: str | None = None,
-        algorithm_focus: AlgorithmFocus = AlgorithmFocus.STABILITY,
+        algorithm_focus: str = "stability",
         # === CLASSIFICATION ===
         classification_criterion: Literal["gini", "entropy"] = "gini",
         # === OTHER ===
@@ -328,7 +326,6 @@ class BaseStableTree(BaseEstimator):
         self.tree_: dict[str, Any] | None = None
         self.classes_: np.ndarray | None = None
         self.n_classes_: int | None = None
-        self.fit_time_sec_: float | None = None
         self._split_strategy_: SplitStrategy | None = None
         self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
         self._global_prior_: float | None = None
@@ -354,13 +351,11 @@ class BaseStableTree(BaseEstimator):
         ValueError
             If multi-class classification is attempted (not yet supported).
         """
-        start_time = time.time()
-
         # Validate inputs
         X, y = check_X_y(X, y, accept_sparse=False)
 
         # === 1. TASK SETUP ===
-        if self.task == Task.CLASSIFICATION:
+        if self.task == "classification":
             self.classes_ = np.unique(y)
             self.n_classes_ = len(self.classes_)
 
@@ -394,8 +389,6 @@ class BaseStableTree(BaseEstimator):
         )
 
         # Record timing and diagnostics
-        self.fit_time_sec_ = time.time() - start_time
-
         return self
 
     def predict(self, X: NDArray[np.floating]) -> NDArray[Any]:
@@ -429,7 +422,7 @@ class BaseStableTree(BaseEstimator):
             [self._predict_sample(x, self.tree_) for x in X_processed]
         )
 
-        if self.task == Task.CLASSIFICATION:
+        if self.task == "classification":
             # Convert back to original class labels
             assert self.classes_ is not None, (
                 "Classes must be defined for classification"
@@ -495,48 +488,11 @@ class BaseStableTree(BaseEstimator):
         """
         y_pred = self.predict(X)
 
-        if self.task == Task.REGRESSION:
+        if self.task == "regression":
             return r2_score(y, y_pred)
         else:
             return accuracy_score(y, y_pred)
 
-    def count_leaves(self) -> int:
-        """
-        Count the number of leaf nodes in the tree.
-
-        Returns
-        -------
-        int
-            Number of leaf nodes.
-        """
-        if self.tree_ is None:
-            return 0
-        return self._count_leaves_recursive(self.tree_)
-
-    def _count_leaves_recursive(self, node: Any) -> int:
-        """
-        Recursively count leaves.
-
-        Parameters
-        ----------
-        node
-            Tree node to count from.
-
-        Returns
-        -------
-        int
-            Number of leaf nodes in subtree.
-        """
-        if node["type"] == "leaf":
-            return 1
-        else:
-            left_count = (
-                self._count_leaves_recursive(node["left"]) if "left" in node else 0
-            )
-            right_count = (
-                self._count_leaves_recursive(node["right"]) if "right" in node else 0
-            )
-            return left_count + right_count
 
     # ========================================================================
     # INTERNAL METHODS - STABILITY PRIMITIVES
@@ -613,7 +569,7 @@ class BaseStableTree(BaseEstimator):
             val_frac=self.val_frac,
             est_frac=self.est_frac,
             enable_stratification=self.enable_stratified_sampling,
-            task=self.task.value,
+            task=self.task,
             random_state=self.random_state,
         )
 
@@ -630,7 +586,7 @@ class BaseStableTree(BaseEstimator):
             # Explicit strategy specified
             return create_split_strategy(
                 self.split_strategy,
-                task=self.task.value,
+                task=self.task,
                 random_state=self.random_state,
                 # Pass relevant parameters
                 oblique_regularization=self.oblique_regularization,
@@ -645,8 +601,8 @@ class BaseStableTree(BaseEstimator):
         else:
             # Auto-select based on enabled features and algorithm focus
             return HybridStrategy(
-                focus=self.algorithm_focus.value,
-                task=self.task.value,
+                focus=self.algorithm_focus,
+                task=self.task,
                 random_state=self.random_state,
             )
 
@@ -846,13 +802,13 @@ class BaseStableTree(BaseEstimator):
         stabilized_value = stabilize_leaf_estimate(
             y_est,
             y_split,
-            strategy=self.leaf_smoothing_strategy.value,
+            strategy=self.leaf_smoothing_strategy,
             smoothing=self.leaf_smoothing,
-            task=self.task.value,
+            task=self.task,
             min_samples=self.min_leaf_samples_for_stability,
         )
 
-        if self.task == Task.REGRESSION:
+        if self.task == "regression":
             return {
                 "type": "leaf",
                 "value": stabilized_value,
@@ -896,7 +852,7 @@ class BaseStableTree(BaseEstimator):
             Predicted value or probability.
         """
         if node["type"] == "leaf":
-            if self.task == Task.REGRESSION:
+            if self.task == "regression":
                 return node["value"]
             else:
                 return node["proba"]

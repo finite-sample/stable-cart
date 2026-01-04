@@ -10,7 +10,6 @@ from typing import Any, Literal
 
 import numpy as np
 
-from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .base_stable_tree import BaseStableTree
 
 
@@ -169,7 +168,7 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
     ):
         # Configure defaults that reflect Bootstrap method's personality
         super().__init__(
-            task=Task(task),
+            task=task,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
@@ -218,17 +217,15 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             margin_threshold=margin_threshold,
             # Leaf stabilization
             leaf_smoothing=leaf_smoothing,
-            leaf_smoothing_strategy=LeafSmoothingStrategy(leaf_smoothing_strategy),
+            leaf_smoothing_strategy=leaf_smoothing_strategy,
             # Classification
             classification_criterion=classification_criterion,
             # Focus on maximum stability
-            algorithm_focus=AlgorithmFocus.STABILITY,
+            algorithm_focus="stability",
             random_state=random_state,
         )
 
-        # Store Bootstrap-specific parameters for backwards compatibility
-        self.variance_penalty = variance_penalty
-        self.n_bootstrap = n_bootstrap
+        # Store Bootstrap-specific parameters
         self.bootstrap_max_depth = bootstrap_max_depth
 
         # Cross-method enhancement flags
@@ -237,8 +234,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         self.enable_robust_consensus = enable_robust_consensus
 
         # Initialize fitted attributes
-        self.bootstrap_evaluations_ = 0
-
     def fit(self, X: np.ndarray, y: np.ndarray) -> "BootstrapVariancePenalizedTree":
         """
         Fit with bootstrap variance tracking.
@@ -258,57 +253,8 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         # Call parent fit method
         super().fit(X, y)
 
-        # Set bootstrap evaluations for backwards compatibility
-        if self.enable_explicit_variance_penalty:
-            # Estimate number of bootstrap evaluations based on tree structure
-            self.bootstrap_evaluations_ = self._estimate_bootstrap_evaluations()
-        else:
-            self.bootstrap_evaluations_ = 0
-
         return self
 
-    def _estimate_bootstrap_evaluations(self) -> int:
-        """
-        Estimate total bootstrap evaluations performed during training.
-
-        Returns
-        -------
-        int
-            Estimated number of bootstrap evaluations.
-        """
-        if self.tree_ is None:
-            return 0
-
-        # Rough estimate: internal nodes * n_bootstrap * candidate evaluations
-        internal_nodes = self._count_internal_nodes(self.tree_)
-        candidates_per_node = 10  # Rough estimate
-
-        return internal_nodes * self.n_bootstrap * candidates_per_node
-
-    def _count_internal_nodes(self, node: dict[str, Any]) -> int:
-        """
-        Count internal (non-leaf) nodes recursively.
-
-        Parameters
-        ----------
-        node
-            Tree node dictionary.
-
-        Returns
-        -------
-        int
-            Number of internal nodes.
-        """
-        if node["type"] == "leaf":
-            return 0
-
-        count = 1  # This node
-        if "left" in node:
-            count += self._count_internal_nodes(node["left"])
-        if "right" in node:
-            count += self._count_internal_nodes(node["right"])
-
-        return count
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """
@@ -341,12 +287,3 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             Self with updated parameters.
         """
         return super().set_params(**params)
-
-
-# Create the backwards-compatible aliases
-BootstrapVariancePenalizedRegressor = (
-    BootstrapVariancePenalizedTree  # Will need task='regression'
-)
-BootstrapVariancePenalizedClassifier = (
-    BootstrapVariancePenalizedTree  # Will need task='classification'
-)

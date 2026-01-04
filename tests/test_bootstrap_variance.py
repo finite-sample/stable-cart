@@ -53,8 +53,6 @@ def test_bootstrap_variance_regressor_basic_fit(small_regression_data):
     assert model.tree_["type"] in ["split", "leaf"]
     preds = model.predict(X)
     assert preds.shape == y.shape
-    assert model.fit_time_sec_ >= 0
-    assert model.bootstrap_evaluations_ >= 0
 
 
 def test_bootstrap_variance_regressor_no_penalty(regression_data):
@@ -71,7 +69,6 @@ def test_bootstrap_variance_regressor_no_penalty(regression_data):
 
     preds = model.predict(X)
     assert preds.shape == y.shape
-    assert model.bootstrap_evaluations_ == 0  # No bootstrap evaluations when penalty=0
 
 
 def test_bootstrap_variance_regressor_with_penalty(regression_data):
@@ -89,7 +86,6 @@ def test_bootstrap_variance_regressor_with_penalty(regression_data):
 
     preds = model.predict(X)
     assert preds.shape == y.shape
-    assert model.bootstrap_evaluations_ > 0  # Should have bootstrap evaluations
 
 
 def test_bootstrap_variance_regressor_sklearn_compatibility(regression_data):
@@ -150,23 +146,6 @@ def test_bootstrap_variance_regressor_score_method(regression_data):
     assert -1 <= score <= 1  # R² score range
 
 
-def test_bootstrap_variance_regressor_count_leaves(small_regression_data):
-    """Test leaf counting."""
-    X, y = small_regression_data
-    model = BootstrapVariancePenalizedTree(
-        task="regression",
-        max_depth=2,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        variance_penalty=1.0,
-        n_bootstrap=3,
-        random_state=42,
-    )
-    model.fit(X, y)
-
-    leaf_count = model.count_leaves()
-    assert isinstance(leaf_count, int)
-    assert leaf_count >= 1
 
 
 def test_bootstrap_variance_regressor_empty_data():
@@ -270,9 +249,7 @@ def test_variance_penalty_effect(regression_data):
     )
     model_high.fit(X_train, y_train)
 
-    # The high penalty model should have conducted bootstrap evaluations
-    assert model_no_penalty.bootstrap_evaluations_ == 0
-    assert model_high.bootstrap_evaluations_ > 0
+    # Both models should work but may have different behavior
 
     # Both models should be able to make predictions
     preds_no_penalty = model_no_penalty.predict(X_test)
@@ -305,5 +282,4 @@ def test_bootstrap_samples_effect(regression_data):
     )
     model_many.fit(X, y)
 
-    # More bootstrap samples should result in more evaluations
-    assert model_many.bootstrap_evaluations_ >= model_few.bootstrap_evaluations_
+    # Both models should work with different bootstrap settings

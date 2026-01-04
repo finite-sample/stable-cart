@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "stable-cart"
-version = "0.3.1"
+version = "1.0.0"
 description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
@@ -12,7 +12,7 @@ authors = [
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "machine learning",
     "decision trees",
@@ -34,7 +34,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -61,8 +60,9 @@ dev = [
     "ruff>=0.7.0",
     "pre-commit>=3.0",
     "matplotlib>=3.3.0",
-    "pydoclint>=0.3.8",
     "pyright>=1.1.300",
+    "vulture>=2.14",
+    "deadcode>=2.4.1",
 ]
 benchmark = [
     "seaborn>=0.11.0",
@@ -83,7 +83,7 @@ module-root = ""
 # Ruff configuration
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 exclude = [
     ".git",
     "__pycache__",
@@ -173,7 +173,7 @@ skip-checking-short-docstrings = false
 [tool.pyright]
 include = ["stable_cart"]
 exclude = ["**/__pycache__", "**/node_modules", "tests", "docs", "scripts", "build", "dist", ".venv"]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 typeCheckingMode = "standard"
 reportMissingImports = "error"
 reportMissingTypeStubs = false

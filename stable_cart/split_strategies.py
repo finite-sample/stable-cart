@@ -10,7 +10,6 @@ from typing import Literal
 
 import numpy as np
 
-from ._types import ObliqueRegularization, StoppingStrategy
 from .stability_utils import (
     SplitCandidate,
     _find_candidate_splits,
@@ -365,7 +364,7 @@ class ObliqueStrategy(SplitStrategy):
 
     def __init__(
         self,
-        oblique_regularization: ObliqueRegularization = ObliqueRegularization.LASSO,
+        oblique_regularization: str = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation: float = 0.3,
         fallback_strategy: SplitStrategy | None = None,
@@ -615,7 +614,7 @@ class VariancePenalizedStrategy(SplitStrategy):
         self,
         variance_penalty_weight: float = 1.0,
         variance_estimation_samples: int = 10,
-        stopping_strategy: StoppingStrategy = StoppingStrategy.VARIANCE_PENALTY,
+        stopping_strategy: str = "variance_penalty",
         base_strategy: SplitStrategy | None = None,
         task: str = "regression",
         random_state: int | None = None,
@@ -899,37 +898,38 @@ class HybridStrategy(SplitStrategy):
         self.random_state = random_state
 
         # Build appropriate strategy based on focus
-        if focus == "speed":
-            self.strategy = AxisAlignedStrategy(
-                max_candidates=10, enable_deterministic_tiebreaking=True, task=task
-            )
-        elif focus == "accuracy":
-            # Composite of oblique + lookahead for best accuracy
-            self.strategy = CompositeStrategy(
-                [
-                    ObliqueStrategy(task=task, random_state=random_state),
-                    LookaheadStrategy(task=task),
-                    AxisAlignedStrategy(task=task),
-                ],
-                selection_metric="validation",
-                task=task,
-            )
-        else:  # stability
-            # Consensus + variance penalty for maximum stability
-            self.strategy = CompositeStrategy(
-                [
-                    VariancePenalizedStrategy(
-                        base_strategy=ConsensusStrategy(
-                            task=task, random_state=random_state
+        match focus:
+            case "speed":
+                self.strategy = AxisAlignedStrategy(
+                    max_candidates=10, enable_deterministic_tiebreaking=True, task=task
+                )
+            case "accuracy":
+                # Composite of oblique + lookahead for best accuracy
+                self.strategy = CompositeStrategy(
+                    [
+                        ObliqueStrategy(task=task, random_state=random_state),
+                        LookaheadStrategy(task=task),
+                        AxisAlignedStrategy(task=task),
+                    ],
+                    selection_metric="validation",
+                    task=task,
+                )
+            case _:  # stability or any other value
+                # Consensus + variance penalty for maximum stability
+                self.strategy = CompositeStrategy(
+                    [
+                        VariancePenalizedStrategy(
+                            base_strategy=ConsensusStrategy(
+                                task=task, random_state=random_state
+                            ),
+                            task=task,
+                            random_state=random_state,
                         ),
-                        task=task,
-                        random_state=random_state,
-                    ),
-                    ConsensusStrategy(task=task, random_state=random_state),
-                ],
-                selection_metric="variance_penalized",
-                task=task,
-            )
+                        ConsensusStrategy(task=task, random_state=random_state),
+                    ],
+                    selection_metric="variance_penalized",
+                    task=task,
+                )
 
     def find_best_split(
         self,
@@ -1023,29 +1023,30 @@ def create_split_strategy(
     ValueError
         If unknown strategy type is provided.
     """
-    if strategy_type == "axis_aligned":
-        return AxisAlignedStrategy(task=task, **kwargs)
-    elif strategy_type == "consensus":
-        return ConsensusStrategy(task=task, **kwargs)
-    elif strategy_type == "oblique":
-        return ObliqueStrategy(task=task, **kwargs)
-    elif strategy_type == "lookahead":
-        return LookaheadStrategy(task=task, **kwargs)
-    elif strategy_type == "variance_penalized":
-        return VariancePenalizedStrategy(task=task, **kwargs)
-    elif strategy_type == "hybrid":
-        return HybridStrategy(task=task, **kwargs)
-    elif strategy_type == "composite":
-        # Default composite with common strategies
-        strategies = [
-            AxisAlignedStrategy(task=task),
-            ConsensusStrategy(task=task, **kwargs),
-        ]
-        if kwargs.get("enable_oblique", False):
-            strategies.append(ObliqueStrategy(task=task, **kwargs))
-        if kwargs.get("enable_lookahead", False):
-            strategies.append(LookaheadStrategy(task=task, **kwargs))
+    match strategy_type:
+        case "axis_aligned":
+            return AxisAlignedStrategy(task=task, **kwargs)
+        case "consensus":
+            return ConsensusStrategy(task=task, **kwargs)
+        case "oblique":
+            return ObliqueStrategy(task=task, **kwargs)
+        case "lookahead":
+            return LookaheadStrategy(task=task, **kwargs)
+        case "variance_penalized":
+            return VariancePenalizedStrategy(task=task, **kwargs)
+        case "hybrid":
+            return HybridStrategy(task=task, **kwargs)
+        case "composite":
+            # Default composite with common strategies
+            strategies = [
+                AxisAlignedStrategy(task=task),
+                ConsensusStrategy(task=task, **kwargs),
+            ]
+            if kwargs.get("enable_oblique", False):
+                strategies.append(ObliqueStrategy(task=task, **kwargs))
+            if kwargs.get("enable_lookahead", False):
+                strategies.append(LookaheadStrategy(task=task, **kwargs))
 
-        return CompositeStrategy(strategies, task=task)
-    else:
-        raise ValueError(f"Unknown strategy type: {strategy_type}")
+            return CompositeStrategy(strategies, task=task)
+        case _:
+            raise ValueError(f"Unknown strategy type: {strategy_type}")

@@ -8,9 +8,6 @@ Now inherits from BaseStableTree and incorporates lessons from:
 
 from typing import Any, Literal
 
-import numpy as np
-
-from ._types import AlgorithmFocus, LeafSmoothingStrategy, Task
 from .base_stable_tree import BaseStableTree
 
 
@@ -159,7 +156,7 @@ class LessGreedyHybridTree(BaseStableTree):
     ):
         # Configure defaults that reflect LessGreedy's personality
         super().__init__(
-            task=Task(task),
+            task=task,
             max_depth=max_depth,
             min_samples_split=min_samples_split,
             min_samples_leaf=min_samples_leaf,
@@ -205,20 +202,16 @@ class LessGreedyHybridTree(BaseStableTree):
             variance_penalty_weight=variance_penalty_weight,
             # Leaf stabilization - conservative for accuracy
             leaf_smoothing=leaf_smoothing,
-            leaf_smoothing_strategy=LeafSmoothingStrategy(leaf_smoothing_strategy),
+            leaf_smoothing_strategy=leaf_smoothing_strategy,
             # Classification
             classification_criterion=classification_criterion,
             # Focus on balanced accuracy + stability
-            algorithm_focus=AlgorithmFocus.ACCURACY,
+            algorithm_focus="accuracy",
             random_state=random_state,
         )
 
-        # Store LessGreedy-specific parameters for backwards compatibility
-        self.gain_margin = margin_threshold  # Backwards compatibility
-        self.beam_topk = beam_width  # Backwards compatibility
-        self.root_k = lookahead_depth  # Backwards compatibility
+        # Store LessGreedy-specific parameters
         self.inner_k = 1  # Simplified for unified version
-        self.min_abs_corr = min_correlation_threshold  # Backwards compatibility
         self.oblique_cv = 5  # Fixed for unified version
 
         # Cross-method enhancement flags
@@ -259,71 +252,6 @@ class LessGreedyHybridTree(BaseStableTree):
         LessGreedyHybridTree
             Self with updated parameters.
         """
-        # For now, just use the parent method - backwards compatibility can be added later if needed
         return super().set_params(**params)
 
-    @property
-    def splits_scanned_(self) -> int:
-        """
-        Backwards compatibility: approximate split count.
 
-        Returns
-        -------
-        int
-            Approximate number of splits scanned.
-        """
-        if self.tree_ is None:
-            return 0
-        return self._count_internal_nodes(self.tree_) * self.beam_width
-
-    @property
-    def oblique_info_(self) -> dict[str, Any] | None:
-        """
-        Backwards compatibility: oblique split information.
-
-        Returns
-        -------
-        dict[str, Any] | None
-            Oblique split information or None if not available.
-        """
-        if self.tree_ is None or not self.enable_oblique_splits:
-            return None
-
-        # Check if root has oblique split
-        if (
-            self.tree_.get("type") == "split_oblique"
-            and self.tree_.get("oblique_weights") is not None
-        ):
-            weights = self.tree_["oblique_weights"]
-            return {"alpha": weights, "nnz": int(np.sum(np.abs(weights) > 1e-6))}
-        return None
-
-    def _count_internal_nodes(self, node: dict[str, Any]) -> int:
-        """
-        Count internal (non-leaf) nodes recursively.
-
-        Parameters
-        ----------
-        node
-            Tree node dictionary.
-
-        Returns
-        -------
-        int
-            Number of internal nodes.
-        """
-        if node["type"] == "leaf":
-            return 0
-
-        count = 1  # This node
-        if "left" in node:
-            count += self._count_internal_nodes(node["left"])
-        if "right" in node:
-            count += self._count_internal_nodes(node["right"])
-
-        return count
-
-
-# Create the backwards-compatible aliases
-LessGreedyHybridRegressor = LessGreedyHybridTree  # Will need task='regression'
-LessGreedyHybridClassifier = LessGreedyHybridTree  # Will need task='classification'

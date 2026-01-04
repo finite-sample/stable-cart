@@ -9,7 +9,6 @@ This encourages the tree to make splits that lead to more stable predictions
 across different bootstrap samples of the training data.
 """
 
-import time
 from typing import Any, Literal
 
 import numpy as np
@@ -185,10 +184,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
         # Learned attributes
         self.tree_: dict[str, Any] = {}
-        self.oblique_info_: dict[str, Any] | None = None
-        self.fit_time_sec_: float = 0.0
-        self.splits_scanned_: int = 0
-        self.bootstrap_evaluations_: int = 0
         self.classes_: np.ndarray | None = None
 
         # Task-adaptive loss functions
@@ -198,8 +193,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             self._loss_fn = _gini_impurity  # Could also use _entropy
 
         # Task-adaptive prediction setup
-        self._task_setup_done = False
-
     def _compute_bootstrap_variance(
         self,
         Xs: np.ndarray,
@@ -278,7 +271,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         pred_variance = np.var(bootstrap_preds, axis=0)
 
         # Return mean variance across validation samples
-        self.bootstrap_evaluations_ += 1
         return float(np.mean(pred_variance))
 
     def _val_score_with_variance_penalty(
@@ -394,7 +386,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                     lossL[i] = np.inf
                     lossR[i] = np.inf
 
-        self.splits_scanned_ += int(valid.sum())
         return lossL + lossR, valid
 
     def _topk_axis_candidates(
@@ -722,7 +713,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             "split_frac + val_frac + est_frac must sum to 1"
         )
 
-        t0 = time.time()
         rng = np.random.default_rng(self.random_state)
 
         # Split data into SPLIT/VAL/EST
@@ -738,10 +728,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         Xs, ys = X[iS], y[iS]
         Xv, yv = X[iV], y[iV]
         Xe, ye = X[iE], y[iE]
-
-        self.splits_scanned_ = 0
-        self.bootstrap_evaluations_ = 0
-
         if self.task == "regression":
             parent_mean_est = float(ye.mean()) if ye.size > 0 else float(ys.mean())
         else:  # classification
@@ -751,7 +737,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est, rng=rng
         )
 
-        self.fit_time_sec_ = time.time() - t0
         return self
 
     def _predict_one(self, x: np.ndarray, node: dict[str, Any]) -> float:
@@ -853,24 +838,6 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
             return r2_score(y, y_pred)
         else:  # classification
             return accuracy_score(y, y_pred)
-
-    def count_leaves(self) -> int:
-        """
-        Count the number of leaves in the tree.
-
-        Returns
-        -------
-        int
-            Number of leaves in the tree.
-        """
-
-        def _count(node):
-            if node["type"] == "leaf":
-                return 1
-            return _count(node["left"]) + _count(node["right"])
-
-        return _count(self.tree_)
-
 
 class SimpleTree:
     """
@@ -1002,8 +969,3 @@ class SimpleTree:
         if self.tree_ is None:
             raise ValueError("Model has not been fitted yet. Call fit() first.")
         return np.array([self._predict_one(x, self.tree_) for x in X])
-
-
-# ============================================================================
-# Backwards-compatible wrapper classes
-# ============================================================================

@@ -1,5 +1,4 @@
 # stable_cart/robust_prefix.py
-from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
@@ -489,20 +488,6 @@ class RobustPrefixHonestTree(BaseEstimator):
         if self.val_frac + self.est_frac >= 1:
             raise ValueError("val_frac + est_frac must be < 1")
 
-    def _get_base_estimator(self) -> type:
-        """
-        Return appropriate sklearn tree for task.
-
-        Returns
-        -------
-        type
-            DecisionTreeRegressor or DecisionTreeClassifier class.
-        """
-        if self.task == "regression":
-            return DecisionTreeRegressor
-        else:
-            return DecisionTreeClassifier
-
     def _route_mask(
         self, X: np.ndarray, path: list[tuple[int, float, str]]
     ) -> np.ndarray:
@@ -550,7 +535,7 @@ class RobustPrefixHonestTree(BaseEstimator):
             ids[right] = R
         return ids
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> RobustPrefixHonestTree:
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "RobustPrefixHonestTree":
         """
         Fit the robust prefix honest tree.
 

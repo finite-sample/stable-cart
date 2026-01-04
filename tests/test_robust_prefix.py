@@ -653,28 +653,6 @@ def test_regression_wrapper():
     assert model.task == "regression"
 
 
-def test_classification_wrapper_backwards_compatibility():
-    """Test that classification wrapper maintains backwards compatibility."""
-    from sklearn.datasets import make_classification
-
-    X, y = make_classification(n_samples=100, n_features=5, random_state=42)
-
-    # Old parameter name should work through wrapper
-    model = RobustPrefixHonestTree(
-        task="classification",
-        top_levels=1,
-        max_depth=3,
-        smoothing=1.0,
-        random_state=42,  # New parameter name
-    )
-    model.fit(X, y)
-
-    y_pred = model.predict(X)
-    y_proba = model.predict_proba(X)
-
-    assert y_pred.shape == y.shape
-    assert y_proba.shape == (len(X), 2)
-    assert model.task == "classification"
 
 
 def test_unified_tree_predict_proba_error_on_regression():

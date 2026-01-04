@@ -14,7 +14,7 @@ from sklearn.linear_model import ElasticNetCV, LassoCV, LogisticRegressionCV, Ri
 from sklearn.model_selection import train_test_split
 
 
-@dataclass
+@dataclass(slots=True)
 class SplitCandidate:
     """
     Represents a potential split with all relevant information.
@@ -55,7 +55,7 @@ class SplitCandidate:
     consensus_support: float | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class StabilityMetrics:
     """
     Container for stability diagnostic information.
@@ -74,11 +74,8 @@ class StabilityMetrics:
         Bootstrap-estimated variance, None if not computed.
     """
 
-    prefix_consensus_scores: list[float]
-    validation_consistency: float
-    leaf_variance_estimates: list[float]
-    split_margins: list[float]
-    bootstrap_variance: float | None = None
+    pass
+
 
 
 # ============================================================================

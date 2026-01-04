@@ -1,5 +1,7 @@
 """Public package exports for stable_cart."""
 
+from importlib.metadata import PackageNotFoundError, version
+
 # Base class for advanced users
 from .base_stable_tree import BaseStableTree
 from .evaluation import evaluate_models, prediction_stability
@@ -29,4 +31,8 @@ __all__ = [
     "create_split_strategy",
 ]
 
-__version__ = "0.3.1"  # Enhanced type safety and documentation quality
+try:
+    __version__ = version("stable-cart")
+except PackageNotFoundError:
+    # Package is not installed, likely in development mode
+    __version__ = "0.0.0.dev"

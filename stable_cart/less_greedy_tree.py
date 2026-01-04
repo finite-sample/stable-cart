@@ -13,7 +13,6 @@ This tree trades some accuracy for substantially improved prediction stability v
 """
 
 import operator
-import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -23,7 +22,28 @@ from sklearn.linear_model import LassoCV, LogisticRegressionCV
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.preprocessing import StandardScaler
 
-from ._types import AxisSplit, ObliqueSplit
+# ============================================================================
+# Data Classes for Split Results
+# ============================================================================
+
+
+@dataclass(slots=True)
+class AxisSplit:
+    """Result of axis-aligned split selection."""
+
+    feature: int
+    threshold: float
+
+
+@dataclass(slots=True)
+class ObliqueSplit:
+    """Result of oblique split selection."""
+
+    threshold: float
+    mean_values: np.ndarray  # scaling mean
+    scale_values: np.ndarray  # scaling scale
+    weights: np.ndarray  # oblique weights
+
 
 # ============================================================================
 # Scoring Functions (Task-Specific)
@@ -97,11 +117,6 @@ def _entropy(y: np.ndarray) -> float:
 # ============================================================================
 
 
-@dataclass
-class _SplitRec:
-    feature: int
-    threshold: float
-    gain: float
 
 
 class _ComparableFloat(float):
@@ -267,9 +282,6 @@ class LessGreedyHybridTree(BaseEstimator):
 
         # Learned attributes
         self.tree_: dict[str, Any] = {}
-        self.oblique_info_: dict[str, Any] | None = None
-        self.fit_time_sec_: float = 0.0
-        self.splits_scanned_: int = 0
         self.classes_: np.ndarray | None = None
         self._global_prior_: float = 0.0
 
@@ -327,7 +339,6 @@ class LessGreedyHybridTree(BaseEstimator):
             sseL = np.where(nL > 0, sumL2 - (sumL * sumL) / nL, np.inf)
             sseR = np.where(nR > 0, sumR2 - (sumR * sumR) / nR, np.inf)
 
-            self.splits_scanned_ += int(valid.sum())
             return sseL + sseR, valid
 
         else:
@@ -349,7 +360,6 @@ class LessGreedyHybridTree(BaseEstimator):
                     nR[i] / n
                 ) * right_impurity
 
-            self.splits_scanned_ += int(valid.sum())
             return impurities, valid
 
     def _topk_axis_candidates(
@@ -657,7 +667,7 @@ class LessGreedyHybridTree(BaseEstimator):
                 best_val_loss = best_axis_immediate[0]
                 best_kind = "axis"
                 best_info = AxisSplit(
-                    "k0", best_axis_immediate[1], best_axis_immediate[2]
+                    best_axis_immediate[1], best_axis_immediate[2]
                 )
 
         # Ambiguity gate for lookahead
@@ -717,7 +727,7 @@ class LessGreedyHybridTree(BaseEstimator):
             ):
                 best_val_loss = best_la[0]
                 best_kind = "axis"
-                best_info = AxisSplit(f"k{k_here}", best_la[1], best_la[2])
+                best_info = AxisSplit(best_la[1], best_la[2])
 
         # Oblique root with gating
         if self.enable_oblique_root and depth == 0 and Xs.shape[1] >= 2:
@@ -777,11 +787,6 @@ class LessGreedyHybridTree(BaseEstimator):
                                         scale_.astype(float),
                                         w.astype(float),
                                     )
-                                    self.oblique_info_ = {
-                                        "alpha": alpha,
-                                        "nnz": int(np.count_nonzero(w)),
-                                        "max_abs_corr": max_abs_corr,
-                                    }
                 except Exception:
                     # Oblique split failed, continue with axis
                     pass
@@ -1173,7 +1178,6 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             self._global_prior_ = float(y.mean())
 
-        t0 = time.time()
         rng = np.random.default_rng(self.random_state)
 
         # Honest partition
@@ -1190,14 +1194,12 @@ class LessGreedyHybridTree(BaseEstimator):
         Xv, yv = X[iV], y[iV]
         Xe, ye = X[iE], y[iE]
 
-        self.splits_scanned_ = 0
         parent_mean_est = self._compute_parent_for_child(ye, ys)
 
         self.tree_ = self._build(
             Xs, ys, Xv, yv, Xe, ye, depth=0, parent_mean_est=parent_mean_est
         )
 
-        self.fit_time_sec_ = time.time() - t0
         return self
 
     def _predict_one(self, x: np.ndarray, node: dict[str, Any]) -> float:
@@ -1310,24 +1312,6 @@ class LessGreedyHybridTree(BaseEstimator):
         else:
             y_pred = self.predict(X)
             return float(accuracy_score(y, y_pred))
-
-    def count_leaves(self) -> int:
-        """
-        Count number of leaves.
-
-        Returns
-        -------
-        int
-            Number of leaves in the tree.
-        """
-
-        def _c(nd):
-            if nd["type"] == "leaf":
-                return 1
-            return _c(nd["left"]) + _c(nd["right"])
-
-        return _c(self.tree_)
-
 
 # ============================================================================
 # Convenience Wrappers

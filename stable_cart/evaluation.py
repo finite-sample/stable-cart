@@ -22,14 +22,12 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 
-from ._types import ClassifierDict, ModelDict
-
 
 # -------------------------------
 # Prediction Stability (OOS)
 # -------------------------------
 def prediction_stability(
-    models: ModelDict, X_oos: NDArray[np.floating], task: str = "categorical"
+    models: dict, X_oos: NDArray[np.floating], task: str = "categorical"
 ) -> dict[str, float]:
     """
     Measure how consistent model predictions are across models on the SAME OOS data.
@@ -94,53 +92,54 @@ def prediction_stability(
     if K < 2:
         raise ValueError("Need at least 2 models to assess stability.")
 
-    # --- CATEGORICAL: pairwise disagreement (1 - agreement rate) ---
-    if task == "categorical":
-        preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
+    match task:
+        case "categorical":
+            # --- CATEGORICAL: pairwise disagreement (1 - agreement rate) ---
+            preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
 
-        # Ensure numeric label space for comparisons
-        if not np.issubdtype(preds.dtype, np.number):
-            # Map labels to integers consistently
-            unique, inv = np.unique(preds, return_inverse=True)
-            preds = inv.reshape(preds.shape)
+            # Ensure numeric label space for comparisons
+            if not np.issubdtype(preds.dtype, np.number):
+                # Map labels to integers consistently
+                unique, inv = np.unique(preds, return_inverse=True)
+                preds = inv.reshape(preds.shape)
 
-        # Compute pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
-        agree = np.ones((K, K), dtype=float)
-        for k in range(K):
-            for j in range(k + 1, K):
-                agreement_rate = float(np.mean(preds[:, k] == preds[:, j]))
-                agree[k, j] = agree[j, k] = agreement_rate
+            # Compute pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
+            agree = np.ones((K, K), dtype=float)
+            for k in range(K):
+                for j in range(k + 1, K):
+                    agreement_rate = float(np.mean(preds[:, k] == preds[:, j]))
+                    agree[k, j] = agree[j, k] = agreement_rate
 
-        # Per-model disagreement = average disagreement over pairs involving the model
-        scores = {}
-        for k, name in enumerate(names):
-            # Exclude self-comparison
-            other_agreements = [agree[k, j] for j in range(K) if j != k]
-            avg_disagreement = float(np.mean([1.0 - a for a in other_agreements]))
-            scores[name] = avg_disagreement
-        return scores
+            # Per-model disagreement = average disagreement over pairs involving the model
+            scores = {}
+            for k, name in enumerate(names):
+                # Exclude self-comparison
+                other_agreements = [agree[k, j] for j in range(K) if j != k]
+                avg_disagreement = float(np.mean([1.0 - a for a in other_agreements]))
+                scores[name] = avg_disagreement
+            return scores
 
-    # --- CONTINUOUS: RMSE to ensemble mean ---
-    elif task == "continuous":
-        preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-        mean_pred = np.mean(preds, axis=1)  # Ensemble mean per sample
+        case "continuous":
+            # --- CONTINUOUS: RMSE to ensemble mean ---
+            preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
+            mean_pred = np.mean(preds, axis=1)  # Ensemble mean per sample
 
-        scores = {}
-        for k, name in enumerate(names):
-            deviation = mean_pred - preds[:, k]
-            rmse = float(np.sqrt(np.mean(np.square(deviation))))
-            scores[name] = rmse  # Lower = more stable
-        return scores
+            scores = {}
+            for k, name in enumerate(names):
+                deviation = mean_pred - preds[:, k]
+                rmse = float(np.sqrt(np.mean(np.square(deviation))))
+                scores[name] = rmse  # Lower = more stable
+            return scores
 
-    else:
-        raise ValueError("task must be 'categorical' or 'continuous'.")
+        case _:
+            raise ValueError("task must be 'categorical' or 'continuous'.")
 
 
 # -------------------------------
 # Model Performance Evaluation
 # -------------------------------
 def evaluate_models(
-    models: ModelDict | ClassifierDict,
+    models: dict,
     X: NDArray[np.floating],
     y: NDArray[np.floating],
     task: str = "categorical",
@@ -205,54 +204,55 @@ def evaluate_models(
     """
     results: dict[str, dict[str, float]] = {}
 
-    if task == "categorical":
-        y_unique = np.unique(y)
-        is_binary = len(y_unique) == 2
+    match task:
+        case "categorical":
+            y_unique = np.unique(y)
+            is_binary = len(y_unique) == 2
 
-        for name, mdl in models.items():
-            y_hat = mdl.predict(X)
-            try:
-                acc = float(accuracy_score(y, y_hat))
-            except ValueError:
-                # Handle cases where predictions contain NaN or invalid values
-                acc = np.nan
-            entry = {"acc": acc}
-
-            # Compute AUC if model supports probability predictions
-            if hasattr(mdl, "predict_proba"):
+            for name, mdl in models.items():
+                y_hat = mdl.predict(X)
                 try:
-                    # Direct method call - type checker will verify compatibility
-                    proba = mdl.predict_proba(X)  # type: ignore[attr-defined]
-                    if is_binary:
-                        auc = float(roc_auc_score(y, proba[:, 1]))
-                    else:
-                        # One-vs-rest macro AUC for multi-class
-                        Yb = label_binarize(y, classes=y_unique)
-                        auc = float(
-                            roc_auc_score(Yb, proba, average="macro", multi_class="ovr")
-                        )
-                    entry["auc"] = auc
-                except Exception:
-                    # Silently skip AUC if computation fails (e.g., single class in y)
-                    pass
+                    acc = float(accuracy_score(y, y_hat))
+                except ValueError:
+                    # Handle cases where predictions contain NaN or invalid values
+                    acc = np.nan
+                entry = {"acc": acc}
 
-            results[name] = entry
+                # Compute AUC if model supports probability predictions
+                if hasattr(mdl, "predict_proba"):
+                    try:
+                        # Direct method call - type checker will verify compatibility
+                        proba = mdl.predict_proba(X)  # type: ignore[attr-defined]
+                        if is_binary:
+                            auc = float(roc_auc_score(y, proba[:, 1]))
+                        else:
+                            # One-vs-rest macro AUC for multi-class
+                            Yb = label_binarize(y, classes=y_unique)
+                            auc = float(
+                                roc_auc_score(Yb, proba, average="macro", multi_class="ovr")
+                            )
+                        entry["auc"] = auc
+                    except Exception:
+                        # Silently skip AUC if computation fails (e.g., single class in y)
+                        pass
 
-    elif task == "continuous":
-        for name, mdl in models.items():
-            y_pred = mdl.predict(X)
-            try:
-                mae = float(mean_absolute_error(y, y_pred))
-                rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
-                r2 = float(r2_score(y, y_pred))
-            except ValueError:
-                # Handle cases where predictions contain NaN or invalid values
-                mae = np.nan
-                rmse = np.nan
-                r2 = np.nan
-            results[name] = {"mae": mae, "rmse": rmse, "r2": r2}
+                results[name] = entry
 
-    else:
-        raise ValueError("task must be 'categorical' or 'continuous'.")
+        case "continuous":
+            for name, mdl in models.items():
+                y_pred = mdl.predict(X)
+                try:
+                    mae = float(mean_absolute_error(y, y_pred))
+                    rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
+                    r2 = float(r2_score(y, y_pred))
+                except ValueError:
+                    # Handle cases where predictions contain NaN or invalid values
+                    mae = np.nan
+                    rmse = np.nan
+                    r2 = np.nan
+                results[name] = {"mae": mae, "rmse": rmse, "r2": r2}
+
+        case _:
+            raise ValueError("task must be 'categorical' or 'continuous'.")
 
     return results
