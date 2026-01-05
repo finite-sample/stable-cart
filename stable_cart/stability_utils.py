@@ -1082,7 +1082,9 @@ def _find_candidate_splits(
             continue
 
         # Try thresholds between unique values
-        for i in range(min(len(unique_values) - 1, max_candidates // n_features)):
+        # Ensure each feature gets at least 1 split candidate, up to max_candidates total
+        splits_per_feature = max(1, max_candidates // n_features)
+        for i in range(min(len(unique_values) - 1, splits_per_feature)):
             threshold = (unique_values[i] + unique_values[i + 1]) / 2
             left_mask = feature_values <= threshold
 

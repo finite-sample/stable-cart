@@ -1,16 +1,18 @@
 Welcome to stable-cart's documentation!
 =======================================
 
-**stable-cart** provides unified tree estimators with enhanced prediction stability for both regression and classification tasks. All trees follow the familiar scikit-learn API while incorporating advanced stability features.
+**stable-cart** provides individual decision trees with stability-focused modifications to the tree-building process. All trees follow the familiar scikit-learn API while incorporating advanced stability features.
 
 Key Features
 ------------
 
-🌳 **Unified Architecture**: Single classes handle both regression and classification via ``task`` parameter
+🌳 **Individual Decision Trees**: Single trees (not ensembles) with stability-focused modifications
 
-🎯 **Enhanced Stability**: Multiple stability primitives reduce prediction variance across training runs
+🎯 **Stability Mechanisms**: Multiple approaches including data partitioning, consensus, and bootstrap methods
 
 📊 **sklearn Compatible**: Works seamlessly with pipelines, cross-validation, and grid search
+
+🔬 **Analysis Tools**: Bootstrap variance measurement for evaluating prediction stability
 
 Quick Start
 -----------
@@ -20,10 +22,19 @@ Quick Start
    from stable_cart import LessGreedyHybridTree
    from sklearn.datasets import make_classification
    
-   # Works for both regression and classification
-   X, y = make_classification(n_samples=1000, n_features=10)
+   # Generate sample data
+   X, y = make_classification(n_samples=1000, n_features=10, random_state=42)
    
-   tree = LessGreedyHybridTree(task='classification', max_depth=5)
+   # Create and train a stable tree
+   tree = LessGreedyHybridTree(
+       task='classification',
+       max_depth=6,
+       min_samples_leaf=2,
+       split_frac=0.9,
+       val_frac=0.05,
+       est_frac=0.05,
+       random_state=42
+   )
    tree.fit(X, y)
    predictions = tree.predict(X)
 
@@ -37,6 +48,12 @@ Documentation
    :caption: API Reference:
 
    api
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples:
+
+   notebooks/index
 
 .. toctree::
    :maxdepth: 1
