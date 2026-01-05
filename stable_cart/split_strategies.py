@@ -371,7 +371,9 @@ class ObliqueStrategy(SplitStrategy):
         task: str = "regression",
         random_state: int | None = None,
     ):
-        self.oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = oblique_regularization
+        self.oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = (
+            oblique_regularization
+        )
         self.enable_correlation_gating = enable_correlation_gating
         self.min_correlation = min_correlation
         self.fallback_strategy = fallback_strategy or AxisAlignedStrategy(task=task)
@@ -614,14 +616,18 @@ class VariancePenalizedStrategy(SplitStrategy):
         self,
         variance_penalty_weight: float = 1.0,
         variance_estimation_samples: int = 10,
-        stopping_strategy: Literal["one_se", "variance_penalty", "both"] = "variance_penalty",
+        stopping_strategy: Literal[
+            "one_se", "variance_penalty", "both"
+        ] = "variance_penalty",
         base_strategy: SplitStrategy | None = None,
         task: str = "regression",
         random_state: int | None = None,
     ):
         self.variance_penalty_weight = variance_penalty_weight
         self.variance_estimation_samples = variance_estimation_samples
-        self.stopping_strategy: Literal["one_se", "variance_penalty", "both"] = stopping_strategy
+        self.stopping_strategy: Literal["one_se", "variance_penalty", "both"] = (
+            stopping_strategy
+        )
         self.base_strategy = base_strategy or AxisAlignedStrategy(task=task)
         self.task = task
         self.random_state = random_state

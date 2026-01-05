@@ -189,7 +189,9 @@ class BaseStableTree(BaseEstimator):
         max_threshold_bins: int = 24,
         # === 4. LEAF STABILIZATION ===
         leaf_smoothing: float = 0.0,
-        leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent", "beta_smoothing"] = "m_estimate",
+        leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent", "beta_smoothing"
+        ] = "m_estimate",
         enable_calibrated_smoothing: bool = False,
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
@@ -267,7 +269,9 @@ class BaseStableTree(BaseEstimator):
 
         # === 4. LEAF STABILIZATION ===
         self.leaf_smoothing = leaf_smoothing
-        self.leaf_smoothing_strategy: Literal["m_estimate", "shrink_to_parent", "beta_smoothing"] = leaf_smoothing_strategy
+        self.leaf_smoothing_strategy: Literal[
+            "m_estimate", "shrink_to_parent", "beta_smoothing"
+        ] = leaf_smoothing_strategy
         self.enable_calibrated_smoothing = enable_calibrated_smoothing
         self.min_leaf_samples_for_stability = min_leaf_samples_for_stability
 
@@ -306,7 +310,9 @@ class BaseStableTree(BaseEstimator):
 
         # === ADVANCED ===
         self.split_strategy = split_strategy
-        self.algorithm_focus: Literal["speed", "stability", "accuracy"] = algorithm_focus
+        self.algorithm_focus: Literal["speed", "stability", "accuracy"] = (
+            algorithm_focus
+        )
 
         # === CLASSIFICATION ===
         self.classification_criterion = classification_criterion
