@@ -225,8 +225,11 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             random_state=random_state,
         )
 
-        # Store Bootstrap-specific parameters
+        # Store Bootstrap-specific parameters for sklearn compatibility
+        self.variance_penalty = variance_penalty
+        self.n_bootstrap = n_bootstrap
         self.bootstrap_max_depth = bootstrap_max_depth
+        self.enable_variance_aware_stopping = enable_variance_aware_stopping
 
         # Cross-method enhancement flags
         self.enable_stratified_bootstraps = enable_stratified_bootstraps

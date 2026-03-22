@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-03-21
+
+### Added
+- **CentroidTree**: New model selection method that trains N candidate trees and selects the one closest to ensemble mean
+  - Reduces prediction variance by ~3% compared to single CART
+  - Maintains single-tree interpretability (auditable, explainable)
+  - Works with any sklearn-compatible tree class (CART, LessGreedyHybridTree, etc.)
+  - Supports multiple proximity metrics: RMSE, MAE, correlation (regression); disagreement, probability_mse (classification)
+  - Full sklearn API compatibility (clone, cross-validation, pipelines)
+- Experiment script for comparing CentroidTree against other methods (`experiments/centroid_experiment.py`)
+
+### Changed
+- Updated README with CentroidTree documentation, usage examples, and experimental results
+
 ## [0.1.0] - 2025-01-29
 
 ### Added
