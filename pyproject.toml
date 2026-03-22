@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "stable-cart"
-version = "1.0.0"
+version = "1.1.0"
 description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },

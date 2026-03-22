@@ -4,6 +4,9 @@ from importlib.metadata import PackageNotFoundError, version
 
 # Base class for advanced users
 from .base_stable_tree import BaseStableTree
+
+# Centroid tree: select tree closest to ensemble mean
+from .centroid_tree import CentroidTree
 from .evaluation import evaluate_models, prediction_stability
 from .split_strategies import SplitStrategy, create_split_strategy
 
@@ -23,6 +26,7 @@ __all__ = [
     "LessGreedyHybridTree",
     "BootstrapVariancePenalizedTree",
     "RobustPrefixHonestTree",
+    "CentroidTree",
     # Advanced/research APIs
     "BaseStableTree",
     "SplitCandidate",

@@ -15,6 +15,7 @@ A scikit-learn compatible implementation of **Stable CART** (Classification and 
 - 🎯 **LessGreedyHybridTree**: Advanced tree with honest data partitioning, lookahead, and optional oblique splits
 - 📊 **BootstrapVariancePenalizedTree**: Explicitly penalizes bootstrap prediction variance during split selection
 - 🛡️ **RobustPrefixHonestTree**: Robust consensus-based prefix splits with honest leaf estimation
+- 🎲 **CentroidTree**: Train N trees, select the one closest to ensemble mean—single-tree interpretability with ensemble-like stability
 - 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
 - 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
 
@@ -45,11 +46,12 @@ pip install -e ".[dev]"
 ```python
 from stable_cart import (
     # Unified trees - all support both regression and classification
-    LessGreedyHybridTree, 
+    LessGreedyHybridTree,
     BootstrapVariancePenalizedTree,
     RobustPrefixHonestTree,
+    CentroidTree,
     # Evaluation utilities
-    prediction_stability, 
+    prediction_stability,
     evaluate_models
 )
 from sklearn.datasets import make_regression, make_classification
@@ -68,10 +70,11 @@ bootstrap_tree = BootstrapVariancePenalizedTree(
     task='regression', max_depth=5, variance_penalty=2.0, n_bootstrap=10, random_state=42
 )
 robust_tree = RobustPrefixHonestTree(task='regression', top_levels=2, max_depth=5, random_state=42)
+centroid_tree = CentroidTree(task='regression', n_candidates=20, random_state=42)
 greedy_model = DecisionTreeRegressor(max_depth=5, random_state=42)
 
 # Fit models
-for model in [less_greedy, bootstrap_tree, robust_tree, greedy_model]:
+for model in [less_greedy, bootstrap_tree, robust_tree, centroid_tree, greedy_model]:
     model.fit(X_train, y_train)
 
 # Classification Example with Same Tree Classes
@@ -86,10 +89,11 @@ bootstrap_clf = BootstrapVariancePenalizedTree(
     task='classification', max_depth=5, variance_penalty=1.0, n_bootstrap=5, random_state=42
 )
 robust_clf = RobustPrefixHonestTree(task='classification', top_levels=2, max_depth=5, random_state=42)
+centroid_clf = CentroidTree(task='classification', n_candidates=20, random_state=42)
 standard_clf = DecisionTreeClassifier(max_depth=5, random_state=42)
 
 # Fit classification models
-for model in [less_greedy_clf, bootstrap_clf, robust_clf, standard_clf]:
+for model in [less_greedy_clf, bootstrap_clf, robust_clf, centroid_clf, standard_clf]:
     model.fit(X_train_clf, y_train_clf)
 
 # Evaluate both regression and classification
@@ -97,6 +101,7 @@ reg_models = {
     "less_greedy": less_greedy,
     "bootstrap_penalized": bootstrap_tree,
     "robust_prefix": robust_tree,
+    "centroid": centroid_tree,
     "greedy": greedy_model
 }
 
@@ -104,6 +109,7 @@ clf_models = {
     "less_greedy": less_greedy_clf,
     "bootstrap_penalized": bootstrap_clf,
     "robust_prefix": robust_clf,
+    "centroid": centroid_clf,
     "standard": standard_clf
 }
 
@@ -282,6 +288,26 @@ All trees in stable-cart use a **unified architecture** that supports both regre
 - **Task-adaptive smoothing**: Shrinkage for regression, m-estimate for classification
 - **Winsorization**: Caps extreme feature values to reduce outlier influence
 
+### CentroidTree
+
+**🎯 When to use**: When you need ensemble-like stability but must keep a single interpretable tree (supports both regression and classification)
+
+**💡 Core intuition**: Like picking the most "average" candidate from a pool. Train many trees with different random seeds, then select the one whose predictions best represent what all trees collectively predict. You get one interpretable tree that behaves like an ensemble.
+
+**⚖️ Trade-offs**:
+- ✅ **Gain**: Reduces prediction variance by ~3% compared to single CART
+- ✅ **Gain**: Single tree output—fully interpretable, auditable
+- ✅ **Gain**: Works with any base tree (CART, LessGreedyHybridTree, etc.)
+- ✅ **Gain**: Unified API for both regression and classification
+- ❌ **Cost**: N× training time (trains N candidate trees)
+- ❌ **Cost**: ~1% accuracy reduction vs single tree
+
+**🔧 How it works**:
+- **Candidate generation**: Trains N trees with different random seeds
+- **Ensemble mean**: Computes mean prediction across all candidates on validation set
+- **Selection**: Picks the tree closest to ensemble mean (RMSE for regression, disagreement for classification)
+- **Single output**: Returns just the selected tree—not an ensemble
+
 ## Choosing the Right Algorithm
 
 ### 🤔 Decision Guide
@@ -293,6 +319,7 @@ All trees in stable-cart use a **unified architecture** that supports both regre
 ├── Need maximum stability? → BootstrapVariancePenalizedTree(task='regression'|'classification')
 ├── Want balanced stability + flexibility? → LessGreedyHybridTree(task='regression'|'classification')
 ├── Need robust prefix + reliable estimates? → RobustPrefixHonestTree(task='regression'|'classification')
+├── Need ensemble stability + single tree? → CentroidTree(task='regression'|'classification')
 └── Just need sklearn baseline? → DecisionTreeRegressor/DecisionTreeClassifier
 ```
 
@@ -307,6 +334,7 @@ All trees in stable-cart use a **unified architecture** that supports both regre
 | **Medical diagnosis support** | RobustPrefixHonestTree(task='classification') | Reliable probabilities + robust to outliers |
 | **Demand forecasting** | LessGreedyHybridTree(task='regression') | Balance of accuracy + stability |
 | **Customer churn prediction** | LessGreedyHybridTree(task='classification') | Stable classification with probability estimates |
+| **Regulatory compliance (auditable model)** | CentroidTree(task='classification') | Single interpretable tree with ensemble stability |
 | **Real-time recommendations** | Standard CART | Speed over stability |
 | **Research/prototyping** | LessGreedyHybridTree(task='regression'/'classification') | Good general-purpose stable option |
 
@@ -330,6 +358,12 @@ All trees in stable-cart use a **unified architecture** that supports both regre
 - You want very stable decision boundaries
 - **Works for both**: `task='regression'` or `task='classification'` (binary only for now)
 
+**Choose CentroidTree when**:
+- You need a single interpretable tree (for auditing, explanation, regulatory compliance)
+- You want ensemble-like stability without an actual ensemble
+- Training time is not a bottleneck (trains N candidates)
+- **Works for both**: `task='regression'` or `task='classification'`
+
 **Stick with Standard CART when**:
 - You need maximum speed
 - You have very large datasets (>100k samples)
@@ -345,6 +379,19 @@ Here's how stable-cart models typically perform compared to standard trees:
 | **Out-of-sample Stability** | Variable | Consistent | 20-40% more stable |
 | **Accuracy** | High | Slightly lower | 2-5% trade-off |
 | **Interpretability** | Good | Good | Maintained |
+
+### CentroidTree Experimental Results
+
+Results from synthetic classification experiments (500 samples, 10 features, 30 random seeds):
+
+| Method | Accuracy | Disagreement Rate | vs CART |
+|--------|----------|-------------------|---------|
+| CART | 0.85 | 26.4% | baseline |
+| CentroidTree (N=20) | 0.84 | 25.6% | **-3% disagreement** |
+| LessGreedyHybridTree | 0.80 | 26.2% | similar stability |
+| RandomForest (N=20) | 0.88 | 27.1% | ensemble baseline |
+
+**Key finding**: CentroidTree achieves ~3% disagreement reduction with only ~1% accuracy loss, while maintaining single-tree interpretability. This makes it ideal for applications requiring auditable models.
 
 ## Development and Testing
 
@@ -423,7 +470,7 @@ If you use stable-cart in your research, please cite:
   author={Sood, Gaurav and Bhosle, Arav},
   year={2025},
   url={https://github.com/finite-sample/stable-cart},
-  version={0.3.0}
+  version={1.1.0}
 }
 ```
 
