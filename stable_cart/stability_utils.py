@@ -138,6 +138,11 @@ def bootstrap_consensus_split(
         # Find best splits in this sample
         candidates = _find_candidate_splits(X_boot, y_boot, max_candidates)
 
+        # One vote per replicate per distinct binned split. Counting each
+        # candidate separately lets several thresholds from the same replicate
+        # vote for the same bin, which pushes support above 1 — coarse binning
+        # reached 14.4 before this was deduplicated.
+        voted_this_replicate = set()
         for candidate in candidates:
             # Bin the threshold if enabled
             if enable_quantile_binning:
@@ -148,26 +153,31 @@ def bootstrap_consensus_split(
             else:
                 binned_threshold = candidate.threshold
 
-            key = (candidate.feature_idx, binned_threshold)
+            voted_this_replicate.add((candidate.feature_idx, binned_threshold))
+
+        for key in voted_this_replicate:
             candidate_votes[key] = candidate_votes.get(key, 0) + 1
 
     if not candidate_votes:
         return None, []
 
-    # Convert votes to candidates with consensus scores
+    # Convert votes to candidates with consensus scores. The split value is named
+    # `split_threshold`: unpacking it as `threshold` shadowed this function's
+    # consensus-threshold argument, so acceptance compared a support fraction
+    # against a feature value and the requested level was silently discarded.
     consensus_candidates = []
-    for (feature_idx, threshold), votes in candidate_votes.items():
+    for (feature_idx, split_threshold), votes in candidate_votes.items():
         consensus_score = votes / n_samples
 
         if consensus_score >= threshold:
             # Evaluate this consensus candidate on full data
-            left_mask = X[:, feature_idx] <= threshold
+            left_mask = X[:, feature_idx] <= split_threshold
             if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:
                 gain = _evaluate_split_gain(y, left_mask)
 
                 candidate = SplitCandidate(
                     feature_idx=feature_idx,
-                    threshold=threshold,
+                    threshold=split_threshold,
                     gain=gain,
                     left_indices=np.where(left_mask)[0],
                     right_indices=np.where(~left_mask)[0],

@@ -91,8 +91,8 @@ def test_variance_penalty_weight_is_forwarded():
     assert penalized.variance_penalty_weight == 3.5
 
 
-def test_a_documented_flag_changes_predictions():
-    """Structural wiring is necessary but not sufficient — it must also bite."""
+def _fit_predict(**kwargs):
+    """Fit on a fixed regression problem and predict on it."""
     X, y = make_regression(
         n_samples=400, n_features=8, n_informative=5, noise=1.0, random_state=0
     )
@@ -102,14 +102,35 @@ def test_a_documented_flag_changes_predictions():
         "min_samples_leaf": 20,
         "random_state": 42,
     }
+    return BaseStableTree(**common, **kwargs).fit(X, y).predict(X)
 
-    off = BaseStableTree(enable_prefix_consensus=False, **common).fit(X, y).predict(X)
-    on = (
-        BaseStableTree(enable_prefix_consensus=True, consensus_samples=8, **common)
-        .fit(X, y)
-        .predict(X)
+
+def test_a_documented_flag_changes_predictions():
+    """Structural wiring is necessary but not sufficient — it must also bite.
+
+    The consensus level has to be one the data can actually clear; see the
+    companion test for what happens at the documented default.
+    """
+    off = _fit_predict(enable_prefix_consensus=False)
+    on = _fit_predict(
+        enable_prefix_consensus=True, consensus_samples=8, consensus_threshold=0.1
     )
 
     assert not np.array_equal(off, on), (
         "enable_prefix_consensus is wired into the strategy but changes nothing"
     )
+
+
+def test_consensus_declines_when_no_split_commands_a_majority():
+    """At the documented default of 0.5, consensus correctly finds nothing here.
+
+    Not a wiring failure: no candidate split is chosen by half the bootstrap
+    replicates on this data, so the consensus strategy declines and falls back.
+    Before the shadowing fix this branch was unreachable, because acceptance
+    compared the support fraction against the split's cut point instead of
+    against the requested level.
+    """
+    off = _fit_predict(enable_prefix_consensus=False)
+    at_default = _fit_predict(enable_prefix_consensus=True, consensus_samples=8)
+
+    assert np.array_equal(off, at_default)
