@@ -32,6 +32,7 @@ import argparse
 import json
 import warnings
 from collections import Counter
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -148,7 +149,7 @@ def run_delta(delta, n, n_draws, n_thresholds, depth, reg, time_limit, seed):
         )
         preds["bagging"].append(forest.fit(Xb, y).predict(Xb_eval))
 
-        for arm, model in (("greedy", greedy), ("exact", exact), ("bagging", forest)):
+        for arm in ("greedy", "exact", "bagging"):
             accs[arm].append(float(np.mean(preds[arm][-1] == y_eval)))
 
     out = {
@@ -234,8 +235,8 @@ def main():
     print("H2: gap decreasing in delta, and below bagging's reduction at every delta")
     gains = [r["exact_gain_pct"] for r in rows]
     bags = [r["bagging_gain_pct"] for r in rows]
-    decreasing = all(a >= b - 1e-9 for a, b in zip(gains, gains[1:]))
-    below = all(g < b for g, b in zip(gains, bags))
+    decreasing = all(a >= b - 1e-9 for a, b in pairwise(gains))
+    below = all(g < b for g, b in zip(gains, bags, strict=True))
     print(
         f"  monotone decreasing in delta: {decreasing}   ({[round(g, 1) for g in gains]})"
     )
