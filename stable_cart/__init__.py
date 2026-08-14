@@ -12,6 +12,7 @@ from .split_strategies import SplitStrategy, create_split_strategy
 
 # Stability utilities for researchers
 from .stability_utils import SplitCandidate, StabilityMetrics
+from .stable_tree import StableTree
 from .unified_bootstrap_variance_tree import BootstrapVariancePenalizedTree
 
 # Unified tree classes with all stability primitives
@@ -24,6 +25,7 @@ __all__ = [
     "bootstrap_instability",
     "evaluate_models",
     # Main tree classes
+    "StableTree",
     "LessGreedyHybridTree",
     "BootstrapVariancePenalizedTree",
     "RobustPrefixHonestTree",
