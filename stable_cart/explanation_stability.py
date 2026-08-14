@@ -132,6 +132,11 @@ def split_feature_paths(model: Any, X: NDArray[np.floating]) -> list[tuple[int, 
     -------
     list[tuple[int, ...]]
         One tuple of feature indices per row.
+
+    Raises
+    ------
+    TypeError
+        If no readable tree structure can be found on the object.
     """
     inner = getattr(model, "tree_", None)
     paths = []
