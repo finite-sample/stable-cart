@@ -1,5 +1,34 @@
 # A variance budget for decision-tree instability
 
+> **STATUS: ABANDONED as a paper, 2026-08-14.** All three claims failed review. The
+> decomposition was published five months before this plan was written — Mustafa Cavus,
+> *Decomposing Observational Multiplicity in Decision Trees: Leaf and Structural Regret*,
+> [arXiv:2603.11701](https://arxiv.org/abs/2603.11701), 12 March 2026 — which defines leaf
+> regret as within-leaf finite-sample variability and structural regret as variability from
+> tree-structure instability, with a formal decomposition and statistical guarantees. Geurts
+> and Wehenkel (ECML 2000) are a direct antecedent, separating threshold, structure and leaf
+> estimation variance and re-estimating leaves against a fixed structure. Verified from
+> source.
+>
+> Independently, the implementation was wrong in ways that matter: the reported Monte Carlo
+> standard errors were computed across 4,000 evaluation points sharing the same fitted trees
+> and understate the true run-to-run variability by **11.7×** on the leaf component (measured
+> over 20 reruns of one cell). Re-running a single cell gives leaf shares from **27.4% to
+> 52.4%**, so the per-cell numbers cannot support the distinctions drawn from them. The
+> plug-in decomposition is also biased at S=20, L=8 (`ddof=0` within-structure variance;
+> between-structure variance containing ~1/L of the leaf variance), and the estimand matches
+> an *honest* tree rather than ordinary CART, where the same outcomes choose the splits and
+> set the leaf means.
+>
+> Claim 2 was never tested: matching `max_leaf_nodes` to GOSDT's output collapsed both arms
+> to stumps, and the structural metric discarded thresholds, so "identical structure" was
+> close to vacuous. Claim 3 was an unbounded universal negative contradicted by verified
+> literature (Geurts and Wehenkel on threshold averaging; Bertsimas, Dunn and Paskov on
+> robust optimisation).
+>
+> What survives is the package audit in `AUDIT.md` and the fixes it produced, not a paper.
+> The remainder of this document is kept as the record of what was planned and why it failed.
+
 Pre-analysis plan, **v3**. v1 frozen at `pap-v1` (`bc9b35d`); v2 superseded before execution.
 The deviations table records every change. No method-versus-method number has been computed.
 
