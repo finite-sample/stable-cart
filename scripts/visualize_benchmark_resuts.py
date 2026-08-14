@@ -33,7 +33,7 @@ def load_results(results_dir):
 
 def plot_accuracy_comparison(df_acc, output_dir):
     """Plot MSE and R² comparison across models."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    _fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     # MSE comparison
     ax1 = axes[0]
@@ -64,7 +64,7 @@ def plot_accuracy_comparison(df_acc, output_dir):
 
 def plot_stability_comparison(df_stab, output_dir):
     """Plot stability metrics across models."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    _fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
     # Mean prediction std
     ax1 = axes[0]
@@ -102,7 +102,7 @@ def plot_accuracy_stability_tradeoff(df_acc, df_stab, output_dir):
     # Merge dataframes
     df = pd.merge(df_acc, df_stab, on=["dataset", "model"])
 
-    fig, ax = plt.subplots(figsize=(10, 7))
+    _fig, ax = plt.subplots(figsize=(10, 7))
 
     # Plot each model
     models = df["model"].unique()
@@ -168,7 +168,7 @@ def plot_relative_improvements(df_stab, output_dir):
     df_impr = pd.DataFrame(improvements)
 
     # Create grouped bar plot
-    fig, ax = plt.subplots(figsize=(12, 6))
+    _fig, ax = plt.subplots(figsize=(12, 6))
 
     x = np.arange(len(datasets))
     width = 0.2
@@ -200,7 +200,7 @@ def plot_relative_improvements(df_stab, output_dir):
 
 def plot_tree_size_comparison(df_acc, output_dir):
     """Plot tree size (number of leaves) comparison."""
-    fig, ax = plt.subplots(figsize=(12, 6))
+    _fig, ax = plt.subplots(figsize=(12, 6))
 
     sns.barplot(data=df_acc, x="dataset", y="leaves", hue="model", ax=ax)
     ax.set_title(

@@ -467,7 +467,7 @@ def evaluate_dataset(
             print(f"✓ ({eval_time:.1f}s)")
 
         except Exception as e:
-            print(f"✗ Failed: {str(e)}")
+            print(f"✗ Failed: {e!s}")
             # Add failed entry with NaN values
             results.append(
                 {

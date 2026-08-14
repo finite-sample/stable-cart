@@ -96,7 +96,7 @@ def run_comprehensive_benchmark(
             print()
 
         except Exception as e:
-            print(f"  ✗ Failed to process {dataset_name}: {str(e)}\n")
+            print(f"  ✗ Failed to process {dataset_name}: {e!s}\n")
             continue
 
     # Combine all results
@@ -361,7 +361,7 @@ Quick Mode:
         except ImportError:
             print("Markdown report module not available - skipping report generation")
         except Exception as e:
-            print(f"Report generation failed: {str(e)}")
+            print(f"Report generation failed: {e!s}")
 
     print(f"\n{'=' * 80}")
     print(f"ALL BENCHMARK OUTPUTS SAVED TO: {args.output}")

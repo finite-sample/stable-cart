@@ -117,4 +117,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Computational overhead**: Modest increase due to honest partitioning and bootstrap evaluation
 - **Memory usage**: Efficient implementation with minimal overhead
 
-[0.1.0]: https://github.com/finite-sample/stable-cart/releases/tag/v0.1.0
+[1.1.0]: https://github.com/finite-sample/stable-cart/releases/tag/v1.1.0
+[0.1.0]: https://github.com/finite-sample/stable-cart/compare/a34bff1...973f1f6

@@ -1,17 +1,17 @@
 [build-system]
-requires = ["uv_build>=0.9.15,<0.10.0"]
-build-backend = "uv_build"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
 
 [project]
 name = "stable-cart"
-version = "1.1.0"
 description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
 ]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 keywords = [
     "machine learning",
@@ -32,8 +32,8 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -41,6 +41,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Operating System :: OS Independent",
 ]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/finite-sample/stable-cart"
@@ -63,6 +64,7 @@ dev = [
     "pyright>=1.1.300",
     "vulture>=2.14",
     "deadcode>=2.4.1",
+    "pydoclint>=0.5",
 ]
 benchmark = [
     "seaborn>=0.11.0",
@@ -81,51 +83,38 @@ docs = [
     "matplotlib>=3.3.0",
     "seaborn>=0.11.0",
     "pandas>=1.5.0",
+    "py-canon @ git+https://github.com/gojiplus/py-canon@v1",
 ]
-
-[tool.uv.build-backend]
-module-name = "stable_cart"
-module-root = ""
 
 # Ruff configuration
 [tool.ruff]
 line-length = 88
-target-version = "py312"
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    ".venv",
-    "docs",
-    ".eggs",
-]
+target-version = "py311"
+# Notebooks are rendered documentation, not library source.
+extend-exclude = ["docs"]
 
 [tool.ruff.lint]
-select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
-    "C901",  # too complex
-]
+external = ["DOC"]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "N", "D", "S", "SIM", "T20", "PT", "RUF"]
+# N803/N806: the sklearn API names feature matrices X, X_train, X_val — uppercase
+# is the convention every estimator in the ecosystem follows.
+# RUF022: __all__ is grouped by role (trees, evaluation, research APIs), not sorted.
+ignore = ["D203", "D213", "B008", "C901", "E501", "N803", "N806", "RUF022"]
+
+# The package is documented in NumPy style throughout; the fleet default is google.
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # imported but unused
-"tests/*" = ["S101"]  # use of assert
-
-[tool.ruff.lint.isort]
-known-first-party = ["stable_cart"]
-
-
-
+"tests/**" = ["S101", "D"]
+"docs/**" = ["D"]
+# S101: the library uses assert for internal invariants. Note that four of these
+# validate user-supplied fractions and so vanish under `python -O` (see AUDIT.md).
+"stable_cart/**" = ["S101"]
+# Benchmark and experiment drivers report progress on stdout by design, and skip
+# a dataset rather than abort the sweep when one model fails on it.
+"scripts/**" = ["T201", "D", "S110", "RUF001"]
+"experiments/**" = ["T201", "D", "S110"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -164,31 +153,31 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
+[tool.codespell]
+# docs/_build is a local Sphinx artifact (gitignored); .venv and uv.lock are vendored.
+skip = "./docs/_build,./.venv,./uv.lock,./dist,./htmlcov,./.git"
+
 [tool.deptry]
 extend_exclude = ["scripts"]
 
 [tool.pydoclint]
 style = "numpy"
-exclude = '\.git|\.venv|__pycache__|build|dist|docs|tests'
-require-return-section-when-returning-nothing = false
-arg-type-hints-in-signature = true
 arg-type-hints-in-docstring = false
-check-return-types = true
-check-yield-types = true
-skip-checking-short-docstrings = false
+check-return-types = false
+check-class-attributes = false
+allow-init-docstring = true
+exclude = '\.venv|tests|docs|scripts|experiments'
 
 [tool.pyright]
 include = ["stable_cart"]
-exclude = ["**/__pycache__", "**/node_modules", "tests", "docs", "scripts", "build", "dist", ".venv"]
-pythonVersion = "3.12"
 typeCheckingMode = "standard"
-reportMissingImports = "error"
-reportMissingTypeStubs = false
-reportOptionalMemberAccess = "error"
-reportOptionalCall = "error"
-reportOptionalIterable = "error"
-reportOptionalContextManager = "error"
-reportOptionalOperand = "error"
-reportTypedDictNotRequiredAccess = "warning"
 
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
+[tool.hatch.build.targets.wheel]
+packages = ["stable_cart"]
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
