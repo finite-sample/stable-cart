@@ -1,211 +1,165 @@
-# Prediction stability and explanation stability are not the same thing
+# A variance budget for decision-tree instability
 
-A pre-analysis plan. Nothing in the comparison runs until this is frozen and reviewed.
+Pre-analysis plan, **v3**. v1 frozen at `pap-v1` (`bc9b35d`); v2 superseded before execution.
+The deviations table records every change. No method-versus-method number has been computed.
 
-## Context
+## What changed, and why the headline moved
 
-The tree-stability literature — and every claim in this repo — measures **prediction**
-stability: how much do predictions move when the training data is perturbed. But a single
-decision tree is chosen *because* it is readable. Its deliverable is the explanation. Nobody
-here has measured whether the explanation holds still.
+v1 and v2 claimed that prediction stability and explanation stability dissociate. **That claim
+is nineteen years old.** Verified from the primary source — Dwyer and Holte, *Decision Tree
+Instability and Active Learning*, ECML 2007:
 
-The measurements from this session point that way:
+> "two types of stability are examined: semantic and structural stability… For a learner to be
+> structurally stable, a stronger condition must be satisfied, namely, the hypotheses that it
+> creates from closely related data sets must be **syntactically similar**. Thus, structural
+> stability is a sufficient condition for semantic stability, **but the converse is not true**."
 
-- 89–98% of prediction instability was structure choice, 2–11% leaf noise
-- yet the **root feature was chosen identically 100% of the time**, while levels 2–3 agreed
-  only 5–25% — the tree churns in a way that barely moves predictions
-- exact optimization (GOSDT) removed 10–24% of instability where bagging removed 62–92%
+They also propose a partition-based "region stability" measure, anticipating the ARI metric v2
+added, and note that earlier measures (Discrepant, Common) collapse when trees differ at the
+root. Wang et al. (2018) restate the same distinction with region compatibility.
 
-**These are not results, and the plan must not treat them as ones.** Each is a measurement at
-particular settings — four regression datasets at `min_samples_leaf=20` for the decomposition,
-five binary-classification datasets for GOSDT. The leaf share already moves across those four
-(diabetes 10–11%, friedman1 4–6%), which is a 2× spread and a warning that the quantity is a
-**function of the DGP and the fit settings, not a constant**. Quoting "95% structural" as a
-finding would be exactly the error this repo already made once.
+So the dissociation is **setup, not contribution**. What our measurements support and the
+literature does not already contain:
 
-So the study's job is to predict the function rather than report an average. There is a clean
-handle for the leaf component: a leaf holding `m` samples estimates its mean with variance
-σ²/m, so with `L` leaves and `n` training points the leaf-only instability should go as
-
-    leaf-only instability  ≈  σ² · L / n
-
-which is directly testable by sweeping σ and n, and implies the leaf share is *large* in
-noisy, small-n, many-leaf regimes and *small* in the opposite one. The existing numbers are
-consistent with it — friedman1 at n=800 → n=3000 halved the leaf component (0.258 → 0.122)
-while the structure component fell much less — but that is one comparison, not a test.
-
-The greedy-versus-optimal gap has an analogous conditioning variable: the **split margin**. If
-the best and second-best splits are well separated, greedy and optimal agree by construction
-and the gap must vanish; the gap can only open where splits are close. That variable is a knob
-in simulation, and predicting the gap from it is the interesting claim.
-
-**Claim:** prediction stability and explanation stability dissociate. A method can stabilize
-one while leaving the other untouched, the two metrics can rank methods differently, and the
-field has been optimizing the one that is not the product.
-
-**Why simulation is primary:** only there do we know the true tree, can draw genuinely
-independent training samples instead of bootstrap approximations, and can construct data that
-is *ambiguous by construction* — which is what turns the dissociation from an observation into
-a proof. Real datasets appear as a confirmation section.
+1. **A variance budget.** Decompose tree prediction instability into a leaf-estimation
+   component and a structure-selection component, and characterise which dominates as a
+   function of noise, sample size and leaf size. The existing literature establishes that trees
+   are unstable; it does not say *which part* of the tree is responsible, or when.
+2. **An attribution of structure churn to search.** How much of the structure component is the
+   greedy heuristic's fault, measured against an exact solver, versus intrinsic to estimating a
+   discrete structure from a finite sample. Pilot: exact search recovered 10–24% where bagging
+   recovered 62–92%.
+3. **A ceiling, with its mechanism.** The consequence for method design: which stabilisation
+   mechanisms can possibly work, and how much they can possibly buy.
+4. **Stability metrics are gameable by degenerate models**, with a documented instance: a
+   published package scored a constant predictor as its most stable method, because a constant
+   has zero prediction variance. This is the tree analogue of Yeh et al. (NeurIPS 2019) showing
+   that optimising explanation sensitivity alone favours a vacuous constant explanation.
 
 ## Estimand
 
-For estimator `m`, data-generating process `d`, sample size `n`:
+For estimator `m`, data-generating process `d`, sample size `n`, noise `σ`:
 
-> The difference in **explanation instability** between estimator `m` and a plain CART,
-> over trees fitted to independent samples of size `n` drawn from `d`, evaluated at **matched
-> out-of-sample accuracy**, aggregated as the median over independent DGP draws and reported
-> as a paired interval.
+> The share of `m`'s prediction instability attributable to leaf estimation rather than
+> structure selection, over trees fitted to independent samples from `d`, with instability
+> measured at fixed evaluation points and normalised by `Var(y)`; reported as a median over
+> independent draws with a Monte Carlo standard error.
 
-with the same quantity defined for **prediction instability**, and the contrast of the two
-being the object of the paper.
+and, for the attribution:
 
-Matched accuracy is not a detail. Every comparison in this repo so far has been confounded by
-it — a method that is simply more regularised looks more stable. Each method is swept over its
-regularisation path and instabilities are compared where accuracy is equal.
+> The reduction in structure-selection instability obtained by replacing greedy search with
+> exact optimisation, as a function of the split margin δ, at matched out-of-sample accuracy.
 
-## Metrics
+## Metrics — established ones, not invented ones
 
-**Prediction instability** — `stable_cart.bootstrap_instability` (already shipped and tested),
-plus a true-resampling variant that draws fresh samples from the DGP rather than bootstrapping.
+| quantity | measure | source |
+|---|---|---|
+| prediction (semantic) instability | pointwise prediction variance across independent fits, **normalised by `Var(y)`** | agreement-style, cf. Dwyer & Holte |
+| feature-choice stability | **Nogueira's Φ̂** — the only measure satisfying all five properties including correction for chance | Nogueira, Sechidis & Brown, JMLR 18 (2018) |
+| partition (region) stability | ARI between induced leaf partitions on a fixed evaluation set | region stability, Dwyer & Holte 2007; co-clustering distance, Banerjee et al. 2012 |
+| structural distance | Banerjee's covariate-use and terminal-node co-clustering distances | Banerjee et al., Stat Med 2012 |
+| **fidelity** | recovery of the true splits **modulo equivalent representations** (aliased features count as recovered) | required by Yeh et al. 2019 — stability without fidelity is satisfied by a constant |
 
-**Explanation instability** — primary: mean pairwise Jaccard distance between the multisets of
-split features at depth ≤ 3, over pairs of independently fitted trees. Secondary: root-feature
-agreement rate; path agreement (do two fits route the same test point through the same feature
-sequence); threshold-aware Jaccard. Prior art for tree distances is Banerjee et al. (2012);
-these are chosen for interpretability rather than novelty.
+Raw multiset-Jaccard is **demoted to a sensitivity analysis**: verified from JMLR 18 that it is
+not chance-corrected and varies with the number of features selected.
 
-**Accuracy** — R² or accuracy on a fixed held-out sample from the same DGP.
-
-**Structure recovery** (simulation only) — did the fit find the true splits.
+The fidelity column is not optional. A stump that always tests the same feature is perfectly
+stable and useless; the degenerate-predictor bug that motivated this study is the same failure.
+**No stability number is reported without fidelity and accuracy beside it.**
 
 ## Pre-specified hypotheses
 
-Signs and magnitude ranges committed in advance. An effect we cannot bound in advance is one
-we cannot be surprised by.
+Ordinal where the metric is a ratio. Pilot-derived percentage bands were miscalibrated.
 
 | # | hypothesis | predicted | falsified if |
 |---|---|---|---|
-| H1 | **Leaf-only instability follows σ²·L/n.** Sweep σ ∈ {0.1,1,3,10}, n ∈ {250,1000,4000,16000}, `min_samples_leaf` ∈ {5,20,100} | log-log slope −1 in n and +1 in σ², within [−1.2,−0.8] and [0.8,1.2] | slopes outside those bands — the leaf component is not simple sampling noise and the decomposition needs rethinking |
-| H1b | **The leaf share is not a constant.** There exist settings in the sweep where it exceeds 40% and settings where it is under 5% | both regimes observed | leaf share stays in a narrow band — then it *is* roughly a constant, and the "structure dominates" framing generalises more than expected |
-| H2 | **Dissociation.** On DGP-B, prediction instability is low while explanation instability is high | pred < 25% of DGP-C level; expl > 75% of DGP-C level | both metrics move together — the central claim fails |
-| H3 | **Rank reversal.** The ordering of methods differs between the two metrics on at least one DGP | ≥1 reversal | orderings identical everywhere — dissociation is real but useless |
-| H4 | **The greedy-vs-optimal gap is governed by the split margin δ**, not a constant. Sweep δ from well-separated to near-tied | gap → 0 as δ grows (greedy = optimal by construction); gap largest at small δ but still below bagging's reduction at every δ | the gap is flat in δ — then something other than search ambiguity drives it and the mechanism story is wrong. If the gap ever exceeds bagging's, the ceiling argument fails outright |
-| H5 | Medoid selection from a bagged pool improves **explanation** stability more than prediction stability | expl gain > pred gain | no differential — Banerjee's interpretability motivation is unsupported |
-| H6 | Prefix stability selection reduces explanation instability | 15–40% at ≤ 2 accuracy points | below 15% or accuracy cost > 2 points — drop the mechanism |
-| H7 | Instability decays with n; the leaf component decays faster than the structure component | leaf ~n⁻¹, structure slower | structure decays as fast — it is ordinary sampling noise, not a selection problem |
+| **H1** | The leaf component decays **faster in n** than the structure component | leaf strictly faster on ≥ 4 of 6 DGPs | structure decays as fast — instability is ordinary sampling noise, not a selection problem, and the budget framing collapses |
+| **H1b** | The leaf **share** is regime-dependent | ∃ grid settings with share > 40% **and** ∃ with share < 5% | share stays in a narrow band — a *stronger* result, reported as such |
+| H1c | descriptive: log-log slopes of leaf instability in n and σ² | near −1 and +1 | reported either way; exact `σ²L/n` is not expected to hold, since leaf membership is itself estimated and the numerator is `Var(Y│leaf)`, not `σ²` |
+| **H2** | The greedy-vs-exact gap is **decreasing in the split margin δ**, and below bagging's reduction at every δ | monotone decreasing; gap < bagging at all δ | flat in δ — the ambiguity mechanism is wrong. Gap ≥ bagging anywhere — the ceiling claim fails |
+| H3 | Method orderings differ between prediction and structural stability on ≥ 1 DGP, **using chance-corrected measures** | ≥ 1 reversal outside its interval | identical orderings — the 2007 distinction has no consequence for method choice, which is worth reporting |
+| H4 | Medoid selection from a bagged pool improves **structural** stability more than prediction stability | structural gain > prediction gain | no differential — Banerjee's interpretability motivation is unsupported on its own metric |
+| H5 | Prefix stability selection reduces structural instability versus CART at matched accuracy **and matched fidelity** | strictly lower on ≥ 4 of 6 DGPs | not lower on a majority — drop the mechanism |
 
-## Data-generating processes, chosen as controls
+## DGPs
 
-| DGP | construction | purpose | pre-specified expectation |
-|---|---|---|---|
-| **A** `tree_separated` | true depth-3 tree, well-separated splits, low noise | **positive control** | both instabilities → 0 as n grows. If explanation instability does not, our *metric* is broken, not the method |
-| **B** `tree_tied` | true tree splits on X1; X2 is an exchangeable near-copy | **the dissociation case** | predictions stable (both features induce the same partition), explanation unstable (the tree flips between them). Only constructible in simulation |
-| **C** `smooth` | Friedman1 — no true tree, many near-equivalent structures | the realistic case | both moderately unstable |
-| **D** `noise_only` | y ⟂ X | **placebo** | accuracy 0 for every method; anything scoring "stable" here is degenerate. This is precisely the failure that produced the +55% claim in this repo, and it must be a standing control |
-| **E** `correlated` | features at ρ = 0.9 | realistic version of B | dissociation, attenuated |
-| **F** `margin_sweep` | true tree whose best and second-best root splits differ by a controlled margin δ | isolates the variable behind H4 | greedy-vs-optimal gap shrinks to zero as δ grows |
+| DGP | construction | role |
+|---|---|---|
+| **A** `tree_separated` | true depth-3 tree, well-separated splits | **positive control**: all instabilities → 0 with n, else the metric is broken |
+| **B** `aliased` | true tree on X0, X1 an exact copy | representational non-identifiability; fidelity is scored modulo equivalence here |
+| **C** `smooth` | linear / Friedman, no true tree | approximation ambiguity |
+| **D** `noise_only` | y ⟂ X | **placebo**: chance accuracy for all; anything "stable" here is degenerate |
+| **E** `correlated` | ρ = 0.9 | realistic B |
+| **F** `margin_sweep` | controlled margin δ between best and second-best root split | isolates H2's mechanism |
 
-Every DGP is instantiated across the **σ × n × leaf-size grid** of H1, because the point of the
-study is that these quantities are functions of the regime. Any number reported without its
-regime is not a result.
+Instantiated over σ ∈ {0.1, 1, 3, 10} × n ∈ {250, 1000, 4000, 16000} × `min_samples_leaf` ∈
+{5, 20, 100}. **A number without its regime is not a result.**
 
-DGP-D earns its place: a constant predictor has zero prediction variance, which is how a
-broken estimator scored as the most stable method in the shipped benchmark. Every table
-reports instability *beside* accuracy so that failure cannot recur silently.
+## Inference — Monte Carlo practice
 
-## Methods, and what we are dropping
+Following Morris, White & Crowther (Stat Med 2019):
 
-Carried forward — each has either evidence or a clean mechanism:
+- Data-generating mechanism and performance estimands defined explicitly (above).
+- **Repetitions chosen from required Monte Carlo precision**, not convention: pilot at R=20,
+  compute the MC SE of each estimand, then set R so the SE is small relative to the effect the
+  hypothesis must resolve.
+- **A Monte Carlo SE reported for every performance measure.** No point estimate without one.
+- Replication unit is an independent training draw from a fixed DGP; these are Monte Carlo
+  repetitions, **not** independent DGPs, so generalisation claims across DGP families are made
+  by replicating across the parameter grid, not by pooling draws.
+- Exact empirical quantiles of paired differences. No bootstrap where independent draws exist.
+- No significance language: every result is an interval and what it rules out.
+- **Bootstrap-vs-truth check:** quantify the bias of bootstrap instability against
+  independent-draw instability, since every published number in this area uses the former.
 
-- **CART** (baseline) and **cost-complexity pruned CART** (`ccp_alpha` swept) — currently the
-  most reliable stabiliser, 9/14 wins
-- **Bagging / RF** — the ceiling reference; not a single tree, included to bound what is achievable
-- **GOSDT** — exact-search reference, classification subset only (binarized features)
-- **Prefix stability selection** — the one untested mechanism aimed at the dominant component,
-  and it works by averaging the *split decision* over resamples rather than by searching better
-- **Medoid / centroid selection from a bagged pool** — dead as a prediction-stability device
-  (C6), but H5 tests it in the frame its own literature actually claims
-- **Surviving stable-cart estimators**, post-C1
+## Matched accuracy — and its limits
 
-Dropped, with the measurement that killed them: distillation from a forest (0–9%), threshold
-snapping to a quantile grid (−7% to +9%), leaf smoothing as a stability device (addresses
-2–11% of the variance by construction).
+Both reviewers flagged that equal accuracy does not imply equal regularisation: a shallow and a
+deep tree can share held-out accuracy while differing in how many opportunities they have to
+churn. Therefore:
 
-## Inference
-
-- **Replication unit is an independent DGP draw**, not a bootstrap resample. Paired across
-  methods within a draw, since all methods see the same data.
-- Report paired intervals via bootstrap over draws. **Never a bare mean of a ratio** — this
-  repo has been misled twice by exactly that (the README's +55.4%, and my own −16%/−108%).
-- **The words "significant" and "not significant" do not appear.** Every result is an interval
-  and what it rules out.
-- **Design analysis before running:** pilot with R=20 draws to estimate the variance of the
-  paired difference, then choose R so the interval on a 10% instability difference is tight
-  enough to decide H2/H3. Report the MDE. If the required R is infeasible, say so and reduce
-  the claim rather than run underpowered.
-- **Bootstrap-vs-truth check:** with independent draws available, quantify the bias of the
-  bootstrap instability estimate. If it is biased, that affects every published number that
-  uses it, including this repo's benchmark.
-
-## Freeze and audit — before any comparison runs
-
-1. Commit `pap.md` (this plan, in the repo) and tag it. No method-vs-method number is computed
-   before that commit exists.
-2. **Self-audit** with `audit-analysis` in own mode over the design.
-3. **Two independent readers**, different model families, on the frozen PAP:
-
-   ```bash
-   codex exec --sandbox read-only "<prompt>"
-   agy --mode plan --dangerously-skip-permissions --print-timeout 45m \
-     --model gemini-3.1-pro-high -p "<prompt>"
-   ```
-
-   Ask each for exactly three things: **the strongest rival explanation for the dissociation,
-   the three assumptions most likely to be wrong, and anything methodologically out of date.**
-   Not a code review — that reliably returns style notes instead of the design flaw.
-4. **Re-derive every finding they raise before acting on it.** In this session roughly half of
-   the delegated findings were right about the defect and wrong about the mechanism.
-5. Only then run the pre-specified comparison. Anything found afterwards is labelled
-   exploratory, and deviations from the PAP get a table: what changed, why, and what the
-   pre-specified version showed.
+- match on accuracy **and** report complexity (leaf count, depth) alongside;
+- present the accuracy–complexity–stability surface, not a single matched point;
+- require rank conclusions to hold **across the high-accuracy region**, not at one crossing;
+- use separate samples for matching and evaluation.
 
 ## Build
 
-- `pap.md` — this plan, committed and tagged first
-- `stable_cart/explanation_stability.py` — the new metrics (Jaccard, root agreement, path
-  agreement), shipped and tested like `bootstrap_instability` was
-- `experiments/dgps.py` — the five DGPs with known ground truth
-- `experiments/stability_study.py` — the driver: DGP × method × n × metric, independent draws
-- `experiments/frontier.py` — the regularisation sweeps that make matched-accuracy possible
-- Reuse: `stable_cart.bootstrap_instability`, the paired-pool harness and `pool_spread` guard in
-  `experiments/selection_rules_experiment.py`, `experiments/optimal_tree_premise.py` for the
-  GOSDT arm
-- Prerequisites already queued: **1b** — fix H1 (consensus threshold overwritten by the split
-  threshold) and H2 (`consensus_support` can exceed 1.0), since prefix stability selection is
-  built on that code and would inherit both
+- `stable_cart/explanation_stability.py` — Jaccard, root agreement, path agreement **(shipped, 9 tests)**; add Nogueira Φ̂, partition ARI, Banerjee co-clustering
+- `stable_cart/evaluation.py` — `bootstrap_instability` **(shipped, 6 tests)**; add normalised and independent-draw variants
+- `experiments/dgps.py` — six DGPs with ground truth and a recovery oracle
+- `experiments/variance_budget.py` — the headline study: decomposition over the σ × n × leaf grid
+- `experiments/margin_study.py` — H2, reusing `experiments/optimal_tree_premise.py` for the GOSDT arm
+- `experiments/frontier.py` — accuracy–complexity–stability surfaces
+- Prerequisite: fix the consensus defects (AUDIT H1, H2) before prefix stability selection
 
 ## Verification
 
-- Positive control A must show both instabilities → 0 with n. If not, stop: the metric is wrong.
-- Placebo D must show every method at chance accuracy, and any method with low instability there
-  is reported as degenerate rather than stable.
-- Negative control: prefix stability selection at π=0 must reproduce plain greedy CART exactly.
-- Every explanation metric gets a unit test with a hand-constructed pair of trees whose distance
-  is known by inspection.
-- Sanity check that survived contact with reality this session: the full ensemble must be the
-  most stable row in every prediction-instability table. It is what caught the degenerate pool.
-- `uv run pytest`, `uv run ruff check .`, `uv run pyright`, `preen check` stay clean.
+- Positive control A: all instabilities → 0 with n, else stop.
+- Placebo D: chance accuracy everywhere; low instability there reported as degeneracy.
+- Negative control: prefix stability selection at π=0 reproduces greedy CART exactly.
+- Every metric unit-tested against a hand-constructed case with a known value.
+- The full ensemble must be the most stable row in every prediction-instability table.
+- `uv run pytest`, `ruff check`, `pyright`, `preen check` clean.
 
-## What would change the conclusions
+## Deviations
 
-- H2 failing is fatal to the paper's framing. The fallback is **not** "the ceiling result",
-  which as noted above is a regime-dependent measurement rather than a finding; the fallback is
-  H1/H4 — the laws governing when each component dominates — which survive H2 either way.
-- The level-agreement numbers come from 4 regression datasets at one depth setting. If the
-  100%-root / 5–25%-deep pattern does not replicate across the DGPs and depths, the motivating
-  fact is weaker than stated and the introduction has to change.
-- If H1's σ²·L/n law fits badly, the whole decomposition framing is on sand and the honest paper
-  is a smaller one about the metrics.
-- If the bootstrap estimate turns out unbiased and the true-resampling numbers match it, the
-  methodological contribution shrinks to the metrics themselves.
+| # | change | source |
+|---|---|---|
+| D1 | Prediction instability normalised by `Var(y)` | own design check; neither reviewer raised it |
+| D2 | Partition/region stability added as a first-class metric | agy; independently recommended by codex |
+| D3 | Ratio hypotheses made ordinal | agy |
+| D4 | Exact quantiles replace bootstrap over draws | agy |
+| D5 | `σ²L/n` demoted from gate to description | agy and codex; codex supplied the corrected form `Σ p_ℓ Var(Y│ℓ) E(1/N_ℓ)` |
+| **D6** | **Headline changed from "dissociation exists" to the variance budget** | codex, verified against Dwyer & Holte 2007 — the dissociation is a known result and cannot be the contribution |
+| **D7** | **Jaccard demoted; Nogueira Φ̂ promoted** | codex, verified against JMLR 18 (2018): Jaccard is not chance-corrected |
+| **D8** | **Fidelity required beside every stability number** | codex, via Yeh et al. 2019 — stability alone is maximised by a vacuous constant |
+| D9 | Matched accuracy supplemented by complexity matching and a surface | both reviewers |
+| D10 | Monte Carlo SEs and precision-driven R | codex, via Morris, White & Crowther 2019 |
+
+Provenance: `agy` (gemini-3.1-pro-high) and `codex` reviewed the frozen v1 independently. agy's
+central criticism — that the dissociation would be an aliasing artifact with the partition
+unchanged — was **not supported** when I checked it (partition ARI 0.354, not ≈1.0; root
+agreement 1.00, so the alias flip it requires does not occur). Codex's central criticism was
+supported and is fatal to v1's framing; both of its load-bearing citations were verified from
+the primary PDFs rather than accepted.
