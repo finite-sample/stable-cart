@@ -1,0 +1,48 @@
+{
+  "LessGreedyHybridTree": [
+    "ambiguity_threshold",
+    "beam_width",
+    "classification_criterion",
+    "enable_ambiguity_gating",
+    "enable_bootstrap_variance_tracking",
+    "est_frac",
+    "leaf_smoothing_strategy",
+    "lookahead_depth",
+    "oblique_strategy",
+    "split_frac",
+    "val_frac",
+    "variance_tracking_samples"
+  ],
+  "BootstrapVariancePenalizedTree": [
+    "bootstrap_max_depth",
+    "bootstrap_stratification_bins",
+    "classification_criterion",
+    "consensus_samples",
+    "enable_stratified_bootstraps",
+    "enable_variance_aware_stopping",
+    "est_frac",
+    "leaf_smoothing_strategy",
+    "lookahead_depth",
+    "n_bootstrap",
+    "oblique_strategy",
+    "split_frac",
+    "val_frac"
+  ],
+  "RobustPrefixHonestTree": [
+    "classification_criterion",
+    "consensus_subsample_frac",
+    "enable_ambiguity_gating",
+    "enable_beam_search_for_consensus",
+    "enable_bootstrap_variance_tracking",
+    "est_frac",
+    "lookahead_depth",
+    "oblique_strategy",
+    "top_levels",
+    "val_frac",
+    "variance_tracking_samples"
+  ],
+  "CentroidTree": [],
+  "StableTree": [
+    "max_candidates"
+  ]
+}

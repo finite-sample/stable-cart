@@ -9,7 +9,27 @@
         "accuracy": 0.6318902055268651,
         "instability": 2.9131077608849427,
         "mape": 1.5450348951588206,
-        "family": "stable"
+        "arm": "stable"
+      },
+      {
+        "params": {
+          "enable_oblique_splits": true,
+          "leaf_smoothing": 5.0
+        },
+        "accuracy": 0.61739384812438,
+        "instability": 2.9051205329041716,
+        "mape": 1.7214416431501718,
+        "arm": "less_greedy"
+      },
+      {
+        "params": {
+          "leaf_smoothing": 5.0,
+          "variance_penalty": 1.0
+        },
+        "accuracy": 0.6087478261884458,
+        "instability": 2.7841491006215615,
+        "mape": 1.6808896743737032,
+        "arm": "bootstrap_var"
       },
       {
         "params": {
@@ -18,25 +38,7 @@
         "accuracy": 0.6059058261554722,
         "instability": 2.763274508168374,
         "mape": 1.4440293414626184,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.001
-        },
-        "accuracy": 0.6059058261554722,
-        "instability": 2.763274508168374,
-        "mape": 1.4440293414626184,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.01
-        },
-        "accuracy": 0.6059058261554722,
-        "instability": 2.763274508168374,
-        "mape": 1.4440293414626184,
-        "family": "cart"
+        "arm": "cart"
       },
       {
         "params": {
@@ -45,7 +47,7 @@
         "accuracy": 0.6050549202965142,
         "instability": 2.7576489574950087,
         "mape": 1.4544023204438106,
-        "family": "cart"
+        "arm": "cart"
       },
       {
         "params": {
@@ -55,59 +57,59 @@
         "accuracy": 0.5976907938739966,
         "instability": 1.9045250540027632,
         "mape": 1.065851994859642,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 45.51110270800564
+    "n_fits": 377,
+    "seconds": 89.92950370698964
   },
   "friedman2": {
     "joint_frontier": [
       {
         "params": {
+          "leaf_smoothing": 5.0,
+          "variance_penalty": 0.0
+        },
+        "accuracy": 0.9433945747306782,
+        "instability": 7633.287663408581,
+        "mape": 86.73875550511119,
+        "arm": "bootstrap_var"
+      },
+      {
+        "params": {
+          "n_candidates": 5,
+          "proximity_metric": "correlation"
+        },
+        "accuracy": 0.9431783270586755,
+        "instability": 6778.842935587096,
+        "mape": 85.54589858477038,
+        "arm": "centroid"
+      },
+      {
+        "params": {
           "consensus_threshold": 0.0,
           "leaf_shrinkage": 0.0
         },
         "accuracy": 0.9311692230727443,
         "instability": 5810.072107123215,
         "mape": 64.66525712369047,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 0.0
-        },
-        "accuracy": 0.9311692230727443,
-        "instability": 5810.072107123215,
-        "mape": 64.66525712369047,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 27.24830729200039
+    "n_fits": 377,
+    "seconds": 70.19454708400008
   },
   "friedman3": {
     "joint_frontier": [
       {
         "params": {
-          "consensus_threshold": 0.0,
-          "leaf_shrinkage": 0.0
+          "enable_oblique_splits": true,
+          "leaf_smoothing": 5.0
         },
-        "accuracy": 0.05718754598248743,
-        "instability": 0.08620663992846882,
-        "mape": 0.24526394489377815,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 0.0
-        },
-        "accuracy": 0.05718754598248743,
-        "instability": 0.08620663992846882,
-        "mape": 0.24526394489377815,
-        "family": "stable"
+        "accuracy": 0.05904651289627427,
+        "instability": 0.05542901252231658,
+        "mape": 0.19422811749385746,
+        "arm": "less_greedy"
       },
       {
         "params": {
@@ -117,39 +119,21 @@
         "accuracy": 0.05523264877217049,
         "instability": 0.04704970764314299,
         "mape": 0.19335208547877106,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 5.0
+          "smoothing": 1.0,
+          "top_levels": 1
         },
-        "accuracy": 0.05523264877217049,
-        "instability": 0.04704970764314299,
-        "mape": 0.19335208547877106,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.1
-        },
-        "accuracy": -0.003101203266845376,
-        "instability": 0.0007148565083518178,
-        "mape": 0.028841313310348875,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 1.0
-        },
-        "accuracy": -0.003101203266845376,
-        "instability": 0.0007148565083518178,
-        "mape": 0.028841313310348875,
-        "family": "cart"
+        "accuracy": 0.05403669868494976,
+        "instability": 0.03119250018845078,
+        "mape": 0.1526882772281992,
+        "arm": "robust_prefix"
       }
     ],
-    "n_fits": 143,
-    "seconds": 17.001326916994003
+    "n_fits": 377,
+    "seconds": 32.05369374900329
   },
   "quadrant_interaction": {
     "joint_frontier": [
@@ -160,16 +144,7 @@
         "accuracy": 0.9778188134539977,
         "instability": 0.05826252518049307,
         "mape": 0.17505774368899318,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.001
-        },
-        "accuracy": 0.9778188134539977,
-        "instability": 0.05826252518049307,
-        "mape": 0.17505774368899318,
-        "family": "cart"
+        "arm": "cart"
       },
       {
         "params": {
@@ -179,17 +154,7 @@
         "accuracy": 0.9739575683570706,
         "instability": 0.05604985903476953,
         "mape": 0.1695892746016284,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.9739575683570706,
-        "instability": 0.05604985903476953,
-        "mape": 0.1695892746016284,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -198,20 +163,11 @@
         "accuracy": 0.9654643436276725,
         "instability": 0.027746140453108137,
         "mape": 0.04789445180014881,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 1.0
-        },
-        "accuracy": 0.9654643436276725,
-        "instability": 0.027746140453108137,
-        "mape": 0.04789445180014881,
-        "family": "cart"
+        "arm": "cart"
       }
     ],
-    "n_fits": 143,
-    "seconds": 19.009163833005005
+    "n_fits": 377,
+    "seconds": 60.34951245698903
   },
   "high_dim_sparse": {
     "joint_frontier": [
@@ -222,7 +178,17 @@
         "accuracy": 0.6986566696567491,
         "instability": 2.877737412768802,
         "mape": 1.925949287622932,
-        "family": "cart"
+        "arm": "cart"
+      },
+      {
+        "params": {
+          "enable_oblique_splits": true,
+          "leaf_smoothing": 5.0
+        },
+        "accuracy": 0.6906161956109638,
+        "instability": 2.4954064736480466,
+        "mape": 1.9617429125588632,
+        "arm": "less_greedy"
       },
       {
         "params": {
@@ -232,7 +198,7 @@
         "accuracy": 0.6564715622644941,
         "instability": 2.2948300533729866,
         "mape": 1.413317461964044,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -242,7 +208,7 @@
         "accuracy": 0.65153849307183,
         "instability": 2.264670721284325,
         "mape": 1.4315023215024245,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -252,11 +218,11 @@
         "accuracy": 0.47452975547085774,
         "instability": 1.7807848359403098,
         "mape": 1.401637740790351,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 174.20275729100103
+    "n_fits": 377,
+    "seconds": 193.2320292930017
   },
   "heteroscedastic": {
     "joint_frontier": [
@@ -267,7 +233,7 @@
         "accuracy": 0.5264106819781136,
         "instability": 0.8584844436817521,
         "mape": 0.8409444717880539,
-        "family": "cart"
+        "arm": "cart"
       },
       {
         "params": {
@@ -277,14 +243,44 @@
         "accuracy": 0.5114185612044708,
         "instability": 0.7301102120918141,
         "mape": 0.7735802312776745,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 43.223109332990134
+    "n_fits": 377,
+    "seconds": 54.29714991700894
   },
   "xor_nonlinear": {
     "joint_frontier": [
+      {
+        "params": {
+          "n_candidates": 5,
+          "proximity_metric": "correlation"
+        },
+        "accuracy": 0.8750880728060695,
+        "instability": 3.2063765953836176,
+        "mape": 1.753239724206526,
+        "arm": "centroid"
+      },
+      {
+        "params": {
+          "n_candidates": 20,
+          "proximity_metric": "correlation"
+        },
+        "accuracy": 0.8527274663371902,
+        "instability": 2.7800398597305294,
+        "mape": 1.3578240359825704,
+        "arm": "centroid"
+      },
+      {
+        "params": {
+          "n_candidates": 5,
+          "proximity_metric": "rmse"
+        },
+        "accuracy": 0.08281787354718051,
+        "instability": 2.6349935610734003,
+        "mape": 1.7612342708209192,
+        "arm": "centroid"
+      },
       {
         "params": {
           "consensus_threshold": 0.3,
@@ -293,87 +289,70 @@
         "accuracy": 0.015477671122474557,
         "instability": 2.6136087686455274,
         "mape": 1.8582658737551436,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 0.0
-        },
-        "accuracy": -0.006398573308882938,
-        "instability": 0.16526592614094637,
-        "mape": 0.4053058972589656,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": -0.007586454058307268,
-        "instability": 0.0654447252782949,
-        "mape": 0.17818518029951066,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 23.609254250004597
+    "n_fits": 377,
+    "seconds": 30.231744582997635
   },
   "california_housing": {
     "joint_frontier": [
       {
         "params": {
-          "ccp_alpha": 0.0
+          "enable_oblique_splits": true,
+          "leaf_smoothing": 5.0
         },
-        "accuracy": 0.546381305955782,
-        "instability": 0.178783050464264,
-        "mape": 0.38762495895950166,
-        "family": "cart"
+        "accuracy": 0.6373959875314943,
+        "instability": 0.09359139564314971,
+        "mape": 0.3319468113665685,
+        "arm": "less_greedy"
       },
       {
         "params": {
-          "ccp_alpha": 0.001
+          "smoothing": 10.0,
+          "top_levels": 1
         },
-        "accuracy": 0.546381305955782,
-        "instability": 0.178783050464264,
-        "mape": 0.38762495895950166,
-        "family": "cart"
+        "accuracy": 0.6245721326349112,
+        "instability": 0.08885281416584721,
+        "mape": 0.3174364915691898,
+        "arm": "robust_prefix"
       },
       {
         "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 0.0
+          "smoothing": 1.0,
+          "top_levels": 1
         },
-        "accuracy": 0.52389326844991,
-        "instability": 0.17440246150692024,
-        "mape": 0.4114104562725998,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.0,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.49003642430135597,
-        "instability": 0.13259837135891198,
-        "mape": 0.3189539743358575,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "ccp_alpha": 1.0
-        },
-        "accuracy": -0.0014411325521501706,
-        "instability": 0.0010443079495890298,
-        "mape": 0.029196545634920135,
-        "family": "cart"
+        "accuracy": 0.6201224540923264,
+        "instability": 0.08826149175347899,
+        "mape": 0.32129440466250203,
+        "arm": "robust_prefix"
       }
     ],
-    "n_fits": 143,
-    "seconds": 51.46621608300484
+    "n_fits": 377,
+    "seconds": 63.4435540419945
   },
   "diabetes": {
     "joint_frontier": [
+      {
+        "params": {
+          "n_candidates": 20,
+          "proximity_metric": "correlation"
+        },
+        "accuracy": 0.31381577084484524,
+        "instability": 790.0679187738488,
+        "mape": 31.260352984509442,
+        "arm": "centroid"
+      },
+      {
+        "params": {
+          "enable_oblique_splits": true,
+          "leaf_smoothing": 5.0
+        },
+        "accuracy": 0.31210800998697097,
+        "instability": 775.3780140707196,
+        "mape": 27.94383958040588,
+        "arm": "less_greedy"
+      },
       {
         "params": {
           "consensus_threshold": 0.0,
@@ -382,7 +361,7 @@
         "accuracy": 0.2977059445615192,
         "instability": 641.9303409595776,
         "mape": 30.538033741649606,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -392,7 +371,7 @@
         "accuracy": 0.21647961157033113,
         "instability": 474.33928015205515,
         "mape": 23.7346699652098,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -402,14 +381,24 @@
         "accuracy": 0.0798753562652833,
         "instability": 470.8354283767174,
         "mape": 29.63134729787025,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 26.746860708000895
+    "n_fits": 377,
+    "seconds": 22.59756829199614
   },
   "breast_cancer": {
     "joint_frontier": [
+      {
+        "params": {
+          "n_candidates": 5,
+          "proximity_metric": "rmse"
+        },
+        "accuracy": 0.9583333333333334,
+        "instability": 0.045023148148148145,
+        "mape": 0.10694444444444444,
+        "arm": "centroid"
+      },
       {
         "params": {
           "consensus_threshold": 0.0,
@@ -418,7 +407,7 @@
         "accuracy": 0.9083333333333333,
         "instability": 0.044675925925925924,
         "mape": 0.13055555555555556,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -427,30 +416,11 @@
         "accuracy": 0.8916666666666667,
         "instability": 0.03692129629629629,
         "mape": 0.06111111111111111,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 1.0
-        },
-        "accuracy": 0.625,
-        "instability": 0.0,
-        "mape": 0.0,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.625,
-        "instability": 0.0,
-        "mape": 0.0,
-        "family": "stable"
+        "arm": "cart"
       }
     ],
-    "n_fits": 143,
-    "seconds": 31.922452250000788
+    "n_fits": 377,
+    "seconds": 34.612771166997845
   },
   "wine": {
     "joint_frontier": [
@@ -461,34 +431,7 @@
         "accuracy": 0.8947368421052632,
         "instability": 0.17306286549707603,
         "mape": 0.17324561403508773,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.001
-        },
-        "accuracy": 0.8947368421052632,
-        "instability": 0.17306286549707603,
-        "mape": 0.17324561403508773,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.01
-        },
-        "accuracy": 0.8947368421052632,
-        "instability": 0.17306286549707603,
-        "mape": 0.17324561403508773,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.1
-        },
-        "accuracy": 0.8947368421052632,
-        "instability": 0.17306286549707603,
-        "mape": 0.17324561403508773,
-        "family": "cart"
+        "arm": "cart"
       },
       {
         "params": {
@@ -498,31 +441,11 @@
         "accuracy": 0.7105263157894737,
         "instability": 0.16118421052631585,
         "mape": 0.6666666666666666,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.7105263157894737,
-        "instability": 0.16118421052631585,
-        "mape": 0.6666666666666666,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.39473684210526316,
-        "instability": 0.04459064327485379,
-        "mape": 0.05263157894736842,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 7.554545875005715
+    "n_fits": 195,
+    "seconds": 1.8056046239944408
   },
   "iris": {
     "joint_frontier": [
@@ -533,112 +456,49 @@
         "accuracy": 1.0,
         "instability": 0.0023871527777777775,
         "mape": 0.0026041666666666665,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.001
-        },
-        "accuracy": 1.0,
-        "instability": 0.0023871527777777775,
-        "mape": 0.0026041666666666665,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.01
-        },
-        "accuracy": 1.0,
-        "instability": 0.0023871527777777775,
-        "mape": 0.0026041666666666665,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.1
-        },
-        "accuracy": 1.0,
-        "instability": 0.0023871527777777775,
-        "mape": 0.0026041666666666665,
-        "family": "cart"
+        "arm": "cart"
       }
     ],
-    "n_fits": 143,
-    "seconds": 2.667101457991521
+    "n_fits": 195,
+    "seconds": 0.900493083994661
   },
   "digits_binary": {
     "joint_frontier": [
       {
         "params": {
-          "consensus_threshold": 0.0,
-          "leaf_shrinkage": 0.0
+          "n_candidates": 5,
+          "proximity_metric": "rmse"
         },
         "accuracy": 0.9833333333333333,
-        "instability": 0.0046875,
-        "mape": 0.00625,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.3,
-          "leaf_shrinkage": 0.0
-        },
-        "accuracy": 0.9833333333333333,
-        "instability": 0.0046875,
-        "mape": 0.00625,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 0.0
-        },
-        "accuracy": 0.9833333333333333,
-        "instability": 0.0046875,
-        "mape": 0.00625,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "ccp_alpha": 1.0
-        },
-        "accuracy": 0.8972222222222223,
-        "instability": 0.0,
-        "mape": 0.0,
-        "family": "cart"
+        "instability": 0.004050925925925924,
+        "mape": 0.004629629629629629,
+        "arm": "centroid"
       }
     ],
-    "n_fits": 143,
-    "seconds": 82.22334145899367
+    "n_fits": 377,
+    "seconds": 60.28973779100488
   },
   "digits_multiclass": {
     "joint_frontier": [
       {
         "params": {
-          "ccp_alpha": 0.0
+          "n_candidates": 5,
+          "proximity_metric": "rmse"
         },
-        "accuracy": 0.5305555555555556,
-        "instability": 4.754668209876543,
-        "mape": 2.012037037037037,
-        "family": "cart"
+        "accuracy": 0.6055555555555555,
+        "instability": 4.512577160493827,
+        "mape": 1.7444444444444445,
+        "arm": "centroid"
       },
       {
         "params": {
-          "ccp_alpha": 0.001
+          "n_candidates": 20,
+          "proximity_metric": "rmse"
         },
-        "accuracy": 0.5305555555555556,
-        "instability": 4.754668209876543,
-        "mape": 2.012037037037037,
-        "family": "cart"
-      },
-      {
-        "params": {
-          "ccp_alpha": 0.01
-        },
-        "accuracy": 0.5305555555555556,
-        "instability": 4.754668209876543,
-        "mape": 2.012037037037037,
-        "family": "cart"
+        "accuracy": 0.5694444444444444,
+        "instability": 4.241377314814815,
+        "mape": 1.8418981481481482,
+        "arm": "centroid"
       },
       {
         "params": {
@@ -648,7 +508,7 @@
         "accuracy": 0.2861111111111111,
         "instability": 1.9310185185185185,
         "mape": 1.2467592592592593,
-        "family": "stable"
+        "arm": "stable"
       },
       {
         "params": {
@@ -658,20 +518,10 @@
         "accuracy": 0.25,
         "instability": 1.345679012345679,
         "mape": 1.5125,
-        "family": "stable"
-      },
-      {
-        "params": {
-          "consensus_threshold": 0.6,
-          "leaf_shrinkage": 5.0
-        },
-        "accuracy": 0.09166666666666666,
-        "instability": 0.6798225308641974,
-        "mape": 0.763425925925926,
-        "family": "stable"
+        "arm": "stable"
       }
     ],
-    "n_fits": 143,
-    "seconds": 142.2138447499965
+    "n_fits": 195,
+    "seconds": 24.523673957999563
   }
 }

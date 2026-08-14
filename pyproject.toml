@@ -51,6 +51,7 @@ Changelog = "https://github.com/finite-sample/stable-cart/blob/main/CHANGELOG.md
 Issues = "https://github.com/finite-sample/stable-cart/issues"
 
 [project.optional-dependencies]
+plots = ["matplotlib>=3.5"]
 
 [dependency-groups]
 dev = [

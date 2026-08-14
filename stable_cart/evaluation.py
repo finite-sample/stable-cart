@@ -424,10 +424,8 @@ def bootstrap_instability(
         Riley and Collins's mean absolute prediction error against the model
         fitted on the full training data.
 
-    Raises
-    ------
-    ValueError
-        If task is not 'continuous' or 'categorical', or n_bootstrap < 2.
+    Raises ``ValueError`` (from :func:`bootstrap_predictions`) if task is not
+    'continuous' or 'categorical', or n_bootstrap is below 2.
 
     Examples
     --------

@@ -150,14 +150,16 @@ class StableTree(BaseEstimator):
         self.tree_ = self._build(X, y_work, depth=0, parent=y_work, rng=rng)
         return self
 
-    def _elect_split(self, X, y, rng):
+    def _elect_split(self, X: NDArray[Any], y: NDArray[Any], rng: np.random.Generator):
         """
         Elect a split by vote across bootstrap replicates.
 
         Parameters
         ----------
-        X, y
-            Rows at this node.
+        X
+            Feature rows at this node.
+        y
+            Targets at this node.
         rng
             Random generator.
 

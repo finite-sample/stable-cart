@@ -73,10 +73,6 @@ class BaseStableTree(BaseEstimator):
         Use stratified sampling for data partitioning.
     enable_validation_checking
         Enable validation-checked split selection.
-    validation_metric
-        Metric for validation-based split selection.
-    validation_consistency_weight
-        Weight for validation consistency in split selection.
     enable_prefix_consensus
         Enable prefix stability through consensus on early splits.
     prefix_levels
@@ -93,8 +89,6 @@ class BaseStableTree(BaseEstimator):
         Smoothing parameter for leaf value stabilization.
     leaf_smoothing_strategy
         Strategy for leaf value stabilization.
-    enable_calibrated_smoothing
-        Use calibrated smoothing based on sample size.
     min_leaf_samples_for_stability
         Minimum samples required for stable leaf estimation.
     enable_winsorization
@@ -105,8 +99,6 @@ class BaseStableTree(BaseEstimator):
         Standardize features before splitting.
     enable_oblique_splits
         Enable oblique (linear combination) splits.
-    oblique_strategy
-        Where to apply oblique splits in the tree.
     oblique_regularization
         Regularization for oblique split learning.
     enable_correlation_gating
@@ -125,8 +117,6 @@ class BaseStableTree(BaseEstimator):
         Threshold for ambiguity detection.
     min_samples_for_lookahead
         Minimum samples required for lookahead.
-    enable_deterministic_preprocessing
-        Use deterministic preprocessing for reproducibility.
     enable_deterministic_tiebreaks
         Use deterministic tiebreaking in split selection.
     enable_margin_vetoes
@@ -135,12 +125,8 @@ class BaseStableTree(BaseEstimator):
         Threshold for margin-based vetoing.
     enable_variance_aware_stopping
         Enable variance-aware stopping criteria.
-    variance_stopping_weight
-        Weight for variance in stopping decisions.
     variance_stopping_strategy
         Strategy for variance-aware stopping.
-    enable_bootstrap_variance_tracking
-        Track split variance using bootstrap sampling.
     variance_tracking_samples
         Number of bootstrap samples for variance tracking.
     enable_explicit_variance_penalty
@@ -151,16 +137,12 @@ class BaseStableTree(BaseEstimator):
         Explicit split strategy specification.
     algorithm_focus
         Algorithm focus for automatic strategy selection.
-    classification_criterion
-        Splitting criterion for classification.
     random_state
         Random state for reproducibility.
     enable_threshold_binning
         Enable threshold binning for continuous features.
     enable_gain_margin_logic
         Apply margin logic to information gain.
-    enable_beam_search_for_consensus
-        Use beam search for consensus building.
     enable_robust_consensus_for_ambiguous
         Use robust consensus in ambiguous regions.
 
@@ -185,10 +167,6 @@ class BaseStableTree(BaseEstimator):
         enable_stratified_sampling: bool = True,
         # === 2. VALIDATION-CHECKED SPLIT SELECTION ===
         enable_validation_checking: bool = True,
-        validation_metric: Literal[
-            "median", "one_se", "variance_penalized"
-        ] = "variance_penalized",
-        validation_consistency_weight: float = 1.0,
         # === 1. PREFIX STABILITY ===
         enable_prefix_consensus: bool = False,
         prefix_levels: int = 2,
@@ -201,7 +179,6 @@ class BaseStableTree(BaseEstimator):
         leaf_smoothing_strategy: Literal[
             "m_estimate", "shrink_to_parent", "beta_smoothing"
         ] = "m_estimate",
-        enable_calibrated_smoothing: bool = False,
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
         enable_winsorization: bool = False,
@@ -209,7 +186,6 @@ class BaseStableTree(BaseEstimator):
         enable_feature_standardization: bool = False,
         # === 6. CANDIDATE DIVERSITY ===
         enable_oblique_splits: bool = False,
-        oblique_strategy: Literal["root_only", "all_levels", "adaptive"] = "root_only",
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation_threshold: float = 0.3,
@@ -219,17 +195,14 @@ class BaseStableTree(BaseEstimator):
         enable_ambiguity_gating: bool = True,
         ambiguity_threshold: float = 0.05,
         min_samples_for_lookahead: int = 100,
-        enable_deterministic_preprocessing: bool = False,
         enable_deterministic_tiebreaks: bool = True,
         enable_margin_vetoes: bool = False,
         margin_threshold: float = 0.03,
         # === 7. VARIANCE-AWARE STOPPING ===
         enable_variance_aware_stopping: bool = False,
-        variance_stopping_weight: float = 1.0,
         variance_stopping_strategy: Literal[
             "one_se", "variance_penalty", "both"
         ] = "variance_penalty",
-        enable_bootstrap_variance_tracking: bool = False,
         variance_tracking_samples: int = 10,
         enable_explicit_variance_penalty: bool = False,
         variance_penalty_weight: float = 0.1,
@@ -237,13 +210,11 @@ class BaseStableTree(BaseEstimator):
         split_strategy: str | None = None,
         algorithm_focus: Literal["speed", "stability", "accuracy"] = "stability",
         # === CLASSIFICATION ===
-        classification_criterion: Literal["gini", "entropy"] = "gini",
         # === OTHER ===
         random_state: int | None = None,
         # === ADDITIONAL PARAMETERS FOR CROSS-METHOD LEARNING ===
         enable_threshold_binning: bool = False,
         enable_gain_margin_logic: bool = False,
-        enable_beam_search_for_consensus: bool = False,
         enable_robust_consensus_for_ambiguous: bool = False,
     ):
         # Validate fractions sum to 1
@@ -265,8 +236,6 @@ class BaseStableTree(BaseEstimator):
 
         # === 2. VALIDATION ===
         self.enable_validation_checking = enable_validation_checking
-        self.validation_metric = validation_metric
-        self.validation_consistency_weight = validation_consistency_weight
 
         # === 1. PREFIX STABILITY ===
         self.enable_prefix_consensus = enable_prefix_consensus
@@ -281,7 +250,6 @@ class BaseStableTree(BaseEstimator):
         self.leaf_smoothing_strategy: Literal[
             "m_estimate", "shrink_to_parent", "beta_smoothing"
         ] = leaf_smoothing_strategy
-        self.enable_calibrated_smoothing = enable_calibrated_smoothing
         self.min_leaf_samples_for_stability = min_leaf_samples_for_stability
 
         # === 5. DATA REGULARIZATION ===
@@ -291,7 +259,6 @@ class BaseStableTree(BaseEstimator):
 
         # === 6. CANDIDATE DIVERSITY ===
         self.enable_oblique_splits = enable_oblique_splits
-        self.oblique_strategy = oblique_strategy
         self.oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = (
             oblique_regularization
         )
@@ -305,18 +272,15 @@ class BaseStableTree(BaseEstimator):
         self.ambiguity_threshold = ambiguity_threshold
         self.min_samples_for_lookahead = min_samples_for_lookahead
 
-        self.enable_deterministic_preprocessing = enable_deterministic_preprocessing
         self.enable_deterministic_tiebreaks = enable_deterministic_tiebreaks
         self.enable_margin_vetoes = enable_margin_vetoes
         self.margin_threshold = margin_threshold
 
         # === 7. VARIANCE-AWARE STOPPING ===
         self.enable_variance_aware_stopping = enable_variance_aware_stopping
-        self.variance_stopping_weight = variance_stopping_weight
         self.variance_stopping_strategy: Literal[
             "one_se", "variance_penalty", "both"
         ] = variance_stopping_strategy
-        self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.variance_tracking_samples = variance_tracking_samples
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
         self.variance_penalty_weight = variance_penalty_weight
@@ -328,7 +292,6 @@ class BaseStableTree(BaseEstimator):
         )
 
         # === CLASSIFICATION ===
-        self.classification_criterion = classification_criterion
 
         # === OTHER ===
         self.random_state = random_state
@@ -336,7 +299,6 @@ class BaseStableTree(BaseEstimator):
         # === CROSS-METHOD LEARNING ===
         self.enable_threshold_binning = enable_threshold_binning
         self.enable_gain_margin_logic = enable_gain_margin_logic
-        self.enable_beam_search_for_consensus = enable_beam_search_for_consensus
         self.enable_robust_consensus_for_ambiguous = (
             enable_robust_consensus_for_ambiguous
         )
@@ -436,6 +398,11 @@ class BaseStableTree(BaseEstimator):
         """
         Predict targets for samples in X.
 
+        Raises ``NotFittedError`` if the estimator has not been fitted, and
+        ``ValueError`` if X has a different number of columns than the training
+        data — predicting from a matrix of the wrong width would return
+        plausible numbers computed from the wrong columns.
+
         Parameters
         ----------
         X
@@ -445,11 +412,6 @@ class BaseStableTree(BaseEstimator):
         -------
         NDArray[Any]
             Predicted values of shape (n_samples,).
-
-        Raises
-        ------
-        ValueError
-            If X has a different number of columns than the training data.
         """
         X = check_predict_input(self, X, "tree_")
 
@@ -658,6 +620,7 @@ class BaseStableTree(BaseEstimator):
                     enable_quantile_binning=self.enable_quantile_grid_thresholds
                     or self.enable_threshold_binning,
                     max_bins=self.max_threshold_bins,
+                    prefix_levels=self.prefix_levels,
                     fallback_strategy=axis,
                     task=self.task,
                     random_state=self.random_state,

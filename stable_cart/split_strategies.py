@@ -233,6 +233,9 @@ class ConsensusStrategy(SplitStrategy):
         Enable quantile-based threshold binning.
     max_bins
         Maximum number of bins for threshold discretization.
+    prefix_levels
+        Depth below which the fallback strategy takes over, so consensus applies
+        only to the prefix. ``None`` applies it at every depth.
     fallback_strategy
         Fallback strategy if consensus fails.
     task
@@ -247,6 +250,7 @@ class ConsensusStrategy(SplitStrategy):
         consensus_threshold: float = 0.5,
         enable_quantile_binning: bool = True,
         max_bins: int = 24,
+        prefix_levels: int | None = None,
         fallback_strategy: SplitStrategy | None = None,
         task: str = "regression",
         random_state: int | None = None,
@@ -255,6 +259,7 @@ class ConsensusStrategy(SplitStrategy):
         self.consensus_threshold = consensus_threshold
         self.enable_quantile_binning = enable_quantile_binning
         self.max_bins = max_bins
+        self.prefix_levels = prefix_levels
         self.fallback_strategy = fallback_strategy or AxisAlignedStrategy(task=task)
         self.task = task
         self.random_state = random_state
@@ -291,6 +296,14 @@ class ConsensusStrategy(SplitStrategy):
         SplitCandidate | None
             Best consensus split or None if no valid split found.
         """
+        # A *prefix* method locks the top levels and lets the rest be ordinary.
+        # Until 2.0 the depth was accepted and ignored, so consensus ran at every
+        # node and ``prefix_levels`` could not change a prediction.
+        if self.prefix_levels is not None and depth >= self.prefix_levels:
+            return self.fallback_strategy.find_best_split(
+                X, y, X_val, y_val, depth, **kwargs
+            )
+
         best_split, all_candidates = bootstrap_consensus_split(
             X,
             y,

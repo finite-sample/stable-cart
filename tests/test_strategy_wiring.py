@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from sklearn.datasets import make_regression
 
-from stable_cart import BaseStableTree
+from stable_cart import BaseStableTree, RobustPrefixHonestTree
 from stable_cart.split_strategies import (
     ConsensusStrategy,
     LookaheadStrategy,
@@ -70,6 +70,54 @@ def test_numeric_consensus_settings_are_forwarded():
 
     assert consensus.consensus_samples == 7
     assert consensus.consensus_threshold == 0.9
+
+
+def test_consensus_is_confined_to_the_prefix():
+    """A *prefix* method must stop being a consensus method below its prefix.
+
+    Until 2.0 ``prefix_levels`` was stored and never read: the depth reached
+    ``ConsensusStrategy.find_best_split`` and was discarded, so consensus ran at
+    every node. ``RobustPrefixHonestTree.top_levels`` — the parameter the class
+    is named after — could not change a prediction.
+    """
+    strategies = built(enable_prefix_consensus=True, prefix_levels=2)
+    consensus = next(s for s in strategies if isinstance(s, ConsensusStrategy))
+
+    assert consensus.prefix_levels == 2
+
+    X, y = make_regression(
+        n_samples=400, n_features=8, n_informative=5, noise=1.0, random_state=0
+    )
+    deep = consensus.find_best_split(X, y, depth=5)
+    fallback = consensus.fallback_strategy.find_best_split(X, y, depth=5)
+
+    # Below the prefix the fallback decides. Comparing against the fallback
+    # rather than against the shallow call is what makes this a test of the
+    # gate: the two strategies are free to agree on any particular dataset.
+    assert deep is not None
+    assert fallback is not None
+    assert (deep.feature_idx, deep.threshold) == (
+        fallback.feature_idx,
+        fallback.threshold,
+    )
+
+
+def test_top_levels_changes_predictions():
+    """The end-to-end version of the same claim, on the estimator itself."""
+    X, y = make_regression(
+        n_samples=500, n_features=10, n_informative=6, noise=2.0, random_state=0
+    )
+
+    def fit(top_levels):
+        return (
+            RobustPrefixHonestTree(
+                task="regression", max_depth=6, top_levels=top_levels, random_state=42
+            )
+            .fit(X, y)
+            .predict(X)
+        )
+
+    assert not np.array_equal(fit(2), fit(4))
 
 
 def test_numeric_lookahead_settings_are_forwarded():

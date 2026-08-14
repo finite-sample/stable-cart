@@ -44,8 +44,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         Number of bootstrap samples for consensus.
     consensus_threshold
         Threshold for consensus decisions.
-    consensus_subsample_frac
-        Subsample fraction per bootstrap.
     val_frac
         Fraction of data for validation.
     est_frac
@@ -62,8 +60,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         Maximum number of threshold bins.
     enable_oblique_splits
         Enable oblique split capability.
-    oblique_strategy
-        Strategy for oblique splits.
     oblique_regularization
         Regularization type for oblique splits.
     enable_correlation_gating
@@ -76,8 +72,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         Depth for lookahead search.
     beam_width
         Width of beam search.
-    enable_beam_search_for_consensus
-        Enable beam search for consensus.
     enable_ambiguity_gating
         Enable ambiguity-based gating.
     ambiguity_threshold
@@ -86,8 +80,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         Enable gain margin logic.
     margin_threshold
         Threshold for margin-based decisions.
-    enable_bootstrap_variance_tracking
-        Enable bootstrap variance tracking.
     variance_tracking_samples
         Number of samples for variance tracking.
     enable_explicit_variance_penalty
@@ -98,8 +90,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         Smoothing parameter for leaf estimates.
     leaf_smoothing_strategy
         Strategy for leaf smoothing.
-    classification_criterion
-        Criterion for classification splits.
     random_state
         Random state for reproducibility.
     """
@@ -131,7 +121,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         top_levels: int = 2,  # Signature feature: how many levels to make robust
         consensus_samples: int = 12,  # Signature feature: bootstrap samples for consensus
         consensus_threshold: float = 0.5,
-        consensus_subsample_frac: float = 0.8,
         # === HONEST PARTITIONING ===
         val_frac: float = 0.2,
         est_frac: float = 0.4,  # Larger estimation set for robust leaves
@@ -144,9 +133,6 @@ class RobustPrefixHonestTree(BaseStableTree):
         max_threshold_bins: int = 24,
         # === ENHANCED: OBLIQUE SPLITS (from LessGreedy) ===
         enable_oblique_splits: bool = True,  # NEW: add to locked prefix
-        oblique_strategy: Literal[
-            "root_only", "all_levels", "adaptive"
-        ] = "root_only",  # Conservative for robust method
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,  # NEW: from LessGreedy
         min_correlation_threshold: float = 0.3,
@@ -154,14 +140,12 @@ class RobustPrefixHonestTree(BaseStableTree):
         enable_lookahead: bool = True,  # NEW: replace depth-1 stumps in consensus
         lookahead_depth: int = 2,  # More informed prefix decisions
         beam_width: int = 12,
-        enable_beam_search_for_consensus: bool = True,  # NEW: enhanced consensus
         # === ENHANCED: AMBIGUITY GATING (from LessGreedy) ===
         enable_ambiguity_gating: bool = True,  # NEW: only apply expensive consensus when needed
         ambiguity_threshold: float = 0.05,  # Similar to gain-margin logic
         enable_gain_margin_logic: bool = True,
         margin_threshold: float = 0.03,
         # === ENHANCED: VARIANCE TRACKING (from Bootstrap) ===
-        enable_bootstrap_variance_tracking: bool = True,  # NEW: diagnostic
         variance_tracking_samples: int = 10,
         enable_explicit_variance_penalty: bool = False,  # Optional enhancement
         variance_penalty_weight: float = 0.1,
@@ -171,7 +155,6 @@ class RobustPrefixHonestTree(BaseStableTree):
             "m_estimate", "shrink_to_parent"
         ] = "m_estimate",
         # === CLASSIFICATION ===
-        classification_criterion: Literal["gini", "entropy"] = "gini",
         random_state: int | None = None,
     ):
         # Compute split_frac from val_frac and est_frac
@@ -191,7 +174,6 @@ class RobustPrefixHonestTree(BaseStableTree):
             enable_stratified_sampling=enable_stratified_sampling,
             # Validation checking - always enabled
             enable_validation_checking=True,
-            validation_metric="median",  # Robust approach
             # Robust prefix consensus - signature feature
             enable_prefix_consensus=True,
             prefix_levels=top_levels,
@@ -206,7 +188,6 @@ class RobustPrefixHonestTree(BaseStableTree):
             max_threshold_bins=max_threshold_bins,
             # ENHANCED: Oblique splits (from LessGreedy)
             enable_oblique_splits=enable_oblique_splits,
-            oblique_strategy=oblique_strategy,
             oblique_regularization=oblique_regularization,
             enable_correlation_gating=enable_correlation_gating,
             min_correlation_threshold=min_correlation_threshold,
@@ -214,7 +195,6 @@ class RobustPrefixHonestTree(BaseStableTree):
             enable_lookahead=enable_lookahead,
             lookahead_depth=lookahead_depth,
             beam_width=beam_width,
-            enable_beam_search_for_consensus=enable_beam_search_for_consensus,
             # ENHANCED: Ambiguity gating (from LessGreedy)
             enable_ambiguity_gating=enable_ambiguity_gating,
             ambiguity_threshold=ambiguity_threshold,
@@ -222,19 +202,15 @@ class RobustPrefixHonestTree(BaseStableTree):
             enable_margin_vetoes=enable_gain_margin_logic,
             margin_threshold=margin_threshold,
             # ENHANCED: Variance tracking (from Bootstrap)
-            enable_bootstrap_variance_tracking=enable_bootstrap_variance_tracking,
             variance_tracking_samples=variance_tracking_samples,
             enable_explicit_variance_penalty=enable_explicit_variance_penalty,
             variance_penalty_weight=variance_penalty_weight,
             # Deterministic processing - signature feature
-            enable_deterministic_preprocessing=True,
             enable_deterministic_tiebreaks=True,
             # Leaf stabilization - signature feature
             leaf_smoothing=smoothing,
             leaf_smoothing_strategy=leaf_smoothing_strategy,
-            enable_calibrated_smoothing=True,
             # Classification
-            classification_criterion=classification_criterion,
             # Focus on maximum stability
             algorithm_focus="stability",
             random_state=random_state,
@@ -247,12 +223,9 @@ class RobustPrefixHonestTree(BaseStableTree):
         self.top_levels = top_levels
         self.smoothing = smoothing
         self.consensus_B = consensus_samples
-        self.consensus_subsample_frac = consensus_subsample_frac
         self.consensus_max_bins = max_threshold_bins
 
         # Cross-method enhancement flags
-        self.enable_beam_search_for_consensus = enable_beam_search_for_consensus
-        self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "RobustPrefixHonestTree":

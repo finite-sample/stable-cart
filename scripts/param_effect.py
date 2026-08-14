@@ -75,10 +75,25 @@ def _reachable_source() -> str:
     return "\n".join(chunks)
 
 
-def _read_counts(source: str, names: set[str]) -> dict[str, int]:
-    """How often each parameter is read outside a plain ``self.x = x`` line."""
+def _read_counts(source: str, names: set[str], cls: type) -> dict[str, int]:
+    """
+    How often each parameter is read outside a plain ``self.x = x`` line.
+
+    A parameter the class renames on the way to its base gets credited with the
+    reads of the name it is renamed to. Counting only the exposed name would
+    report a live parameter as unread and put it on the deletion list — which is
+    exactly what happened to ``top_levels``, the signature feature of
+    ``RobustPrefixHonestTree``.
+    """
     body = INIT_ASSIGN_RE.sub("", source)
-    return {n: len(re.findall(rf"self\.{n}\b", body)) for n in names}
+    aliases = getattr(cls, "_PARAM_ALIASES", {})
+
+    def count(name: str) -> int:
+        targets = aliases.get(name, ())
+        targets = (targets,) if isinstance(targets, str) else targets
+        return sum(len(re.findall(rf"self\.{n}\b", body)) for n in (name, *targets))
+
+    return {n: count(n) for n in names}
 
 
 def _sections(cls: type) -> dict[str, str]:
@@ -242,6 +257,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default="results/param_effect")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--verdicts-only",
+        action="store_true",
+        help="re-derive the verdicts from a previous run's per_task.json",
+    )
     args = parser.parse_args()
 
     Xc1, yc1 = make_classification(
@@ -273,11 +293,16 @@ def main():
         (StableTree, "regression", reg),
     ]
 
+    classes = {cls.__name__: cls for cls, _task, _data in cases}
     report: dict[str, dict] = {}
-    for cls, task, datasets in cases:
-        report.setdefault(cls.__name__, {})[task] = _scan(
-            cls, task, datasets, not args.quiet
-        )
+    cached = Path(args.output) / "per_task.json"
+    if args.verdicts_only:
+        report = json.loads(cached.read_text())
+    else:
+        for cls, task, datasets in cases:
+            report.setdefault(cls.__name__, {})[task] = _scan(
+                cls, task, datasets, not args.quiet
+            )
 
     # A parameter is only inert for an estimator if it is inert on *both* tasks.
     # Deletion needs a second, independent reason: that no reachable code reads
@@ -292,7 +317,7 @@ def main():
         inert = set.intersection(*(set(t["inert"]) for t in tasks.values()))
         live = set.union(*(set(t["live"]) for t in tasks.values()))
         inert -= live
-        reads = _read_counts(source, inert)
+        reads = _read_counts(source, inert, classes[name])
         unread = {n for n, c in reads.items() if c == 0}
         summary[name] = {
             "delete": sorted(unread),
@@ -312,7 +337,8 @@ def main():
 
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "per_task.json").write_text(json.dumps(report, indent=2))
+    if not args.verdicts_only:
+        (out / "per_task.json").write_text(json.dumps(report, indent=2))
     (out / "verdicts.json").write_text(json.dumps(summary, indent=2))
     print(f"\nCreated: {out / 'verdicts.json'}")
 

@@ -3184,6 +3184,11 @@ dependencies = [
     { name = "scikit-learn" },
 ]
 
+[package.optional-dependencies]
+plots = [
+    { name = "matplotlib" },
+]
+
 [package.dev-dependencies]
 benchmark = [
     { name = "jupyterlab" },
@@ -3222,9 +3227,11 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "matplotlib", marker = "extra == 'plots'", specifier = ">=3.5" },
     { name = "numpy", specifier = ">=1.23.0" },
     { name = "scikit-learn", specifier = ">=1.2.0" },
 ]
+provides-extras = ["plots"]
 
 [package.metadata.requires-dev]
 benchmark = [

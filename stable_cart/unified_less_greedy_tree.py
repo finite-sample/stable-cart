@@ -47,8 +47,6 @@ class LessGreedyHybridTree(BaseStableTree):
         Enable stratified sampling in data partitioning.
     enable_oblique_splits
         Enable oblique split capability.
-    oblique_strategy
-        Strategy for oblique splits.
     oblique_regularization
         Regularization type for oblique splits.
     enable_correlation_gating
@@ -81,8 +79,6 @@ class LessGreedyHybridTree(BaseStableTree):
         Enable feature winsorization.
     winsor_quantiles
         Quantile bounds for winsorization.
-    enable_bootstrap_variance_tracking
-        Enable bootstrap variance tracking.
     variance_tracking_samples
         Number of samples for variance tracking.
     enable_explicit_variance_penalty
@@ -97,8 +93,6 @@ class LessGreedyHybridTree(BaseStableTree):
         Enable gain margin logic.
     margin_threshold
         Threshold for margin-based decisions.
-    classification_criterion
-        Criterion for classification splits.
     random_state
         Random state for reproducibility.
     """
@@ -122,7 +116,6 @@ class LessGreedyHybridTree(BaseStableTree):
         enable_stratified_sampling: bool = True,  # ENHANCED: from RobustPrefix
         # === OBLIQUE SPLITS ===
         enable_oblique_splits: bool = True,  # Signature feature
-        oblique_strategy: Literal["root_only", "all_levels", "adaptive"] = "root_only",
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation_threshold: float = 0.3,
@@ -143,7 +136,6 @@ class LessGreedyHybridTree(BaseStableTree):
         enable_winsorization: bool = True,  # NEW: robust preprocessing
         winsor_quantiles: tuple = (0.01, 0.99),
         # === ENHANCED: VARIANCE TRACKING (from Bootstrap) ===
-        enable_bootstrap_variance_tracking: bool = True,  # NEW: diagnostic
         variance_tracking_samples: int = 10,
         enable_explicit_variance_penalty: bool = False,  # Optional enhancement
         variance_penalty_weight: float = 0.1,
@@ -156,7 +148,6 @@ class LessGreedyHybridTree(BaseStableTree):
         enable_gain_margin_logic: bool = True,  # Signature feature
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
-        classification_criterion: Literal["gini", "entropy"] = "gini",
         random_state: int | None = None,
     ):
         # Configure defaults that reflect LessGreedy's personality
@@ -173,13 +164,11 @@ class LessGreedyHybridTree(BaseStableTree):
             enable_stratified_sampling=enable_stratified_sampling,
             # Validation checking - always enabled
             enable_validation_checking=True,
-            validation_metric="variance_penalized",
             # ENHANCED: Outlier robustness (from RobustPrefix)
             enable_winsorization=enable_winsorization,
             winsor_quantiles=winsor_quantiles,
             # Oblique splits - signature feature
             enable_oblique_splits=enable_oblique_splits,
-            oblique_strategy=oblique_strategy,
             oblique_regularization=oblique_regularization,
             enable_correlation_gating=enable_correlation_gating,
             min_correlation_threshold=min_correlation_threshold,
@@ -201,7 +190,6 @@ class LessGreedyHybridTree(BaseStableTree):
             enable_margin_vetoes=enable_gain_margin_logic,
             margin_threshold=margin_threshold,
             # ENHANCED: Variance tracking (from Bootstrap)
-            enable_bootstrap_variance_tracking=enable_bootstrap_variance_tracking,
             variance_tracking_samples=variance_tracking_samples,
             enable_explicit_variance_penalty=enable_explicit_variance_penalty,
             variance_penalty_weight=variance_penalty_weight,
@@ -209,7 +197,6 @@ class LessGreedyHybridTree(BaseStableTree):
             leaf_smoothing=leaf_smoothing,
             leaf_smoothing_strategy=leaf_smoothing_strategy,
             # Classification
-            classification_criterion=classification_criterion,
             # Focus on balanced accuracy + stability
             algorithm_focus="accuracy",
             random_state=random_state,
@@ -223,7 +210,6 @@ class LessGreedyHybridTree(BaseStableTree):
         self.enable_robust_consensus_for_ambiguous = (
             enable_robust_consensus_for_ambiguous
         )
-        self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
         # The base class also has a parameter of this name and would otherwise
         # leave its own default here, so ``get_params`` would report the
