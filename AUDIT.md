@@ -304,6 +304,19 @@ the usual accuracy-for-stability trade. Set that against bagging, which buys **6
 the same metric. (`breast_cancer` hit the 30s solver limit on 4 of 15 fits, so that row is
 not a truly optimal tree.)
 
+> **Retracted: this comparison was confounded by tree size.** GOSDT's leaf penalty makes it
+> far sparser than a depth-matched CART — measured at **1 split against greedy's 7** on the
+> margin DGP — and a sparser tree is more stable for reasons that have nothing to do with
+> search. Repeating the comparison with `max_leaf_nodes` matched per draw
+> (`experiments/margin_study.py`) makes structural instability **identical to three decimals
+> at every margin** (0.235/0.235, 0.237/0.237, 0.000/0.000), with prediction gains that are
+> small, non-monotone and mostly negative. The honest conclusion is the opposite of the one
+> above: **at matched complexity, exact search neither stabilises trees nor explains their
+> instability.** What reduces instability is fewer splits, averaging, and — in noisy regimes —
+> leaf shrinkage. The 10–24% figure should not be quoted. Precision caveat: the margin study
+> used 12 draws per cell, so its per-cell numbers are noisy; the structural equality is exact
+> and is the load-bearing part.
+
 That magnitude is the finding. The strong form of the root cause — "structure churn is
 caused by greedy myopia" — does **not** survive: perfect search recovers only about a fifth
 of what averaging does. Most of the churn is intrinsic to fitting **one discrete structure to
