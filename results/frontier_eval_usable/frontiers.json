@@ -1,0 +1,395 @@
+{
+  "friedman1": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.6318902055268651,
+        "instability": 2.9131077608849427,
+        "mape": 1.5450348951588206,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 0.6059058261554722,
+        "instability": 2.763274508168374,
+        "mape": 1.4440293414626184,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "ccp_alpha": 0.1
+        },
+        "accuracy": 0.6050549202965142,
+        "instability": 2.7576489574950087,
+        "mape": 1.4544023204438106,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.5976907938739966,
+        "instability": 1.9045250540027632,
+        "mape": 1.065851994859642,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 14.503744458001165
+  },
+  "friedman2": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.9311692230727443,
+        "instability": 5810.072107123215,
+        "mape": 64.66525712369047,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 8.97390416800772
+  },
+  "friedman3": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.05718754598248743,
+        "instability": 0.08620663992846882,
+        "mape": 0.24526394489377815,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.05523264877217049,
+        "instability": 0.04704970764314299,
+        "mape": 0.19335208547877106,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 5.9090762909982
+  },
+  "quadrant_interaction": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 0.9778188134539977,
+        "instability": 0.05826252518049307,
+        "mape": 0.17505774368899318,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.9739575683570706,
+        "instability": 0.05604985903476953,
+        "mape": 0.1695892746016284,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "ccp_alpha": 0.1
+        },
+        "accuracy": 0.9654643436276725,
+        "instability": 0.027746140453108137,
+        "mape": 0.04789445180014881,
+        "family": "cart"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 11.620687791997625
+  },
+  "high_dim_sparse": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.1
+        },
+        "accuracy": 0.6986566696567491,
+        "instability": 2.877737412768802,
+        "mape": 1.925949287622932,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.6564715622644941,
+        "instability": 2.2948300533729866,
+        "mape": 1.413317461964044,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.65153849307183,
+        "instability": 2.264670721284325,
+        "mape": 1.4315023215024245,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.6,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.47452975547085774,
+        "instability": 1.7807848359403098,
+        "mape": 1.401637740790351,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 60.07425504200364
+  },
+  "heteroscedastic": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.1
+        },
+        "accuracy": 0.5264106819781136,
+        "instability": 0.8584844436817521,
+        "mape": 0.8409444717880539,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.5114185612044708,
+        "instability": 0.7301102120918141,
+        "mape": 0.7735802312776745,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 11.678902916995867
+  },
+  "xor_nonlinear": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.015477671122474557,
+        "instability": 2.6136087686455274,
+        "mape": 1.8582658737551436,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 9.336591125007544
+  },
+  "california_housing": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 0.546381305955782,
+        "instability": 0.178783050464264,
+        "mape": 0.38762495895950166,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.52389326844991,
+        "instability": 0.17440246150692024,
+        "mape": 0.4114104562725998,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.49003642430135597,
+        "instability": 0.13259837135891198,
+        "mape": 0.3189539743358575,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 10.255215292003413
+  },
+  "diabetes": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.2977059445615192,
+        "instability": 641.9303409595776,
+        "mape": 30.538033741649606,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.21647961157033113,
+        "instability": 474.33928015205515,
+        "mape": 23.7346699652098,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.3,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.0798753562652833,
+        "instability": 470.8354283767174,
+        "mape": 29.63134729787025,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 4.919980249993387
+  },
+  "breast_cancer": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.9083333333333333,
+        "instability": 0.044675925925925924,
+        "mape": 0.13055555555555556,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "ccp_alpha": 0.1
+        },
+        "accuracy": 0.8916666666666667,
+        "instability": 0.03692129629629629,
+        "mape": 0.06111111111111111,
+        "family": "cart"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 7.399009416993067
+  },
+  "wine": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 0.8947368421052632,
+        "instability": 0.17306286549707603,
+        "mape": 0.17324561403508773,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 5.0
+        },
+        "accuracy": 0.7105263157894737,
+        "instability": 0.16118421052631585,
+        "mape": 0.6666666666666666,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 1.8132744589966023
+  },
+  "iris": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 1.0,
+        "instability": 0.0023871527777777775,
+        "mape": 0.0026041666666666665,
+        "family": "cart"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 0.6947260830056621
+  },
+  "digits_binary": {
+    "joint_frontier": [
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.9833333333333333,
+        "instability": 0.0046875,
+        "mape": 0.00625,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 18.61020904099132
+  },
+  "digits_multiclass": {
+    "joint_frontier": [
+      {
+        "params": {
+          "ccp_alpha": 0.0
+        },
+        "accuracy": 0.5305555555555556,
+        "instability": 4.754668209876543,
+        "mape": 2.012037037037037,
+        "family": "cart"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.0,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.2861111111111111,
+        "instability": 1.9310185185185185,
+        "mape": 1.2467592592592593,
+        "family": "stable"
+      },
+      {
+        "params": {
+          "consensus_threshold": 0.6,
+          "leaf_shrinkage": 0.0
+        },
+        "accuracy": 0.25,
+        "instability": 1.345679012345679,
+        "mape": 1.5125,
+        "family": "stable"
+      }
+    ],
+    "n_fits": 143,
+    "seconds": 37.77861491699878
+  }
+}

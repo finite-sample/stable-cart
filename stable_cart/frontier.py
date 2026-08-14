@@ -68,7 +68,17 @@ def pareto_front(points: list[dict]) -> list[dict]:
         )
         if not dominated:
             front.append(point)
-    return sorted(front, key=lambda p: -p["accuracy"])
+
+    # Different parameter combinations often land on exactly the same point — a
+    # knob that does nothing on this data. Keeping both would overstate how many
+    # distinct operating points a family actually offers.
+    deduped, seen = [], set()
+    for point in sorted(front, key=lambda p: -p["accuracy"]):
+        key = (round(point["accuracy"], 12), round(point["instability"], 12))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(point)
+    return deduped
 
 
 def stability_frontier(
@@ -91,9 +101,11 @@ def stability_frontier(
         unfitted estimator — e.g. ``lambda **kw: DecisionTreeRegressor(**kw)``.
     param_grid
         Grid in scikit-learn's ``ParameterGrid`` form.
-    X, y
-        The data. It is split once into a fitting part and a held-out part; every
+    X
+        Feature matrix. Split once into a fitting part and a held-out part; every
         configuration is scored on the same held-out rows.
+    y
+        Targets, split alongside ``X``.
     task
         ``'continuous'`` or ``'categorical'``.
     n_bootstrap

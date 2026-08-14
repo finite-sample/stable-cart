@@ -201,3 +201,18 @@ class TestFrontier:
             stability_frontier(factory, {}, X, y, task="nonsense")
         with pytest.raises(ValueError, match="at least 2"):
             stability_frontier(factory, {}, X, y, n_bootstrap=1)
+
+
+def test_identical_points_appear_once():
+    """Two configurations landing on the same point are one operating point.
+
+    A knob that does nothing on this data produces duplicates; counting them
+    twice would overstate how many distinct choices a family offers.
+    """
+    points = [
+        {"accuracy": 0.9, "instability": 1.0, "params": {"a": 1}},
+        {"accuracy": 0.9, "instability": 1.0, "params": {"a": 2}},
+        {"accuracy": 0.5, "instability": 0.1, "params": {"a": 3}},
+    ]
+
+    assert len(pareto_front(points)) == 2

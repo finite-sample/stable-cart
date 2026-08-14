@@ -155,7 +155,10 @@ exclude_lines = [
 
 [tool.codespell]
 # docs/_build is a local Sphinx artifact (gitignored); .venv and uv.lock are vendored.
-skip = "./docs/_build,./.venv,./uv.lock,./dist,./htmlcov,./.git"
+skip = "./docs/_build,./.venv,./uv.lock,./dist,./htmlcov,./.git,./results"
+# MAPE is the standard acronym for mean absolute prediction error (Riley &
+# Collins 2023), not a misspelling of "map".
+ignore-words-list = "mape"
 
 [tool.deptry]
 extend_exclude = ["scripts"]
