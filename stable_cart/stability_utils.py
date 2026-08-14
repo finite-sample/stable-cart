@@ -1064,7 +1064,10 @@ def estimate_split_variance(
 
 
 def _find_candidate_splits(
-    X: np.ndarray, y: np.ndarray, max_candidates: int = 20
+    X: np.ndarray,
+    y: np.ndarray,
+    max_candidates: int = 20,
+    min_samples_leaf: int = 1,
 ) -> list[SplitCandidate]:
     """
     Find basic axis-aligned split candidates.
@@ -1077,11 +1080,16 @@ def _find_candidate_splits(
         Target values for split evaluation.
     max_candidates
         Maximum number of candidates to return.
+    min_samples_leaf
+        Minimum rows a split must leave on each side. Enforced while the
+        candidates are generated, not afterwards: a caller that vetoes an
+        inadmissible candidate later has no second choice and stops growing the
+        tree at that node.
 
     Returns
     -------
     list[SplitCandidate]
-        List of split candidates.
+        List of split candidates, every one of them admissible.
     """
     candidates = []
     n_features = X.shape[1]
@@ -1091,7 +1099,7 @@ def _find_candidate_splits(
 
     for feature_idx in range(n_features):
         feature_values = X[:, feature_idx]
-        thresholds, gains = _all_split_gains(feature_values, y)
+        thresholds, gains = _all_split_gains(feature_values, y, min_samples_leaf)
 
         if thresholds.size == 0:
             continue
@@ -1120,7 +1128,7 @@ def _find_candidate_splits(
 
 
 def _all_split_gains(
-    feature_values: np.ndarray, y: np.ndarray
+    feature_values: np.ndarray, y: np.ndarray, min_samples_leaf: int = 1
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Score every admissible threshold of one feature in a single vectorized pass.
@@ -1135,6 +1143,8 @@ def _all_split_gains(
         One column of the feature matrix.
     y
         Target values.
+    min_samples_leaf
+        Minimum rows on each side of the split.
 
     Returns
     -------
@@ -1150,8 +1160,14 @@ def _all_split_gains(
     xs = feature_values[order]
     ys = y[order]
 
-    # A split is only admissible between two distinct feature values.
+    # A split is admissible only between two distinct feature values and only if
+    # it leaves enough rows on both sides.
     admissible = xs[:-1] < xs[1:]
+    if min_samples_leaf > 1:
+        left_count = np.arange(1, n)
+        admissible &= (left_count >= min_samples_leaf) & (
+            n - left_count >= min_samples_leaf
+        )
     if not np.any(admissible):
         return empty
 

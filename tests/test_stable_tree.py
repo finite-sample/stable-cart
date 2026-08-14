@@ -101,6 +101,63 @@ class TestSplitAveraging:
         assert all(0.0 < s <= 1.0 for s in supports)
 
 
+class TestAdmissibleSplits:
+    """Elected splits must be usable, or the tree stops growing for the wrong reason."""
+
+    @pytest.mark.parametrize("min_leaf", [5, 20, 50])
+    def test_the_tree_never_abandons_a_node_over_an_unusable_split(self, min_leaf):
+        """`leaf_size_rejected` must never fire.
+
+        Asserting that *surviving* splits are admissible proves nothing — the
+        post-hoc guard in `_build` guarantees it. The damage was nodes abandoned
+        because the elected split was unusable, which was measured as the only
+        reason the tree stopped on diabetes (4 of 4 leaves) and wine (3 of 3).
+        The candidate generator now enforces the constraint, so the guard should
+        be unreachable; this fails if the constraint stops being passed through.
+        """
+        X, y = make_regression(
+            n_samples=700, n_features=8, n_informative=5, noise=3.0, random_state=4
+        )
+        tree = StableTree(
+            task="regression",
+            n_consensus=8,
+            consensus_threshold=0.0,
+            max_depth=4,
+            min_samples_leaf=min_leaf,
+            random_state=0,
+        ).fit(X, y)
+
+        assert tree.stop_reasons_["leaf_size_rejected"] == 0, (
+            f"abandoned {tree.stop_reasons_['leaf_size_rejected']} nodes over "
+            f"unusable splits: {dict(tree.stop_reasons_)}"
+        )
+
+    def test_stop_reasons_account_for_every_leaf(self, regression_data):
+        """The diagnostic must add up, or it cannot answer 'why is my tree small?'."""
+        X, y = regression_data
+        tree = StableTree(
+            task="regression", max_depth=3, min_samples_leaf=20, random_state=0
+        ).fit(X, y)
+
+        assert sum(tree.stop_reasons_.values()) == tree.get_n_leaves()
+
+    def test_the_tree_grows_beyond_a_handful_of_leaves(self):
+        """A depth-4 fit on a learnable problem should not stop at 4 leaves."""
+        X, y = make_regression(
+            n_samples=800, n_features=10, n_informative=6, noise=5.0, random_state=3
+        )
+        tree = StableTree(
+            task="regression",
+            n_consensus=8,
+            consensus_threshold=0.0,
+            max_depth=4,
+            min_samples_leaf=20,
+            random_state=0,
+        ).fit(X, y)
+
+        assert tree.get_n_leaves() >= 8
+
+
 class TestConsensusThreshold:
     """A split the data cannot reproduce should not be made."""
 

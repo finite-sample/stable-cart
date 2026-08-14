@@ -1,0 +1,50 @@
+[
+  {
+    "sigma": 0.1,
+    "leaf_share": 0.039633830523223404,
+    "base": 0.16048746973735661,
+    "consensus_gain_pct": -0.17939875959068227,
+    "shrinkage_gain_pct": 15.802531051343664,
+    "base_r2": 0.7769861942431472,
+    "consensus_r2": 0.7677170740622965,
+    "shrinkage_r2": 0.727514274531542,
+    "predicted": "consensus",
+    "actual": "shrinkage"
+  },
+  {
+    "sigma": 1.0,
+    "leaf_share": 0.09413837249073237,
+    "base": 0.27968750662731945,
+    "consensus_gain_pct": 0.9024509047536199,
+    "shrinkage_gain_pct": 17.695801583840012,
+    "base_r2": 0.4529772959211199,
+    "consensus_r2": 0.46242197065756885,
+    "shrinkage_r2": 0.4205253639289537,
+    "predicted": "consensus",
+    "actual": "shrinkage"
+  },
+  {
+    "sigma": 3.0,
+    "leaf_share": 0.3334424974292126,
+    "base": 1.0274026445785618,
+    "consensus_gain_pct": 19.638304283224137,
+    "shrinkage_gain_pct": 41.530179591239005,
+    "base_r2": 0.07927801075260144,
+    "consensus_r2": 0.0801044000284129,
+    "shrinkage_r2": 0.09847952335391974,
+    "predicted": "consensus",
+    "actual": "shrinkage"
+  },
+  {
+    "sigma": 10.0,
+    "leaf_share": 0.6951319874608677,
+    "base": 10.056726125853372,
+    "consensus_gain_pct": 62.81097112158779,
+    "shrinkage_gain_pct": 50.70393552919407,
+    "base_r2": -0.041390458502146066,
+    "consensus_r2": -0.004243063835606353,
+    "shrinkage_r2": -0.008754492319923646,
+    "predicted": "shrinkage",
+    "actual": "consensus"
+  }
+]

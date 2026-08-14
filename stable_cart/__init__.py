@@ -8,6 +8,7 @@ from .base_stable_tree import BaseStableTree
 # Centroid tree: select tree closest to ensemble mean
 from .centroid_tree import CentroidTree
 from .evaluation import bootstrap_instability, evaluate_models, prediction_stability
+from .frontier import pareto_front, stability_frontier
 from .split_strategies import SplitStrategy, create_split_strategy
 
 # Stability utilities for researchers
@@ -23,6 +24,8 @@ __all__ = [
     # Evaluation utilities
     "prediction_stability",
     "bootstrap_instability",
+    "stability_frontier",
+    "pareto_front",
     "evaluate_models",
     # Main tree classes
     "StableTree",

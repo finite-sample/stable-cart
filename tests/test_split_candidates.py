@@ -60,6 +60,39 @@ def test_depth_one_tree_matches_sklearn_on_a_separable_feature():
     assert stable.score(X, y) == pytest.approx(cart.score(X, y))
 
 
+@pytest.mark.parametrize("min_samples_leaf", [1, 5, 20, 50])
+def test_every_candidate_respects_the_leaf_size_constraint(min_samples_leaf):
+    """A candidate the tree cannot use is worse than no candidate.
+
+    The generator used to ignore leaf sizes entirely, so it could propose a split
+    putting three rows on one side. A tree that then rejects it stops growing at
+    that node instead of taking the next admissible split — measured as the sole
+    reason StableTree stopped on diabetes (4 of 4 leaves) and wine (3 of 3).
+    """
+    X, y = make_regression(
+        n_samples=300, n_features=5, n_informative=3, noise=1.0, random_state=1
+    )
+
+    candidates = _find_candidate_splits(
+        X, y, max_candidates=40, min_samples_leaf=min_samples_leaf
+    )
+
+    assert candidates, "expected candidates"
+    for candidate in candidates:
+        left = int((X[:, candidate.feature_idx] <= candidate.threshold).sum())
+        right = len(X) - left
+        assert min(left, right) >= min_samples_leaf, (
+            f"candidate leaves {min(left, right)} rows, below {min_samples_leaf}"
+        )
+
+
+def test_impossible_leaf_size_yields_no_candidates():
+    """Asking for more rows per leaf than exist returns nothing, not garbage."""
+    X, y = make_regression(n_samples=100, n_features=4, noise=1.0, random_state=2)
+
+    assert _find_candidate_splits(X, y, max_candidates=20, min_samples_leaf=60) == []
+
+
 @pytest.mark.parametrize("task", ["regression", "classification"])
 def test_candidate_gains_match_the_reference_implementation(task):
     """Vectorized gains must equal the per-mask reference for every candidate."""

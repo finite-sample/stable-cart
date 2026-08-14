@@ -30,6 +30,7 @@ is high, so leaf values are optionally shrunk toward the parent.
 Every parameter here changes predictions; none is decorative.
 """
 
+from collections import Counter
 from typing import Any, Literal
 
 import numpy as np
@@ -78,6 +79,10 @@ class StableTree(BaseEstimator):
         Nested dict describing the fitted tree.
     n_features_in_
         Number of features seen during fit.
+    stop_reasons_
+        Why each node stopped growing, as a Counter. Answers "why is my tree so
+        small?" — the common answers being ``max_depth`` and
+        ``no_reproducible_split``.
     classes_
         Class labels, for classification only.
 
@@ -137,6 +142,7 @@ class StableTree(BaseEstimator):
         else:
             y_work = y.astype(float)
 
+        self.stop_reasons_: Counter = Counter()
         self.tree_ = self._build(X, y_work, depth=0, parent=y_work, rng=rng)
         return self
 
@@ -167,7 +173,9 @@ class StableTree(BaseEstimator):
                 idx = rng.integers(0, n, n)
                 Xb, yb = X[idx], y[idx]
 
-            candidates = _find_candidate_splits(Xb, yb, self.max_candidates)
+            candidates = _find_candidate_splits(
+                Xb, yb, self.max_candidates, self.min_samples_leaf
+            )
             if not candidates:
                 continue
             best = max(candidates, key=lambda c: c.gain)
@@ -183,7 +191,20 @@ class StableTree(BaseEstimator):
 
         # The median cut point across replicates that chose this feature: the
         # averaging that this class exists to perform.
-        return feature, float(np.median(votes[feature])), support
+        threshold = float(np.median(votes[feature]))
+
+        # Each replicate's cut point is admissible in *its own* resample, but their
+        # median need not be admissible here — averaging does not preserve the
+        # leaf-size constraint. Clip it into the admissible band rather than
+        # abandoning a node over an arithmetic artifact.
+        column = np.sort(X[:, feature])
+        k = self.min_samples_leaf
+        if 0 < k <= len(column) - k:
+            low, high = column[k - 1], column[len(column) - k - 1]
+            if low < high:
+                threshold = float(np.clip(threshold, low, high))
+
+        return feature, threshold, support
 
     def _leaf(self, y, parent):
         """Build a leaf, shrinking its value toward the parent when asked."""
@@ -202,15 +223,19 @@ class StableTree(BaseEstimator):
 
     def _build(self, X, y, depth, parent, rng):
         """Recursively build the tree."""
-        if (
-            depth >= self.max_depth
-            or len(y) < self.min_samples_split
-            or len(np.unique(y)) < 2
-        ):
+        if depth >= self.max_depth:
+            self.stop_reasons_["max_depth"] += 1
+            return self._leaf(y, parent)
+        if len(y) < self.min_samples_split:
+            self.stop_reasons_["min_samples_split"] += 1
+            return self._leaf(y, parent)
+        if len(np.unique(y)) < 2:
+            self.stop_reasons_["pure_node"] += 1
             return self._leaf(y, parent)
 
         elected = self._elect_split(X, y, rng)
         if elected is None:
+            self.stop_reasons_["no_reproducible_split"] += 1
             return self._leaf(y, parent)
 
         feature, threshold, support = elected
@@ -219,6 +244,11 @@ class StableTree(BaseEstimator):
             left_mask.sum() < self.min_samples_leaf
             or (~left_mask).sum() < self.min_samples_leaf
         ):
+            # Unreachable now that candidates are generated under the leaf-size
+            # constraint. It fired on 4 of 4 nodes on diabetes before that fix,
+            # abandoning nodes where an admissible split existed, so the guard
+            # stays and a test asserts it never triggers.
+            self.stop_reasons_["leaf_size_rejected"] += 1
             return self._leaf(y, parent)
 
         return {
