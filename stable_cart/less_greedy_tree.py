@@ -1,7 +1,6 @@
 # stable_cart/less_greedy_tree.py
 """
-Unified honest tree implementation for regression and classification with advanced stability
-features.
+Unified honest tree for regression and classification with stability features.
 
 This tree trades some accuracy for substantially improved prediction stability via:
 - Honest data partitioning: SPLIT (structure), VAL (validation), EST (leaf estimation)
@@ -410,7 +409,7 @@ class LessGreedyHybridTree(BaseEstimator):
 
     def _val_loss_leaf(self, yv: np.ndarray) -> float:
         """
-        Validation loss if we make this a leaf.
+        Compute validation loss if we make this a leaf.
 
         Parameters
         ----------
@@ -428,7 +427,7 @@ class LessGreedyHybridTree(BaseEstimator):
         self, Xv: np.ndarray, yv: np.ndarray, feat: int, thr: float
     ) -> float:
         """
-        Validation loss after applying split.
+        Compute validation loss after applying split.
 
         Parameters
         ----------
@@ -590,7 +589,7 @@ class LessGreedyHybridTree(BaseEstimator):
                 w = lcv.coef_[0].astype(float)
 
             # Note: LogisticRegressionCV uses C (inverse reg), not alpha
-            alpha = float(1.0 / lcv.C_[0]) if hasattr(lcv, "C_") else 1.0
+            alpha = float(1.0 / np.atleast_1d(lcv.C_)[0]) if hasattr(lcv, "C_") else 1.0
 
         return w, scaler, alpha
 
@@ -668,12 +667,16 @@ class LessGreedyHybridTree(BaseEstimator):
 
         # Ambiguity gate for lookahead
         do_lookahead = False
-        if cand_axis and n_split >= self.min_n_for_lookahead and depth <= 1:
-            if len(cand_axis) >= 2:
-                g1 = cand_axis[0][0]
-                g2 = cand_axis[1][0]
-                if (g1 - g2) / max(abs(g1), 1e-12) <= self.ambiguity_eps:
-                    do_lookahead = True
+        if (
+            cand_axis
+            and n_split >= self.min_n_for_lookahead
+            and depth <= 1
+            and len(cand_axis) >= 2
+        ):
+            g1 = cand_axis[0][0]
+            g2 = cand_axis[1][0]
+            if (g1 - g2) / max(abs(g1), 1e-12) <= self.ambiguity_eps:
+                do_lookahead = True
 
         k_here = 0
         if do_lookahead:
@@ -735,7 +738,7 @@ class LessGreedyHybridTree(BaseEstimator):
             # Only try oblique if features are correlated
             if max_abs_corr >= self.min_abs_corr:
                 try:
-                    w, scaler, alpha = self._fit_oblique_projection(
+                    w, scaler, _alpha = self._fit_oblique_projection(
                         Xs, ys, self.oblique_cv
                     )
 
@@ -783,8 +786,8 @@ class LessGreedyHybridTree(BaseEstimator):
                                         scale_.astype(float),
                                         w.astype(float),
                                     )
-                except Exception:
-                    # Oblique split failed, continue with axis
+                except Exception:  # noqa: S110
+                    # Oblique fit is best-effort; fall back to the axis-aligned split
                     pass
 
         # Commit decision and recurse
@@ -828,7 +831,7 @@ class LessGreedyHybridTree(BaseEstimator):
 
     def _val_loss_after_split_mask(self, yv: np.ndarray, mask: np.ndarray) -> float:
         """
-        Helper for computing val loss given a mask.
+        Compute validation loss given a mask.
 
         Parameters
         ----------
@@ -1155,9 +1158,9 @@ class LessGreedyHybridTree(BaseEstimator):
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert (
-            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
-        )
+        assert 0 < self.split_frac < 1
+        assert 0 < self.val_frac < 1
+        assert 0 < self.est_frac < 1
         assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
             "split_frac + val_frac + est_frac must sum to 1"
         )

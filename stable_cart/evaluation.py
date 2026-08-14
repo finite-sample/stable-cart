@@ -1,6 +1,5 @@
-"""
-evaluation.py
--------------
+"""Evaluation utilities for model performance and prediction stability.
+
 Evaluation utilities for assessing both model performance and prediction stability.
 
 This module provides functions to:
@@ -10,6 +9,9 @@ This module provides functions to:
 These functions are designed to work with collections of fitted sklearn-compatible models
 and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
 """
+
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -100,7 +102,7 @@ def prediction_stability(
             # Ensure numeric label space for comparisons
             if not np.issubdtype(preds.dtype, np.number):
                 # Map labels to integers consistently
-                unique, inv = np.unique(preds, return_inverse=True)
+                _unique, inv = np.unique(preds, return_inverse=True)
                 preds = inv.reshape(preds.shape)
 
             # Compute pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
@@ -234,8 +236,9 @@ def evaluate_models(
                                 )
                             )
                         entry["auc"] = auc
-                    except Exception:
-                        # Silently skip AUC if computation fails (e.g., single class in y)
+                    except Exception:  # noqa: S110
+                        # AUC is undefined for a single-class fold; the metric is
+                        # optional, so the entry is simply left without it
                         pass
 
                 results[name] = entry
@@ -258,3 +261,102 @@ def evaluate_models(
             raise ValueError("task must be 'categorical' or 'continuous'.")
 
     return results
+
+
+# -------------------------------
+# Instability under resampling
+# -------------------------------
+def bootstrap_instability(
+    model_factory: Callable[[], Any],
+    X_train: NDArray[np.floating],
+    y_train: NDArray[Any],
+    X_eval: NDArray[np.floating],
+    task: str = "continuous",
+    n_bootstrap: int = 20,
+    random_state: int | None = None,
+) -> dict[str, float]:
+    """
+    Measure how much a model's predictions move when the training data is perturbed.
+
+    This is the quantity "prediction stability" usually refers to: refit the model
+    on bootstrap resamples of the training data and measure the spread of its
+    predictions **for the same evaluation point**. Lower is better.
+
+    It is a different question from :func:`prediction_stability`, which measures
+    whether a *set* of already-fitted models agree with each other. A model can
+    agree with its peers and still be wildly unstable under resampling, and a
+    model that ignores its training data entirely scores a perfect zero here — so
+    always read this next to an accuracy measure.
+
+    Parameters
+    ----------
+    model_factory
+        Zero-argument callable returning a fresh, unfitted estimator.
+    X_train
+        Training features to resample.
+    y_train
+        Training targets to resample.
+    X_eval
+        Fixed evaluation points. These must not change between resamples;
+        comparing predictions across different points measures nothing.
+    task
+        'continuous' for regression, 'categorical' for classification.
+    n_bootstrap
+        Number of bootstrap resamples.
+    random_state
+        Seed for reproducibility.
+
+    Returns
+    -------
+    dict[str, float]
+        ``instability_mean``, ``instability_p90`` and ``instability_max`` over the
+        evaluation points. For 'continuous' the per-point statistic is the
+        variance of predictions; for 'categorical' it is the fraction of
+        resamples disagreeing with that point's modal prediction.
+
+    Raises
+    ------
+    ValueError
+        If task is not 'continuous' or 'categorical', or n_bootstrap < 2.
+
+    Examples
+    --------
+    >>> from sklearn.tree import DecisionTreeRegressor
+    >>> bootstrap_instability(
+    ...     lambda: DecisionTreeRegressor(max_depth=6),
+    ...     X_train, y_train, X_test, task="continuous",
+    ... )
+    """
+    if task not in ("continuous", "categorical"):
+        raise ValueError("task must be 'categorical' or 'continuous'.")
+    if n_bootstrap < 2:
+        raise ValueError("n_bootstrap must be at least 2.")
+
+    rng = np.random.default_rng(random_state)
+    n_train = X_train.shape[0]
+    predictions = []
+
+    for _ in range(n_bootstrap):
+        idx = rng.integers(0, n_train, n_train)
+        if task == "categorical" and len(np.unique(y_train[idx])) < 2:
+            idx = np.arange(n_train)
+        model = model_factory()
+        model.fit(X_train[idx], y_train[idx])
+        predictions.append(model.predict(X_eval))
+
+    preds = np.atleast_2d(np.asarray(predictions))
+
+    if task == "continuous":
+        per_point = np.var(preds.astype(float), axis=0)
+    else:
+        per_point = np.empty(preds.shape[1], dtype=float)
+        for j in range(preds.shape[1]):
+            values, counts = np.unique(preds[:, j], return_counts=True)
+            modal = values[np.argmax(counts)]
+            per_point[j] = float(np.mean(preds[:, j] != modal))
+
+    return {
+        "instability_mean": float(np.mean(per_point)),
+        "instability_p90": float(np.percentile(per_point, 90)),
+        "instability_max": float(np.max(per_point)),
+    }

@@ -17,7 +17,16 @@ from sklearn.utils.validation import (  # type: ignore[import-untyped]
     check_X_y,
 )
 
-from .split_strategies import HybridStrategy, SplitStrategy, create_split_strategy
+from .split_strategies import (
+    AxisAlignedStrategy,
+    CompositeStrategy,
+    ConsensusStrategy,
+    LookaheadStrategy,
+    ObliqueStrategy,
+    SplitStrategy,
+    VariancePenalizedStrategy,
+    create_split_strategy,
+)
 from .stability_utils import (
     honest_data_partition,
     stabilize_leaf_estimate,
@@ -283,7 +292,9 @@ class BaseStableTree(BaseEstimator):
         # === 6. CANDIDATE DIVERSITY ===
         self.enable_oblique_splits = enable_oblique_splits
         self.oblique_strategy = oblique_strategy
-        self.oblique_regularization = oblique_regularization
+        self.oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = (
+            oblique_regularization
+        )
         self.enable_correlation_gating = enable_correlation_gating
         self.min_correlation_threshold = min_correlation_threshold
 
@@ -302,7 +313,9 @@ class BaseStableTree(BaseEstimator):
         # === 7. VARIANCE-AWARE STOPPING ===
         self.enable_variance_aware_stopping = enable_variance_aware_stopping
         self.variance_stopping_weight = variance_stopping_weight
-        self.variance_stopping_strategy = variance_stopping_strategy
+        self.variance_stopping_strategy: Literal[
+            "one_se", "variance_penalty", "both"
+        ] = variance_stopping_strategy
         self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.variance_tracking_samples = variance_tracking_samples
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
@@ -603,13 +616,86 @@ class BaseStableTree(BaseEstimator):
                 beam_width=self.beam_width,
                 variance_penalty_weight=self.variance_penalty_weight,
             )
-        else:
-            # Auto-select based on enabled features and algorithm focus
-            return HybridStrategy(
-                focus=self.algorithm_focus,
-                task=self.task,
-                random_state=self.random_state,
+        # Build the strategy graph from the documented switches. Previously this
+        # branch returned HybridStrategy(focus, task, random_state), which discarded
+        # every feature switch and numeric setting, leaving ~20 parameters per
+        # estimator inert (AUDIT.md C1).
+        axis = AxisAlignedStrategy(
+            max_candidates=self.max_threshold_bins
+            if self.enable_threshold_binning
+            else 20,
+            enable_deterministic_tiebreaking=self.enable_deterministic_tiebreaks,
+            enable_margin_veto=self.enable_margin_vetoes
+            or self.enable_gain_margin_logic,
+            margin_threshold=self.margin_threshold,
+            task=self.task,
+        )
+
+        strategies: list[SplitStrategy] = []
+
+        if self.enable_prefix_consensus:
+            strategies.append(
+                ConsensusStrategy(
+                    consensus_samples=self.consensus_samples,
+                    consensus_threshold=self.consensus_threshold,
+                    enable_quantile_binning=self.enable_quantile_grid_thresholds
+                    or self.enable_threshold_binning,
+                    max_bins=self.max_threshold_bins,
+                    fallback_strategy=axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
             )
+
+        if self.enable_oblique_splits:
+            strategies.append(
+                ObliqueStrategy(
+                    oblique_regularization=self.oblique_regularization,
+                    enable_correlation_gating=self.enable_correlation_gating,
+                    min_correlation=self.min_correlation_threshold,
+                    fallback_strategy=axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
+            )
+
+        if self.enable_lookahead:
+            strategies.append(
+                LookaheadStrategy(
+                    lookahead_depth=self.lookahead_depth,
+                    beam_width=self.beam_width,
+                    enable_ambiguity_gating=self.enable_ambiguity_gating,
+                    ambiguity_threshold=self.ambiguity_threshold,
+                    min_samples_for_lookahead=self.min_samples_for_lookahead,
+                    fallback_strategy=axis,
+                    task=self.task,
+                )
+            )
+
+        if self.enable_explicit_variance_penalty:
+            strategies.append(
+                VariancePenalizedStrategy(
+                    variance_penalty_weight=self.variance_penalty_weight,
+                    variance_estimation_samples=self.variance_tracking_samples,
+                    stopping_strategy=self.variance_stopping_strategy,
+                    base_strategy=strategies[-1] if strategies else axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
+            )
+
+        if not strategies:
+            return axis
+        if len(strategies) == 1:
+            return strategies[0]
+
+        return CompositeStrategy(
+            [*strategies, axis],
+            selection_metric="variance_penalized"
+            if self.enable_explicit_variance_penalty
+            else "validation",
+            task=self.task,
+        )
 
     def _build_tree(
         self,
@@ -826,12 +912,9 @@ class BaseStableTree(BaseEstimator):
             if isinstance(stabilized_value, (float, int)):
                 prob = stabilized_value
             else:
-                # stabilized_value is an array of class probabilities
-                if len(stabilized_value) >= 2:
-                    prob = stabilized_value[1]  # P(class=1) for binary classification
-                else:
-                    # Only one class present, assume class 0
-                    prob = 0.0
+                # stabilized_value is an array of class probabilities;
+                # P(class=1) for binary, 0.0 when only one class is present
+                prob = stabilized_value[1] if len(stabilized_value) >= 2 else 0.0
             return {
                 "type": "leaf",
                 "proba": float(prob),

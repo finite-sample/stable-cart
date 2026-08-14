@@ -237,7 +237,7 @@ def test_robust_prefix_different_top_levels(binary_classification_data):
 def test_robust_prefix_smoothing(binary_classification_data):
     """Test m-estimate smoothing parameter."""
     X, y = binary_classification_data
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, y_train, _y_test = train_test_split(
         X, y, test_size=0.3, random_state=42
     )
 
@@ -458,7 +458,7 @@ def test_robust_prefix_predict_before_fit_error():
 
     model = RobustPrefixHonestTree(task="classification", random_state=42)
 
-    with pytest.raises(ValueError):  # Actual error when model not fitted
+    with pytest.raises(ValueError, match="has not been fitted"):
         model.predict(X)
 
 

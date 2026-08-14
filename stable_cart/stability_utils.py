@@ -813,6 +813,8 @@ def generate_oblique_candidates(
             model.fit(X, y)
             weights = model.coef_[0] if model.coef_.ndim > 1 else model.coef_
 
+        weights = np.asarray(weights, dtype=float)
+
         # Only proceed if we got non-trivial weights
         if np.sum(np.abs(weights) > 1e-6) < 2:
             return []
@@ -1074,35 +1076,124 @@ def _find_candidate_splits(
     candidates = []
     n_features = X.shape[1]
 
+    # Per-feature budget, so no single feature can crowd the others out of the pool.
+    splits_per_feature = max(1, max_candidates // n_features)
+
     for feature_idx in range(n_features):
         feature_values = X[:, feature_idx]
-        unique_values = np.unique(feature_values)
+        thresholds, gains = _all_split_gains(feature_values, y)
 
-        if len(unique_values) < 2:
+        if thresholds.size == 0:
             continue
 
-        # Try thresholds between unique values
-        # Ensure each feature gets at least 1 split candidate, up to max_candidates total
-        splits_per_feature = max(1, max_candidates // n_features)
-        for i in range(min(len(unique_values) - 1, splits_per_feature)):
-            threshold = (unique_values[i] + unique_values[i + 1]) / 2
+        # Keep this feature's *best* thresholds. Scanning every midpoint first is
+        # what makes that possible: taking a prefix of the sorted unique values
+        # only ever sees the bottom of the feature's range.
+        keep = np.argsort(gains)[::-1][:splits_per_feature]
+
+        for i in np.sort(keep):
+            threshold = float(thresholds[i])
             left_mask = feature_values <= threshold
-
-            if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:
-                gain = _evaluate_split_gain(y, left_mask)
-
-                candidate = SplitCandidate(
+            candidates.append(
+                SplitCandidate(
                     feature_idx=feature_idx,
                     threshold=threshold,
-                    gain=gain,
+                    gain=float(gains[i]),
                     left_indices=np.where(left_mask)[0],
                     right_indices=np.where(~left_mask)[0],
                 )
-                candidates.append(candidate)
+            )
 
     # Return top candidates
     candidates.sort(key=lambda c: c.gain, reverse=True)
     return candidates[:max_candidates]
+
+
+def _all_split_gains(
+    feature_values: np.ndarray, y: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Score every admissible threshold of one feature in a single vectorized pass.
+
+    Equivalent to calling :func:`_evaluate_split_gain` on each midpoint between
+    consecutive distinct feature values, but O(n log n) rather than O(n) per
+    threshold, which is what makes an exhaustive scan affordable.
+
+    Parameters
+    ----------
+    feature_values
+        One column of the feature matrix.
+    y
+        Target values.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Candidate thresholds and their gains, in ascending threshold order.
+    """
+    n = len(y)
+    empty = (np.empty(0), np.empty(0))
+    if n < 2:
+        return empty
+
+    order = np.argsort(feature_values, kind="mergesort")
+    xs = feature_values[order]
+    ys = y[order]
+
+    # A split is only admissible between two distinct feature values.
+    admissible = xs[:-1] < xs[1:]
+    if not np.any(admissible):
+        return empty
+
+    n_left = np.arange(1, n, dtype=float)
+    n_right = n - n_left
+
+    if _is_regression_target(y):
+        ys = ys.astype(float)
+        csum = np.cumsum(ys)[:-1]
+        csum_sq = np.cumsum(ys**2)[:-1]
+        total_sum, total_sq = float(ys.sum()), float((ys**2).sum())
+
+        mean_left = csum / n_left
+        mean_right = (total_sum - csum) / n_right
+        var_left = np.maximum(csum_sq / n_left - mean_left**2, 0.0)
+        var_right = np.maximum((total_sq - csum_sq) / n_right - mean_right**2, 0.0)
+
+        total_impurity = float(np.var(ys)) if n > 1 else 0.0
+        weighted = (n_left * var_left + n_right * var_right) / n
+    else:
+        _, codes = np.unique(ys, return_inverse=True)
+        onehot = np.zeros((n, codes.max() + 1))
+        onehot[np.arange(n), codes] = 1.0
+        counts_left = np.cumsum(onehot, axis=0)[:-1]
+        counts_right = onehot.sum(axis=0) - counts_left
+
+        gini_left = 1.0 - np.sum((counts_left / n_left[:, None]) ** 2, axis=1)
+        gini_right = 1.0 - np.sum((counts_right / n_right[:, None]) ** 2, axis=1)
+
+        total_impurity = _gini_impurity(ys)
+        weighted = (n_left * gini_left + n_right * gini_right) / n
+
+    thresholds = (xs[:-1] + xs[1:]) / 2.0
+    gains = total_impurity - weighted
+    return thresholds[admissible], gains[admissible]
+
+
+def _is_regression_target(y: np.ndarray) -> bool:
+    """
+    Report whether targets should be scored as regression rather than classification.
+
+    Parameters
+    ----------
+    y
+        Target values.
+
+    Returns
+    -------
+    bool
+        True when the targets look continuous.
+    """
+    return bool(len(np.unique(y)) > 10 or y.dtype in [np.float32, np.float64])
 
 
 def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
@@ -1125,7 +1216,7 @@ def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
         return 0.0
 
     # Determine if this looks like regression or classification
-    if len(np.unique(y)) > 10 or y.dtype in [np.float32, np.float64]:
+    if _is_regression_target(y):
         # Regression: use variance reduction
         total_var = np.var(y) if len(y) > 1 else 0
         left_var = np.var(y[left_mask]) if np.sum(left_mask) > 1 else 0

@@ -1,4 +1,4 @@
-# stable_cart/robust_prefix.py
+"""Honest tree whose top levels are locked in by bootstrap consensus."""
 
 from dataclasses import dataclass
 from typing import Literal
@@ -449,7 +449,7 @@ class RobustPrefixHonestTree(BaseEstimator):
     est_frac: float = 0.4
     smoothing: float = 1.0
     winsor_quantiles: tuple[float, float] = (0.01, 0.99)
-    consensus_B: int = 12
+    consensus_B: int = 12  # noqa: N815  (public config field name, kept as-is)
     consensus_subsample_frac: float = 0.8
     consensus_max_bins: int = 24
     random_state: int | None = None
@@ -660,8 +660,8 @@ class RobustPrefixHonestTree(BaseEstimator):
                 f, t = cs
                 L, R = 2 * nid + 1, 2 * nid + 2
                 self._prefix_nodes_.append((nid, f, t, L, R))
-                next_q.append((L, path + [(f, t, "L")]))
-                next_q.append((R, path + [(f, t, "R")]))
+                next_q.append((L, [*path, (f, t, "L")]))
+                next_q.append((R, [*path, (f, t, "R")]))
 
             node_queue = next_q
             level += 1
@@ -676,8 +676,8 @@ class RobustPrefixHonestTree(BaseEstimator):
                 return
             f, t, L, R = locked[nid]
             if L is not None and R is not None and f is not None and t is not None:
-                gather(L, path + [(f, t, "L")], lvl + 1)
-                gather(R, path + [(f, t, "R")], lvl + 1)
+                gather(L, [*path, (f, t, "L")], lvl + 1)
+                gather(R, [*path, (f, t, "R")], lvl + 1)
             else:
                 terminal_paths.append((nid, path))
 

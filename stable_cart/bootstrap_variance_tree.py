@@ -1,6 +1,5 @@
-"""
-bootstrap_variance_tree.py
----------------------------
+"""Tree that penalizes bootstrap prediction variance during split selection.
+
 A unified tree that explicitly penalizes bootstrap prediction variance on
 the validation set during split selection, supporting both regression and
 classification tasks.
@@ -62,8 +61,9 @@ def _entropy(y: np.ndarray) -> float:
 
 class BootstrapVariancePenalizedTree(BaseEstimator):
     """
-    A unified tree that penalizes bootstrap prediction variance during split selection,
-    supporting both regression and classification tasks.
+    Penalize bootstrap prediction variance during split selection.
+
+    Supports both regression and classification tasks.
 
     This extends the base tree concept by adding a bootstrap variance penalty
     term to the split evaluation criterion. For each candidate split, we:
@@ -492,11 +492,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                     else mu_leaf
                 )
             else:  # classification
-                # Use majority class or estimate probability
-                if ye.size > 0:
-                    value = float(ye.mean())  # probability estimate for binary
-                else:
-                    value = float(ys.mean())
+                # Probability estimate for binary, falling back to the
+                # structure split when the estimation set is empty
+                value = float(ye.mean()) if ye.size > 0 else float(ys.mean())
 
             return {
                 "type": "leaf",
@@ -520,10 +518,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                     else mu_leaf
                 )
             else:  # classification
-                if ye.size > 0:
-                    value = float(ye.mean())
-                else:
-                    value = float(ys.mean())
+                value = float(ye.mean()) if ye.size > 0 else float(ys.mean())
 
             return {
                 "type": "leaf",
@@ -566,10 +561,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
                     else mu_leaf
                 )
             else:  # classification
-                if ye.size > 0:
-                    value = float(ye.mean())
-                else:
-                    value = float(ys.mean())
+                value = float(ye.mean()) if ye.size > 0 else float(ys.mean())
 
             return {
                 "type": "leaf",
@@ -623,7 +615,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 
     def _setup_task_specific(self, y: np.ndarray) -> np.ndarray:
         """
-        Setup task-specific attributes.
+        Set up task-specific attributes.
 
         Parameters
         ----------
@@ -707,9 +699,9 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
         if X.size == 0 or y.size == 0:
             raise ValueError("X and y must contain at least one sample.")
 
-        assert (
-            0 < self.split_frac < 1 and 0 < self.val_frac < 1 and 0 < self.est_frac < 1
-        )
+        assert 0 < self.split_frac < 1
+        assert 0 < self.val_frac < 1
+        assert 0 < self.est_frac < 1
         assert abs((self.split_frac + self.val_frac + self.est_frac) - 1.0) < 1e-8, (
             "split_frac + val_frac + est_frac must sum to 1"
         )
@@ -844,6 +836,7 @@ class BootstrapVariancePenalizedTree(BaseEstimator):
 class SimpleTree:
     """
     A very simple decision tree for bootstrap variance estimation.
+
     This is much faster than using full sklearn trees.
 
     Parameters

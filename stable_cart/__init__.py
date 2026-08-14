@@ -7,7 +7,7 @@ from .base_stable_tree import BaseStableTree
 
 # Centroid tree: select tree closest to ensemble mean
 from .centroid_tree import CentroidTree
-from .evaluation import evaluate_models, prediction_stability
+from .evaluation import bootstrap_instability, evaluate_models, prediction_stability
 from .split_strategies import SplitStrategy, create_split_strategy
 
 # Stability utilities for researchers
@@ -21,6 +21,7 @@ from .unified_robust_prefix_tree import RobustPrefixHonestTree
 __all__ = [
     # Evaluation utilities
     "prediction_stability",
+    "bootstrap_instability",
     "evaluate_models",
     # Main tree classes
     "LessGreedyHybridTree",

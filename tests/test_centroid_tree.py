@@ -41,7 +41,8 @@ class TestCentroidTreeBasics:
         proba = model.predict_proba(X)
         assert proba.shape == (len(X), 2)
         assert np.allclose(proba.sum(axis=1), 1.0)
-        assert np.all(proba >= 0) and np.all(proba <= 1)
+        assert np.all(proba >= 0)
+        assert np.all(proba <= 1)
 
     def test_predict_proba_regression_error(self):
         """Test that predict_proba raises error for regression."""
@@ -83,7 +84,7 @@ class TestCentroidTreeSelection:
     def test_single_candidate_equals_single_tree(self):
         """Test that n_candidates=1 is equivalent to single tree."""
         X, y = make_classification(n_samples=200, n_features=5, random_state=42)
-        X_train, X_test, y_train, y_test = train_test_split(
+        X_train, _X_test, y_train, _y_test = train_test_split(
             X, y, test_size=0.3, random_state=42
         )
 
@@ -305,7 +306,7 @@ class TestEdgeCases:
         """Test that predict on unfitted model raises error."""
         from sklearn.exceptions import NotFittedError
 
-        X, y = make_classification(n_samples=100, n_features=5, random_state=42)
+        X, _y = make_classification(n_samples=100, n_features=5, random_state=42)
         model = CentroidTree(task="classification", n_candidates=5)
 
         with pytest.raises(NotFittedError):
@@ -387,3 +388,83 @@ class TestAttributes:
         model.fit(X, y)
 
         assert model.ensemble_predictions_ is not None
+
+
+class TestCandidatePoolDiversity:
+    """The pool must contain genuinely different trees.
+
+    An sklearn tree is deterministic given (data, params) — ``random_state`` only
+    breaks ties between exactly-equal splits. Fitting every candidate on the same
+    training data therefore yields N copies of one tree whenever splits are
+    unambiguous, and selecting the member closest to the ensemble mean of N
+    identical trees cannot change anything.
+    """
+
+    @staticmethod
+    def _pool_spread(model, X):
+        """Mean across-pool standard deviation of candidate predictions."""
+        preds = np.array([c.predict(X) for c in model._all_candidates_], dtype=float)
+        return float(preds.std(axis=0).mean())
+
+    def test_regression_pool_is_not_degenerate(self):
+        """Candidates must differ by more than floating-point noise."""
+        X, y = make_regression(n_samples=400, n_features=8, noise=1.0, random_state=0)
+        model = CentroidTree(
+            task="regression",
+            n_candidates=20,
+            base_params={"max_depth": 6, "min_samples_leaf": 20},
+            random_state=42,
+        ).fit(X, y)
+
+        assert self._pool_spread(model, X) > 1e-6 * float(np.std(y))
+
+    def test_classification_pool_is_not_degenerate(self):
+        """Same requirement for classification, where ties are rarer still."""
+        X, y = make_classification(
+            n_samples=400, n_features=8, n_informative=5, random_state=0
+        )
+        model = CentroidTree(
+            task="classification",
+            n_candidates=20,
+            base_params={"max_depth": 6, "min_samples_leaf": 20},
+            random_state=42,
+        ).fit(X, y)
+
+        assert self._pool_spread(model, X) > 1e-6
+
+    def test_candidate_scores_are_not_all_equal(self):
+        """A degenerate pool gives every candidate the same proximity score."""
+        X, y = make_regression(n_samples=400, n_features=8, noise=1.0, random_state=0)
+        model = CentroidTree(
+            task="regression",
+            n_candidates=20,
+            base_params={"max_depth": 6, "min_samples_leaf": 20},
+            random_state=42,
+        ).fit(X, y)
+
+        assert len(np.unique(np.round(model.candidate_scores_, 10))) > 1
+
+    def test_all_classes_survive_the_resample(self):
+        """Class-stratified resampling keeps every class in every candidate."""
+        X, y = make_classification(
+            n_samples=300, n_features=6, n_informative=4, weights=[0.9], random_state=0
+        )
+        model = CentroidTree(
+            task="classification", n_candidates=15, random_state=42
+        ).fit(X, y)
+
+        for candidate in model._all_candidates_:
+            assert len(candidate.classes_) == len(model.classes_)
+
+    def test_bootstrap_candidates_can_be_disabled(self):
+        """Opting out restores the identical-training-data behaviour."""
+        X, y = make_regression(n_samples=400, n_features=8, noise=1.0, random_state=0)
+        model = CentroidTree(
+            task="regression",
+            n_candidates=10,
+            bootstrap_candidates=False,
+            base_params={"max_depth": 6, "min_samples_leaf": 20},
+            random_state=42,
+        ).fit(X, y)
+
+        assert self._pool_spread(model, X) < 1e-6 * float(np.std(y))

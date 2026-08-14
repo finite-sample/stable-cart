@@ -1,6 +1,8 @@
 """
-Unified split finding strategies that implement different approaches to
-split selection while maintaining consistent interfaces.
+Unified split finding strategies with a consistent interface.
+
+These implement different approaches to split selection while maintaining
+consistent interfaces.
 
 This allows different tree methods to compose split strategies flexibly.
 """
@@ -186,7 +188,7 @@ class AxisAlignedStrategy(SplitStrategy):
         **kwargs,
     ) -> bool:
         """
-        Basic stopping criteria.
+        Apply basic stopping criteria.
 
         Parameters
         ----------
@@ -214,9 +216,7 @@ class AxisAlignedStrategy(SplitStrategy):
             return True
         if len(X) < min_samples_split:
             return True
-        if current_gain <= 0:
-            return True
-        return False
+        return current_gain <= 0
 
 
 class ConsensusStrategy(SplitStrategy):
@@ -814,8 +814,8 @@ class CompositeStrategy(SplitStrategy):
                 split = strategy.find_best_split(X, y, X_val, y_val, depth, **kwargs)
                 if split is not None:
                     candidates.append(split)
-            except Exception:
-                # Continue if one strategy fails
+            except Exception:  # noqa: S112
+                # One strategy failing must not sink the composite
                 continue
 
         if not candidates:
@@ -1007,7 +1007,7 @@ def create_split_strategy(
     strategy_type: str, task: str = "regression", **kwargs
 ) -> SplitStrategy:
     """
-    Factory function to create split strategies by name.
+    Create a split strategy by name.
 
     Parameters
     ----------
