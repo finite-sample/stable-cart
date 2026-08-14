@@ -6,7 +6,7 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -103,6 +103,23 @@ class RobustPrefixHonestTree(BaseStableTree):
     random_state
         Random state for reproducibility.
     """
+
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {
+        "top_levels": "prefix_levels",
+        "smoothing": "leaf_smoothing",
+        "consensus_samples": "consensus_B",
+        "max_threshold_bins": "consensus_max_bins",
+        "enable_threshold_binning": "enable_quantile_grid_thresholds",
+        "enable_gain_margin_logic": "enable_margin_vetoes",
+    }
+
+    def _resolve_params(self) -> None:
+        """Apply the aliases, then the two settings this class computes."""
+        super()._resolve_params()
+        # Exposed as a leaf size; the base class wants the split size, and the
+        # relationship is this class's choice rather than the user's.
+        self.min_samples_split = self.min_samples_leaf * 2
+        self.split_frac = 1.0 - self.val_frac - self.est_frac
 
     def __init__(
         self,
@@ -223,8 +240,12 @@ class RobustPrefixHonestTree(BaseStableTree):
             random_state=random_state,
         )
 
-        # Store RobustPrefix-specific parameters
+        # Store RobustPrefix-specific parameters. ``smoothing`` is exposed under
+        # that name and consumed as ``leaf_smoothing``; without storing it,
+        # ``get_params`` — and therefore ``clone``, ``repr`` and every sklearn
+        # meta-estimator — raised AttributeError.
         self.top_levels = top_levels
+        self.smoothing = smoothing
         self.consensus_B = consensus_samples
         self.consensus_subsample_frac = consensus_subsample_frac
         self.consensus_max_bins = max_threshold_bins

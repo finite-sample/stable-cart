@@ -6,7 +6,7 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - BootstrapVariancePenalizedTree: Explicit variance tracking
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from .base_stable_tree import BaseStableTree
 
@@ -102,6 +102,11 @@ class LessGreedyHybridTree(BaseStableTree):
     random_state
         Random state for reproducibility.
     """
+
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {
+        "enable_gain_margin_logic": "enable_margin_vetoes",
+        "enable_robust_consensus_for_ambiguous": "enable_prefix_consensus",
+    }
 
     def __init__(
         self,
@@ -220,6 +225,10 @@ class LessGreedyHybridTree(BaseStableTree):
         )
         self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
+        # The base class also has a parameter of this name and would otherwise
+        # leave its own default here, so ``get_params`` would report the
+        # opposite of what the caller asked for.
+        self.enable_gain_margin_logic = enable_gain_margin_logic
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         """

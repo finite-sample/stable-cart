@@ -38,7 +38,11 @@ from numpy.typing import NDArray
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
-from .stability_utils import _find_candidate_splits, stabilize_leaf_estimate
+from .stability_utils import (
+    _find_candidate_splits,
+    check_predict_input,
+    stabilize_leaf_estimate,
+)
 
 __all__ = ["StableTree"]
 
@@ -285,8 +289,7 @@ class StableTree(BaseEstimator):
         NDArray[Any]
             Predicted values, or class labels for classification.
         """
-        check_is_fitted(self, "tree_")
-        X = check_array(X, accept_sparse=False)
+        X = check_predict_input(self, X, "tree_")
         raw = np.array([self._route(row, self.tree_) for row in X])
 
         if self.task == "classification":

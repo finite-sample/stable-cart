@@ -139,6 +139,7 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         """
         X, y = check_X_y(X, y, accept_sparse=False)
         n_samples = X.shape[0]
+        self.n_features_in_ = X.shape[1]
 
         rng = np.random.default_rng(self.random_state)
 

@@ -266,6 +266,114 @@ def evaluate_models(
 # -------------------------------
 # Instability under resampling
 # -------------------------------
+def bootstrap_predictions(
+    model_factory: Callable[[], Any],
+    X_train: NDArray[np.floating],
+    y_train: NDArray[Any],
+    X_eval: NDArray[np.floating],
+    task: str = "continuous",
+    n_bootstrap: int = 20,
+    random_state: int | None = None,
+) -> dict[str, Any]:
+    """
+    Refit a model on bootstrap resamples and return every prediction it made.
+
+    This is the raw material of the Riley and Collins (2023) instability
+    protocol: the model-building step is repeated on resamples of the training
+    data, and each refitted model predicts for the *same* individuals. The
+    summaries in :func:`bootstrap_instability` and the plots in
+    :mod:`stable_cart.stability_plots` are both computed from what this returns,
+    so a user who wants a different summary does not have to refit anything.
+
+    Parameters
+    ----------
+    model_factory
+        Zero-argument callable returning a fresh, unfitted estimator.
+    X_train
+        Training features to resample.
+    y_train
+        Training targets to resample.
+    X_eval
+        Fixed evaluation points, identical across resamples.
+    task
+        'continuous' for regression, 'categorical' for classification.
+    n_bootstrap
+        Number of bootstrap resamples.
+    random_state
+        Seed for reproducibility.
+
+    Returns
+    -------
+    dict[str, Any]
+        ``original`` — predictions of the model fitted on the full training data,
+        shape (n_eval,);
+        ``bootstrap`` — predictions of each resampled model, shape
+        (n_bootstrap, n_eval);
+        ``per_point`` — the instability statistic for each evaluation point
+        (variance across resamples for 'continuous', disagreement with the modal
+        prediction for 'categorical');
+        ``mape_per_point`` — mean absolute prediction error against the original
+        model, per evaluation point;
+        ``task`` — echoed back so downstream code need not be told again.
+
+    Raises
+    ------
+    ValueError
+        If task is not 'continuous' or 'categorical', or n_bootstrap < 2.
+
+    Examples
+    --------
+    >>> from sklearn.tree import DecisionTreeRegressor
+    >>> out = bootstrap_predictions(
+    ...     lambda: DecisionTreeRegressor(max_depth=6),
+    ...     X_train, y_train, X_test,
+    ... )
+    >>> out["bootstrap"].shape
+    """
+    if task not in ("continuous", "categorical"):
+        raise ValueError("task must be 'categorical' or 'continuous'.")
+    if n_bootstrap < 2:
+        raise ValueError("n_bootstrap must be at least 2.")
+
+    rng = np.random.default_rng(random_state)
+    n_train = X_train.shape[0]
+
+    original = np.asarray(model_factory().fit(X_train, y_train).predict(X_eval))
+
+    predictions = []
+    for _ in range(n_bootstrap):
+        idx = rng.integers(0, n_train, n_train)
+        if task == "categorical" and len(np.unique(y_train[idx])) < 2:
+            idx = np.arange(n_train)
+        model = model_factory()
+        model.fit(X_train[idx], y_train[idx])
+        predictions.append(model.predict(X_eval))
+
+    preds = np.atleast_2d(np.asarray(predictions))
+
+    if task == "continuous":
+        per_point = np.var(preds.astype(float), axis=0)
+        mape_per_point = np.mean(
+            np.abs(preds.astype(float) - original.astype(float)), axis=0
+        )
+    else:
+        per_point = np.empty(preds.shape[1], dtype=float)
+        for j in range(preds.shape[1]):
+            values, counts = np.unique(preds[:, j], return_counts=True)
+            modal = values[np.argmax(counts)]
+            per_point[j] = float(np.mean(preds[:, j] != modal))
+        # For labels, "absolute error" is disagreement with the original model.
+        mape_per_point = np.mean(preds != original, axis=0).astype(float)
+
+    return {
+        "original": original,
+        "bootstrap": preds,
+        "per_point": per_point,
+        "mape_per_point": mape_per_point,
+        "task": task,
+    }
+
+
 def bootstrap_instability(
     model_factory: Callable[[], Any],
     X_train: NDArray[np.floating],
@@ -312,7 +420,9 @@ def bootstrap_instability(
         ``instability_mean``, ``instability_p90`` and ``instability_max`` over the
         evaluation points. For 'continuous' the per-point statistic is the
         variance of predictions; for 'categorical' it is the fraction of
-        resamples disagreeing with that point's modal prediction.
+        resamples disagreeing with that point's modal prediction. ``mape`` is
+        Riley and Collins's mean absolute prediction error against the model
+        fitted on the full training data.
 
     Raises
     ------
@@ -327,36 +437,20 @@ def bootstrap_instability(
     ...     X_train, y_train, X_test, task="continuous",
     ... )
     """
-    if task not in ("continuous", "categorical"):
-        raise ValueError("task must be 'categorical' or 'continuous'.")
-    if n_bootstrap < 2:
-        raise ValueError("n_bootstrap must be at least 2.")
-
-    rng = np.random.default_rng(random_state)
-    n_train = X_train.shape[0]
-    predictions = []
-
-    for _ in range(n_bootstrap):
-        idx = rng.integers(0, n_train, n_train)
-        if task == "categorical" and len(np.unique(y_train[idx])) < 2:
-            idx = np.arange(n_train)
-        model = model_factory()
-        model.fit(X_train[idx], y_train[idx])
-        predictions.append(model.predict(X_eval))
-
-    preds = np.atleast_2d(np.asarray(predictions))
-
-    if task == "continuous":
-        per_point = np.var(preds.astype(float), axis=0)
-    else:
-        per_point = np.empty(preds.shape[1], dtype=float)
-        for j in range(preds.shape[1]):
-            values, counts = np.unique(preds[:, j], return_counts=True)
-            modal = values[np.argmax(counts)]
-            per_point[j] = float(np.mean(preds[:, j] != modal))
+    raw = bootstrap_predictions(
+        model_factory,
+        X_train,
+        y_train,
+        X_eval,
+        task=task,
+        n_bootstrap=n_bootstrap,
+        random_state=random_state,
+    )
+    per_point = raw["per_point"]
 
     return {
         "instability_mean": float(np.mean(per_point)),
         "instability_p90": float(np.percentile(per_point, 90)),
         "instability_max": float(np.max(per_point)),
+        "mape": float(np.mean(raw["mape_per_point"])),
     }

@@ -12,6 +12,46 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.linear_model import ElasticNetCV, LassoCV, LogisticRegressionCV, RidgeCV
 from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_array, check_is_fitted
+
+
+def check_predict_input(
+    estimator: Any, X: NDArray[Any], fitted_attribute: str
+) -> NDArray[Any]:
+    """
+    Check that an estimator is fitted and that X is the width it was fitted on.
+
+    Parameters
+    ----------
+    estimator
+        The estimator being asked to predict.
+    X
+        Feature matrix supplied at prediction time.
+    fitted_attribute
+        Attribute that only exists once the estimator has been fitted.
+
+    Returns
+    -------
+    NDArray[Any]
+        The validated feature matrix.
+
+    Raises
+    ------
+    ValueError
+        If X does not have ``n_features_in_`` columns. Predicting from a matrix
+        of the wrong width is the failure mode that returns plausible numbers
+        computed from the wrong columns, so it is refused rather than
+        broadcast.
+    """
+    check_is_fitted(estimator, fitted_attribute)
+    X = check_array(X, accept_sparse=False)
+    expected = getattr(estimator, "n_features_in_", None)
+    if expected is not None and X.shape[1] != expected:
+        raise ValueError(
+            f"X has {X.shape[1]} features, but this {type(estimator).__name__} "
+            f"was fitted with {expected} features."
+        )
+    return X
 
 
 @dataclass(slots=True)

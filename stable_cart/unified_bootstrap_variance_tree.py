@@ -6,7 +6,7 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -110,6 +110,14 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
     random_state
         Random state for reproducibility.
     """
+
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {
+        "enable_gain_margin_logic": "enable_margin_vetoes",
+        "enable_robust_consensus": "enable_prefix_consensus",
+        "enable_threshold_binning": "enable_quantile_grid_thresholds",
+        "variance_penalty": ("variance_penalty_weight", "variance_stopping_weight"),
+        "n_bootstrap": "variance_tracking_samples",
+    }
 
     def __init__(
         self,
@@ -235,6 +243,10 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         self.enable_stratified_bootstraps = enable_stratified_bootstraps
         self.bootstrap_stratification_bins = bootstrap_stratification_bins
         self.enable_robust_consensus = enable_robust_consensus
+        # The base class also has a parameter of this name and would otherwise
+        # leave its own default here, so ``get_params`` would report the
+        # opposite of what the caller asked for.
+        self.enable_gain_margin_logic = enable_gain_margin_logic
 
         # Initialize fitted attributes
 

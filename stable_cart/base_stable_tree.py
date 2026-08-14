@@ -6,14 +6,13 @@ across different tree methods. Each method can inherit from this and configure
 different defaults to maintain their distinct personalities.
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.base import BaseEstimator  # type: ignore[import-untyped]
 from sklearn.metrics import accuracy_score, r2_score  # type: ignore[import-untyped]
 from sklearn.utils.validation import (  # type: ignore[import-untyped]
-    check_array,
     check_X_y,
 )
 
@@ -28,6 +27,7 @@ from .split_strategies import (
     create_split_strategy,
 )
 from .stability_utils import (
+    check_predict_input,
     honest_data_partition,
     stabilize_leaf_estimate,
     winsorize_features,
@@ -341,13 +341,27 @@ class BaseStableTree(BaseEstimator):
             enable_robust_consensus_for_ambiguous
         )
 
-        # Initialize fitted attributes with proper type annotations
-        self.tree_: dict[str, Any] | None = None
-        self.classes_: np.ndarray | None = None
-        self.n_classes_: int | None = None
-        self._split_strategy_: SplitStrategy | None = None
-        self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
-        self._global_prior_: float | None = None
+    # Parameters this class exposes under one name and consumes under another.
+    # Subclasses fill this in; see :meth:`_resolve_params` for why it exists.
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {}
+
+    def _resolve_params(self) -> None:
+        """
+        Re-derive internal parameter names from the constructor's names.
+
+        ``set_params`` assigns the constructor's name and nothing else, so a
+        parameter renamed on the way to the base class stops taking effect the
+        moment it is set that way rather than passed. Measured on 1.1.0:
+        ``set_params(enable_gain_margin_logic=False)`` changed no prediction,
+        while passing the same value to the constructor did — which means every
+        ``GridSearchCV`` over such a parameter searched a single point without
+        saying so. Re-deriving before each fit is what makes the two paths agree.
+        """
+        for exposed, internal in self._PARAM_ALIASES.items():
+            value = getattr(self, exposed)
+            targets = (internal,) if isinstance(internal, str) else internal
+            for target in targets:
+                setattr(self, target, value)
 
     def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> "BaseStableTree":
         """
@@ -372,6 +386,14 @@ class BaseStableTree(BaseEstimator):
         """
         # Validate inputs
         X, y = check_X_y(X, y, accept_sparse=False)
+        self.n_features_in_ = X.shape[1]
+
+        # Fitted state is initialised here, not in ``__init__``: an estimator
+        # that already carries ``tree_`` before fitting cannot be distinguished
+        # from a fitted one, and ``check_is_fitted`` would wave it through.
+        self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
+
+        self._resolve_params()
 
         # === 1. TASK SETUP ===
         if self.task == "classification":
@@ -427,12 +449,9 @@ class BaseStableTree(BaseEstimator):
         Raises
         ------
         ValueError
-            If the tree has not been fitted.
+            If X has a different number of columns than the training data.
         """
-        check_array(X, accept_sparse=False)
-
-        if self.tree_ is None:
-            raise ValueError("Tree not fitted yet")
+        X = check_predict_input(self, X, "tree_")
 
         # Apply same preprocessing as training
         X_processed = self._preprocess_features(X, fitted=True)
@@ -467,15 +486,13 @@ class BaseStableTree(BaseEstimator):
         Raises
         ------
         ValueError
-            If called on regression task or tree not fitted.
+            If called on a regression task, or if X has a different number of
+            columns than the training data.
         """
         if self.task != "classification":
             raise ValueError("predict_proba is only available for classification tasks")
 
-        check_array(X, accept_sparse=False)
-
-        if self.tree_ is None:
-            raise ValueError("Tree not fitted yet")
+        X = check_predict_input(self, X, "tree_")
 
         # Apply same preprocessing as training
         X_processed = self._preprocess_features(X, fitted=True)
