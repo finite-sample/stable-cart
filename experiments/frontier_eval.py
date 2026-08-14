@@ -26,6 +26,12 @@ def main():
     parser.add_argument("--n-bootstrap", type=int, default=12)
     parser.add_argument("--cap", type=int, default=1200)
     parser.add_argument("--max-depth", type=int, default=4)
+    parser.add_argument(
+        "--min-accuracy",
+        type=float,
+        default=0.0,
+        help="drop configurations that cannot beat predicting the mean/majority class",
+    )
     parser.add_argument("--datasets", type=str, nargs="+", default=list(ALL_DATASETS))
     parser.add_argument("--output", type=str, default="results/frontier_eval")
     args = parser.parse_args()
@@ -79,7 +85,24 @@ def main():
             p["family"] = "cart"
         for p in stable["points"]:
             p["family"] = "stable"
-        joint = pareto_front(cart["points"] + stable["points"])
+        # A Pareto frontier always contains the stable-and-useless corner: a model
+        # that predicts near-constantly is never dominated, because nothing is more
+        # stable. Frontier ownership only means something among usable models, so
+        # drop anything that cannot beat predicting the mean (or the majority class).
+        floor = args.min_accuracy
+        if metric == "categorical":
+            import numpy as _np
+
+            floor = max(
+                floor, float(_np.mean(y == _np.bincount(y.astype(int)).argmax()))
+            )
+        usable = [p for p in cart["points"] + stable["points"] if p["accuracy"] > floor]
+        joint = pareto_front(usable)
+        if not joint:
+            print(
+                f"{name:22s} no configuration of either family clears accuracy {floor:.3f}"
+            )
+            continue
         families = {p["family"] for p in joint}
         owner = "shared" if len(families) > 1 else families.pop()
         tally[owner] += 1
