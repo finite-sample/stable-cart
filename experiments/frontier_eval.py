@@ -36,7 +36,7 @@ def main():
 
     out_rows, tally = {}, {"cart": 0, "stable": 0, "shared": 0}
     for name in args.datasets:
-        X_train, X_test, y_train, y_test, task = load_dataset(name, random_state=42)
+        X_train, _X_test, y_train, _y_test, task = load_dataset(name, random_state=42)
         X = X_train[: args.cap]
         y = y_train[: args.cap]
         metric = "continuous" if task == "regression" else "categorical"
@@ -44,20 +44,24 @@ def main():
             DecisionTreeRegressor if task == "regression" else DecisionTreeClassifier
         )
 
-        common = dict(
-            X=X, y=y, task=metric, n_bootstrap=args.n_bootstrap, random_state=42
-        )
+        common = {
+            "X": X,
+            "y": y,
+            "task": metric,
+            "n_bootstrap": args.n_bootstrap,
+            "random_state": 42,
+        }
         try:
             cart = stability_frontier(
-                lambda **kw: tree_cls(
+                lambda _cls=tree_cls, **kw: _cls(
                     max_depth=args.max_depth, min_samples_leaf=20, random_state=0, **kw
                 ),
                 {"ccp_alpha": [0.0, 0.001, 0.01, 0.1, 1.0]},
                 **common,
             )
             stable = stability_frontier(
-                lambda **kw: StableTree(
-                    task=task,
+                lambda _task=task, **kw: StableTree(
+                    task=_task,
                     max_depth=args.max_depth,
                     min_samples_leaf=20,
                     n_consensus=12,
