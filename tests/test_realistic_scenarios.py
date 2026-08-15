@@ -3,7 +3,6 @@
 import json
 
 import numpy as np
-import pandas as pd
 import pytest
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
@@ -42,6 +41,8 @@ def test_regression_end_to_end(tmp_path):
 
     # Predict and persist predictions
     preds = {name: m.predict(Xte) for name, m in models.items()}
+    # pandas is a development dependency, not a runtime one.
+    pd = pytest.importorskip("pandas")
     df_pred = pd.DataFrame(
         {"y_true": yte, **{f"pred_{k}": v for k, v in preds.items()}}
     )

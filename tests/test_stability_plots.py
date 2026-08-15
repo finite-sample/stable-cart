@@ -6,18 +6,23 @@ that a more stable model really does draw a tighter cloud than a less stable
 one. Anything beyond that is a matter for the eye.
 """
 
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from sklearn.datasets import make_classification, make_regression
-from sklearn.ensemble import BaggingRegressor
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from stable_cart import (
+# matplotlib ships in the optional "plots" extra, so an environment with only
+# the runtime dependencies must skip these rather than fail to collect them.
+matplotlib = pytest.importorskip("matplotlib")
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt  # noqa: E402
+from sklearn.datasets import make_classification, make_regression  # noqa: E402
+from sklearn.ensemble import BaggingRegressor  # noqa: E402
+from sklearn.tree import (  # noqa: E402
+    DecisionTreeClassifier,
+    DecisionTreeRegressor,
+)
+
+from stable_cart import (  # noqa: E402
     bootstrap_predictions,
     plot_mape_by_prediction,
     plot_prediction_instability,
