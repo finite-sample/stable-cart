@@ -1,5 +1,5 @@
-﻿BaseStableTree
-==============
+﻿stable\_cart.BaseStableTree
+===========================
 
 .. currentmodule:: stable_cart
 

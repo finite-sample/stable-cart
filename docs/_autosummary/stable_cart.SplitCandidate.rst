@@ -1,5 +1,5 @@
-﻿SplitCandidate
-==============
+﻿stable\_cart.SplitCandidate
+===========================
 
 .. currentmodule:: stable_cart
 

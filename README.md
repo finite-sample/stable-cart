@@ -30,9 +30,10 @@ winner.
 
 ![Prediction instability](docs/figures/instability.png)
 
-*California housing, depth-8 tree, 100 bootstrap resamples. Each dot is one
-individual under one resampled model. A household predicted at $150k could just
-as easily have been predicted anywhere from $90k to $230k.*
+*California housing, depth-8 tree, 100 bootstrap resamples, 400 randomly chosen
+households. Each dot is one household under one resampled model; the solid lines
+are the 5th and 95th percentiles. For the 505 households predicted at $150k, 90%
+of the resampled predictions land between $89k and $223k.*
 
 ## Install
 
@@ -58,20 +59,22 @@ X, y = fetch_california_housing(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
 bootstrap_instability(
-    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10),
+    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
     X_train,
     y_train,
     X_test,
     n_bootstrap=50,
+    random_state=0,
 )
-# {'instability_mean': 0.103, 'instability_p90': 0.238,
-#  'instability_max': 1.255, 'mape': 0.275}
+# {'instability_mean': 0.102, 'instability_p90': 0.236,
+#  'instability_max': 1.234, 'mape': 0.275}
 ```
 
 `mape` is Riley and Collins's headline: on average, a model fitted on a
 resample predicts **$27.5k** away from what the model fitted on all the data
 predicts for the same household — on a target whose values run from $15k to
-$500k. `instability_max` says some household moves by $125k.
+$500k. `instability_max` says some household moves by $123k.
+Both seeds are pinned: without them the max is a different number every run.
 
 ### What would it cost me to be more stable?
 
@@ -128,8 +131,9 @@ plot_mape_by_prediction(raw)
 ![Where the model is unreliable](docs/figures/mape_by_prediction.png)
 
 Instability is not spread evenly. On this data it roughly quadruples between the
-cheapest and most expensive predictions — an average of 0.36 hides a model that
-is nearly four times less trustworthy at the top of its range.
+cheapest and most expensive predictions — the overall average hides a model that
+is nearly four times less trustworthy at the top of its range. (The figure is
+drawn on a 4,000-row subsample, where the average is 0.36 rather than 0.275.)
 
 ### A tree whose splits are averaged
 
@@ -145,8 +149,8 @@ tree = StableTree(
     random_state=0,
 ).fit(X_train, y_train)
 
-tree.split_supports()  # [1.0, 0.83, 0.58, ...] — how reproducible each split was
-tree.stop_reasons_  # Counter({'max_depth': 12, 'no_reproducible_split': 3})
+tree.split_supports()  # [1.0, 1.0, 0.58, 0.58, 0.67, 0.83, ...] — per split
+tree.stop_reasons_  # Counter({'max_depth': 32}) — why each node stopped growing
 ```
 
 At each node, `StableTree` resamples the node's rows `n_consensus` times, takes

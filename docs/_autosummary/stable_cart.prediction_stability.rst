@@ -1,5 +1,5 @@
-﻿prediction_stability
-====================
+﻿stable\_cart.prediction\_stability
+==================================
 
 .. currentmodule:: stable_cart
 

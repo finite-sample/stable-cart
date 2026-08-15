@@ -1,5 +1,5 @@
-﻿BootstrapVariancePenalizedTree
-==============================
+﻿stable\_cart.BootstrapVariancePenalizedTree
+===========================================
 
 .. currentmodule:: stable_cart
 

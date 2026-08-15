@@ -1,5 +1,5 @@
-﻿SplitStrategy
-=============
+﻿stable\_cart.SplitStrategy
+==========================
 
 .. currentmodule:: stable_cart
 

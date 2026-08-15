@@ -1,5 +1,5 @@
-﻿LessGreedyHybridTree
-====================
+﻿stable\_cart.LessGreedyHybridTree
+=================================
 
 .. currentmodule:: stable_cart
 

@@ -19,12 +19,12 @@ Before changing anything, measure the model you already have.
    from stable_cart import bootstrap_instability
 
    bootstrap_instability(
-       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10),
+       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
        X_train, y_train, X_test,
-       n_bootstrap=50,
+       n_bootstrap=50, random_state=0,
    )
-   # {'instability_mean': 0.103, 'instability_p90': 0.238,
-   #  'instability_max': 1.255, 'mape': 0.275}
+   # {'instability_mean': 0.102, 'instability_p90': 0.236,
+   #  'instability_max': 1.234, 'mape': 0.275}
 
 Read ``mape`` in the units of your target. On California housing the target is
 in hundreds of thousands of dollars, so 0.275 means a household's predicted

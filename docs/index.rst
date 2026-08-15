@@ -46,12 +46,12 @@ Quick start
    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
    bootstrap_instability(
-       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10),
+       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
        X_train, y_train, X_test,
-       n_bootstrap=50,
+       n_bootstrap=50, random_state=0,
    )
-   # {'instability_mean': 0.103, 'instability_p90': 0.238,
-   #  'instability_max': 1.255, 'mape': 0.275}
+   # {'instability_mean': 0.102, 'instability_p90': 0.236,
+   #  'instability_max': 1.234, 'mape': 0.275}
 
 ``mape`` is the headline: a model fitted on a resample predicts $27,500 away
 from what the model fitted on all the data predicts for the same household.
@@ -78,7 +78,7 @@ Documentation
    :maxdepth: 2
    :caption: Examples:
 
-   notebooks/index
+   examples/index
 
 .. toctree::
    :maxdepth: 1

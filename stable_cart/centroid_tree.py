@@ -24,7 +24,7 @@ ProximityMetric = Literal[
 
 
 class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
-    """
+    r"""
     Select the tree closest to ensemble centroid (mean prediction).
 
     This method trains `n_candidates` trees with different random seeds,
@@ -66,15 +66,15 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
 
     Attributes
     ----------
-    selected_tree_
+    selected_tree\_
         The selected tree model after fitting.
-    selected_index_
+    selected_index\_
         Index of the selected tree in the candidate list.
-    candidate_scores_
+    candidate_scores\_
         Proximity scores for all candidates (lower = closer to ensemble).
-    ensemble_predictions_
+    ensemble_predictions\_
         Ensemble mean predictions on validation set.
-    classes_
+    classes\_
         Class labels for classification tasks.
 
     Examples

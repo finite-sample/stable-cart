@@ -48,7 +48,7 @@ __all__ = ["StableTree"]
 
 
 class StableTree(BaseEstimator):
-    """
+    r"""
     A decision tree whose split decisions are averaged over bootstrap replicates.
 
     Parameters
@@ -79,15 +79,15 @@ class StableTree(BaseEstimator):
 
     Attributes
     ----------
-    tree_
+    tree\_
         Nested dict describing the fitted tree.
-    n_features_in_
+    n_features_in\_
         Number of features seen during fit.
-    stop_reasons_
+    stop_reasons\_
         Why each node stopped growing, as a Counter. Answers "why is my tree so
         small?" — the common answers being ``max_depth`` and
         ``no_reproducible_split``.
-    classes_
+    classes\_
         Class labels, for classification only.
 
     Examples
