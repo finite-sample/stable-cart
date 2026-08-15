@@ -1019,7 +1019,7 @@ class HybridStrategy(SplitStrategy):
 def create_split_strategy(
     strategy_type: str, task: str = "regression", **kwargs
 ) -> SplitStrategy:
-    """
+    r"""
     Create a split strategy by name.
 
     Parameters
@@ -1029,7 +1029,7 @@ def create_split_strategy(
         'lookahead', 'variance_penalized', 'composite', 'hybrid'
     task
         'regression' or 'classification'
-    **kwargs
+    \*\*kwargs
         Strategy-specific parameters
 
     Returns
