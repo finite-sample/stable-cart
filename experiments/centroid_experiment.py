@@ -136,8 +136,8 @@ def create_methods(task: str, n_candidates_list: list[int] | None = None) -> dic
             task="classification", max_depth=5, random_state=seed
         )
 
-        methods["BootstrapVariancePenalizedTree"] = (
-            lambda seed: BootstrapVariancePenalizedTree(
+        methods["BootstrapVariancePenalizedTree"] = lambda seed: (
+            BootstrapVariancePenalizedTree(
                 task="classification", max_depth=5, random_state=seed
             )
         )
@@ -147,16 +147,16 @@ def create_methods(task: str, n_candidates_list: list[int] | None = None) -> dic
         )
 
         for n_cand in n_candidates_list:
-            methods[f"CentroidTree-CART-{n_cand}"] = (
-                lambda seed, n=n_cand: CentroidTree(
+            methods[f"CentroidTree-CART-{n_cand}"] = lambda seed, n=n_cand: (
+                CentroidTree(
                     task="classification",
                     n_candidates=n,
                     random_state=seed,
                 )
             )
 
-            methods[f"CentroidTree-LessGreedy-{n_cand}"] = (
-                lambda seed, n=n_cand: CentroidTree(
+            methods[f"CentroidTree-LessGreedy-{n_cand}"] = lambda seed, n=n_cand: (
+                CentroidTree(
                     base_tree_class=LessGreedyHybridTree,
                     task="classification",
                     n_candidates=n,
@@ -176,8 +176,8 @@ def create_methods(task: str, n_candidates_list: list[int] | None = None) -> dic
             task="regression", max_depth=5, random_state=seed
         )
 
-        methods["BootstrapVariancePenalizedTree"] = (
-            lambda seed: BootstrapVariancePenalizedTree(
+        methods["BootstrapVariancePenalizedTree"] = lambda seed: (
+            BootstrapVariancePenalizedTree(
                 task="regression", max_depth=5, random_state=seed
             )
         )
@@ -187,16 +187,16 @@ def create_methods(task: str, n_candidates_list: list[int] | None = None) -> dic
         )
 
         for n_cand in n_candidates_list:
-            methods[f"CentroidTree-CART-{n_cand}"] = (
-                lambda seed, n=n_cand: CentroidTree(
+            methods[f"CentroidTree-CART-{n_cand}"] = lambda seed, n=n_cand: (
+                CentroidTree(
                     task="regression",
                     n_candidates=n,
                     random_state=seed,
                 )
             )
 
-            methods[f"CentroidTree-LessGreedy-{n_cand}"] = (
-                lambda seed, n=n_cand: CentroidTree(
+            methods[f"CentroidTree-LessGreedy-{n_cand}"] = lambda seed, n=n_cand: (
+                CentroidTree(
                     base_tree_class=LessGreedyHybridTree,
                     task="regression",
                     n_candidates=n,

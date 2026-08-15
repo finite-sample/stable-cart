@@ -6,7 +6,7 @@ Now inherits from BaseStableTree and incorporates lessons from:
 - LessGreedyHybridTree: Oblique splits, lookahead, beam search
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -45,8 +45,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         Weight for bootstrap variance penalty.
     n_bootstrap
         Number of bootstrap samples for variance estimation.
-    bootstrap_max_depth
-        Maximum depth for variance estimation trees.
     enable_variance_aware_stopping
         Enable variance-aware stopping criteria.
     split_frac
@@ -57,10 +55,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         Fraction of data for estimation.
     enable_stratified_sampling
         Enable stratified sampling in data partitioning.
-    enable_stratified_bootstraps
-        Enable target-stratified bootstrap sampling.
-    bootstrap_stratification_bins
-        Number of bins for regression quantile stratification.
     enable_winsorization
         Enable feature winsorization before bootstrap sampling.
     winsor_quantiles
@@ -77,8 +71,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         Threshold for consensus decisions.
     enable_oblique_splits
         Enable oblique split capability.
-    oblique_strategy
-        Strategy for oblique splits.
     oblique_regularization
         Regularization type for oblique splits.
     enable_correlation_gating
@@ -105,11 +97,17 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         Enable gain margin logic.
     margin_threshold
         Threshold for margin-based decisions.
-    classification_criterion
-        Criterion for classification splits.
     random_state
         Random state for reproducibility.
     """
+
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {
+        "enable_gain_margin_logic": "enable_margin_vetoes",
+        "enable_robust_consensus": "enable_prefix_consensus",
+        "enable_threshold_binning": "enable_quantile_grid_thresholds",
+        "variance_penalty": ("variance_penalty_weight", "variance_stopping_weight"),
+        "n_bootstrap": "variance_tracking_samples",
+    }
 
     def __init__(
         self,
@@ -121,7 +119,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         # === BOOTSTRAP VARIANCE PENALTY ===
         variance_penalty: float = 1.0,  # Signature feature
         n_bootstrap: int = 10,
-        bootstrap_max_depth: int = 2,  # Depth for variance estimation trees
         enable_variance_aware_stopping: bool = True,  # Signature feature
         # === HONEST PARTITIONING ===
         split_frac: float = 0.6,
@@ -129,8 +126,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         est_frac: float = 0.2,
         enable_stratified_sampling: bool = True,  # ENHANCED: from RobustPrefix
         # === ENHANCED: STRATIFIED BOOTSTRAPS (from RobustPrefix) ===
-        enable_stratified_bootstraps: bool = True,  # NEW: target-stratified sampling
-        bootstrap_stratification_bins: int = 5,  # For regression quantile bins
         # === ENHANCED: WINSORIZATION (from RobustPrefix) ===
         enable_winsorization: bool = True,  # NEW: apply before bootstrap sampling
         winsor_quantiles: tuple = (0.01, 0.99),
@@ -143,7 +138,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         consensus_threshold: float = 0.5,
         # === ENHANCED: OBLIQUE SPLITS (from LessGreedy) ===
         enable_oblique_splits: bool = True,  # NEW: can significantly reduce bootstrap variance
-        oblique_strategy: Literal["root_only", "all_levels", "adaptive"] = "adaptive",
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation_threshold: float = 0.3,
@@ -163,7 +157,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         enable_gain_margin_logic: bool = True,
         margin_threshold: float = 0.03,
         # === CLASSIFICATION ===
-        classification_criterion: Literal["gini", "entropy"] = "gini",
         random_state: int | None = None,
     ):
         # Configure defaults that reflect Bootstrap method's personality
@@ -180,7 +173,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             enable_stratified_sampling=enable_stratified_sampling,
             # Validation checking - always enabled
             enable_validation_checking=True,
-            validation_metric="variance_penalized",  # Signature approach
             # ENHANCED: Winsorization (from RobustPrefix)
             enable_winsorization=enable_winsorization,
             winsor_quantiles=winsor_quantiles,
@@ -194,7 +186,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             enable_quantile_grid_thresholds=enable_threshold_binning,
             # ENHANCED: Oblique splits (from LessGreedy)
             enable_oblique_splits=enable_oblique_splits,
-            oblique_strategy=oblique_strategy,
             oblique_regularization=oblique_regularization,
             enable_correlation_gating=enable_correlation_gating,
             min_correlation_threshold=min_correlation_threshold,
@@ -207,8 +198,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             min_samples_for_lookahead=min_samples_for_lookahead,
             # Variance awareness - signature feature
             enable_variance_aware_stopping=enable_variance_aware_stopping,
-            variance_stopping_weight=variance_penalty,
-            enable_bootstrap_variance_tracking=True,
             variance_tracking_samples=n_bootstrap,
             enable_explicit_variance_penalty=True,  # Core feature
             variance_penalty_weight=variance_penalty,
@@ -219,7 +208,6 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
             leaf_smoothing=leaf_smoothing,
             leaf_smoothing_strategy=leaf_smoothing_strategy,
             # Classification
-            classification_criterion=classification_criterion,
             # Focus on maximum stability
             algorithm_focus="stability",
             random_state=random_state,
@@ -228,13 +216,14 @@ class BootstrapVariancePenalizedTree(BaseStableTree):
         # Store Bootstrap-specific parameters for sklearn compatibility
         self.variance_penalty = variance_penalty
         self.n_bootstrap = n_bootstrap
-        self.bootstrap_max_depth = bootstrap_max_depth
         self.enable_variance_aware_stopping = enable_variance_aware_stopping
 
         # Cross-method enhancement flags
-        self.enable_stratified_bootstraps = enable_stratified_bootstraps
-        self.bootstrap_stratification_bins = bootstrap_stratification_bins
         self.enable_robust_consensus = enable_robust_consensus
+        # The base class also has a parameter of this name and would otherwise
+        # leave its own default here, so ``get_params`` would report the
+        # opposite of what the caller asked for.
+        self.enable_gain_margin_logic = enable_gain_margin_logic
 
         # Initialize fitted attributes
 

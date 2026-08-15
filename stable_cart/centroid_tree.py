@@ -24,7 +24,7 @@ ProximityMetric = Literal[
 
 
 class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
-    """
+    r"""
     Select the tree closest to ensemble centroid (mean prediction).
 
     This method trains `n_candidates` trees with different random seeds,
@@ -53,20 +53,28 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         Fraction of training data to hold out for selection.
     base_params
         Parameters to pass to the base tree class.
+    bootstrap_candidates
+        Fit each candidate on its own bootstrap resample of the training split.
+        This is what makes the candidates differ: a decision tree is deterministic
+        given (data, parameters), and ``random_state`` only breaks ties between
+        exactly-equal splits, so candidates trained on identical data collapse to
+        copies of one tree whenever the splits are unambiguous — leaving nothing
+        for the proximity criterion to choose between. Set False to reproduce that
+        behaviour.
     random_state
         Random state for reproducibility.
 
     Attributes
     ----------
-    selected_tree_
+    selected_tree\_
         The selected tree model after fitting.
-    selected_index_
+    selected_index\_
         Index of the selected tree in the candidate list.
-    candidate_scores_
+    candidate_scores\_
         Proximity scores for all candidates (lower = closer to ensemble).
-    ensemble_predictions_
+    ensemble_predictions\_
         Ensemble mean predictions on validation set.
-    classes_
+    classes\_
         Class labels for classification tasks.
 
     Examples
@@ -74,9 +82,9 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
     >>> from sklearn.datasets import make_classification
     >>> from stable_cart import CentroidTree
     >>> X, y = make_classification(n_samples=500, random_state=42)
-    >>> model = CentroidTree(n_candidates=20, random_state=42)
-    >>> model.fit(X, y)
-    >>> predictions = model.predict(X[:5])
+    >>> model = CentroidTree(n_candidates=20, random_state=42).fit(X, y)
+    >>> model.predict(X[:5]).shape
+    (5,)
 
     Notes
     -----
@@ -96,6 +104,7 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         ] = "rmse",
         validation_fraction: float = 0.2,
         base_params: dict[str, Any] | None = None,
+        bootstrap_candidates: bool = True,
         random_state: int | None = None,
     ):
         self.base_tree_class = base_tree_class
@@ -104,6 +113,7 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         self.proximity_metric = proximity_metric
         self.validation_fraction = validation_fraction
         self.base_params = base_params
+        self.bootstrap_candidates = bootstrap_candidates
         self.random_state = random_state
 
     def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> "CentroidTree":
@@ -129,6 +139,7 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         """
         X, y = check_X_y(X, y, accept_sparse=False)
         n_samples = X.shape[0]
+        self.n_features_in_ = X.shape[1]
 
         rng = np.random.default_rng(self.random_state)
 
@@ -158,8 +169,12 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
             seed = int(rng.integers(0, 2**31 - 1))
             params = {**base_params, "random_state": seed}
 
+            X_cand, y_cand = self._candidate_sample(
+                np.asarray(X_train), np.asarray(y_train), rng
+            )
+
             tree = tree_class(**params)
-            tree.fit(X_train, y_train)
+            tree.fit(X_cand, y_cand)
             candidates.append(tree)
 
             if self.task == "regression":
@@ -289,6 +304,47 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
         """
         check_is_fitted(self, "selected_tree_")
         return self.selected_tree_
+
+    def _candidate_sample(
+        self,
+        X_train: NDArray[Any],
+        y_train: NDArray[Any],
+        rng: np.random.Generator,
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
+        """
+        Draw one candidate's training sample.
+
+        Classification resamples within each class so that every candidate sees
+        every class; otherwise a candidate could be missing a column in
+        ``predict_proba`` and the proximity comparison would be ragged.
+
+        Parameters
+        ----------
+        X_train
+            Feature matrix of the training split.
+        y_train
+            Targets of the training split.
+        rng
+            Random generator shared with candidate seeding.
+
+        Returns
+        -------
+        tuple[NDArray[np.floating], NDArray[Any]]
+            The (X, y) this candidate is fitted on.
+        """
+        if not self.bootstrap_candidates:
+            return X_train, y_train
+
+        if self.task == "classification":
+            parts = []
+            for cls in np.unique(y_train):
+                cls_idx = np.flatnonzero(y_train == cls)
+                parts.append(rng.choice(cls_idx, size=len(cls_idx), replace=True))
+            idx = np.concatenate(parts)
+        else:
+            idx = rng.integers(0, len(y_train), len(y_train))
+
+        return X_train[idx], y_train[idx]
 
     def _get_tree_class(self) -> type:
         """Determine the tree class to use."""

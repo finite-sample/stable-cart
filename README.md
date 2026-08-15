@@ -1,4 +1,4 @@
-## Stable CART: Lower Cross-Bootstrap Prediction Variance
+## stable-cart: measure and reduce the instability of a single tree
 
 [![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
@@ -7,483 +7,281 @@
 [![License](https://img.shields.io/github/license/finite-sample/stable-cart)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-A scikit-learn compatible implementation of **Stable CART** (Classification and Regression Trees) with advanced stability metrics and techniques to reduce prediction variance.
+Fit a decision tree, resample the training data, fit it again. The second tree
+predicts something different for the same person — often *very* different. That
+movement is not sampling error in the estimate; it is a property of the
+procedure, and if you have to ship one readable model rather than a forest, it
+is your problem.
 
-## Features
+This package does two things about it:
 
-- 🌳 **Unified Tree Architecture**: All trees support both regression and classification with a simple `task` parameter
-- 🎯 **LessGreedyHybridTree**: Advanced tree with honest data partitioning, lookahead, and optional oblique splits
-- 📊 **BootstrapVariancePenalizedTree**: Explicitly penalizes bootstrap prediction variance during split selection
-- 🛡️ **RobustPrefixHonestTree**: Robust consensus-based prefix splits with honest leaf estimation
-- 🎲 **CentroidTree**: Train N trees, select the one closest to ensemble mean—single-tree interpretability with ensemble-like stability
-- 📈 **Prediction Stability Metrics**: Measure model consistency across different training runs
-- 🔧 **Full sklearn Compatibility**: Works with pipelines, cross-validation, and grid search
+1. **Measures it.** `bootstrap_instability` and `stability_frontier` implement
+   the resampling protocol of [Riley and Collins (2023)](https://onlinelibrary.wiley.com/doi/full/10.1002/bimj.202200302),
+   the standard way to report prediction instability. The R package
+   `pminternal` implements it; scikit-learn had no equivalent.
+2. **Reduces it**, without giving up the single tree. `StableTree` averages the
+   *split decision* over bootstrap replicates instead of averaging predictions,
+   so the output is still one tree you can read.
 
-## Installation
+The frontier is the point. Instability alone is meaningless — a model that
+ignores its training data scores a perfect zero — so every measurement here is
+reported next to accuracy, and the tool returns the Pareto set rather than a
+winner.
 
-### From PyPI (Recommended)
+![Prediction instability](docs/figures/instability.png)
+
+*California housing, depth-8 tree, 100 bootstrap resamples, 400 randomly chosen
+households. Each dot is one household under one resampled model; the solid lines
+are the 5th and 95th percentiles. For the 505 households predicted at $150k, 90%
+of the resampled predictions land between $89k and $223k.*
+
+## Install
 
 ```bash
-pip install stable-cart
+pip install stable-cart          # core: numpy + scikit-learn
+pip install "stable-cart[plots]" # adds matplotlib for the three figures
 ```
 
-### From Source
+## Quick start
 
-```bash
-git clone https://github.com/finite-sample/stable-cart.git
-cd stable-cart
-pip install -e .
-```
+### How unstable is my model?
 
-### With Development Dependencies
-
-```bash
-pip install -e ".[dev]"
-```
-
-## Quick Start
+Works on any scikit-learn estimator, not just the ones in this package.
 
 ```python
-from stable_cart import (
-    # Unified trees - all support both regression and classification
-    LessGreedyHybridTree,
-    BootstrapVariancePenalizedTree,
-    RobustPrefixHonestTree,
-    CentroidTree,
-    # Evaluation utilities
-    prediction_stability,
-    evaluate_models
-)
-from sklearn.datasets import make_regression, make_classification
+from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.tree import DecisionTreeRegressor
 
-# === UNIFIED ARCHITECTURE ===
+from stable_cart import bootstrap_instability
 
-# Regression Example
-X_reg, y_reg = make_regression(n_samples=1000, n_features=10, noise=10, random_state=42)
-X_train, X_test, y_train, y_test = train_test_split(X_reg, y_reg, test_size=0.3, random_state=42)
+X, y = fetch_california_housing(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
 
-# All trees support both tasks with the 'task' parameter
-less_greedy = LessGreedyHybridTree(task='regression', max_depth=5, random_state=42)
-bootstrap_tree = BootstrapVariancePenalizedTree(
-    task='regression', max_depth=5, variance_penalty=2.0, n_bootstrap=10, random_state=42
+bootstrap_instability(
+    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
+    X_train,
+    y_train,
+    X_test,
+    n_bootstrap=50,
+    random_state=0,
 )
-robust_tree = RobustPrefixHonestTree(task='regression', top_levels=2, max_depth=5, random_state=42)
-centroid_tree = CentroidTree(task='regression', n_candidates=20, random_state=42)
-greedy_model = DecisionTreeRegressor(max_depth=5, random_state=42)
-
-# Fit models
-for model in [less_greedy, bootstrap_tree, robust_tree, centroid_tree, greedy_model]:
-    model.fit(X_train, y_train)
-
-# Classification Example with Same Tree Classes
-X_clf, y_clf = make_classification(n_samples=1000, n_features=10, n_classes=2, random_state=42)
-X_train_clf, X_test_clf, y_train_clf, y_test_clf = train_test_split(
-    X_clf, y_clf, test_size=0.3, random_state=42
-)
-
-# Same tree classes, just change the task parameter
-less_greedy_clf = LessGreedyHybridTree(task='classification', max_depth=5, random_state=42)
-bootstrap_clf = BootstrapVariancePenalizedTree(
-    task='classification', max_depth=5, variance_penalty=1.0, n_bootstrap=5, random_state=42
-)
-robust_clf = RobustPrefixHonestTree(task='classification', top_levels=2, max_depth=5, random_state=42)
-centroid_clf = CentroidTree(task='classification', n_candidates=20, random_state=42)
-standard_clf = DecisionTreeClassifier(max_depth=5, random_state=42)
-
-# Fit classification models
-for model in [less_greedy_clf, bootstrap_clf, robust_clf, centroid_clf, standard_clf]:
-    model.fit(X_train_clf, y_train_clf)
-
-# Evaluate both regression and classification
-reg_models = {
-    "less_greedy": less_greedy,
-    "bootstrap_penalized": bootstrap_tree,
-    "robust_prefix": robust_tree,
-    "centroid": centroid_tree,
-    "greedy": greedy_model
-}
-
-clf_models = {
-    "less_greedy": less_greedy_clf,
-    "bootstrap_penalized": bootstrap_clf,
-    "robust_prefix": robust_clf,
-    "centroid": centroid_clf,
-    "standard": standard_clf
-}
-
-# Get predictions and probabilities
-reg_predictions = {name: model.predict(X_test) for name, model in reg_models.items()}
-clf_predictions = {name: model.predict(X_test_clf) for name, model in clf_models.items()}
-clf_probabilities = {name: model.predict_proba(X_test_clf) for name, model in clf_models.items() 
-                     if hasattr(model, 'predict_proba')}
-
-print("Regression R² scores:")
-for name, model in reg_models.items():
-    score = model.score(X_test, y_test)
-    print(f"  {name}: {score:.3f}")
-
-print("\nClassification accuracy scores:")
-for name, model in clf_models.items():
-    score = model.score(X_test_clf, y_test_clf)
-    print(f"  {name}: {score:.3f}")
-
+# {'instability_mean': 0.102, 'instability_p90': 0.236,
+#  'instability_max': 1.234, 'mape': 0.275}
 ```
 
-## Advanced Configuration Examples
+`mape` is Riley and Collins's headline: on average, a model fitted on a
+resample predicts **$27.5k** away from what the model fitted on all the data
+predicts for the same household — on a target whose values run from $15k to
+$500k. `instability_max` says some household moves by $123k.
+Both seeds are pinned: without them the max is a different number every run.
 
-### Unified Parameter Interface
-
-All stable-cart trees share a unified parameter interface with comprehensive stability primitives:
+### What would it cost me to be more stable?
 
 ```python
-from stable_cart import LessGreedyHybridTree
+from stable_cart import stability_frontier
 
-# Regression with all stability features enabled
-advanced_reg_tree = LessGreedyHybridTree(
-    # === CORE CONFIGURATION ===
-    task='regression',               # 'regression' or 'classification'
-    max_depth=6,                    # Maximum tree depth
-    min_samples_split=50,           # Minimum samples to split node
-    min_samples_leaf=25,            # Minimum samples per leaf
-    
-    # === HONEST DATA PARTITIONING ===
-    split_frac=0.6,                 # Fraction for structure learning
-    val_frac=0.2,                   # Fraction for validation
-    est_frac=0.2,                   # Fraction for leaf estimation
-    enable_stratified_sampling=True, # Balanced honest partitioning
-    
-    # === OBLIQUE SPLITS (SIGNATURE FEATURE) ===
-    enable_oblique_splits=True,     # Enable oblique splits
-    oblique_strategy='root_only',   # 'root_only', 'all_levels', 'adaptive'
-    oblique_regularization='lasso', # 'lasso', 'ridge', 'elastic_net'
-    enable_correlation_gating=True, # Use correlation gating
-    min_correlation_threshold=0.3,  # Minimum correlation to trigger oblique
-    
-    # === LOOKAHEAD SEARCH (SIGNATURE FEATURE) ===
-    enable_lookahead=True,          # Enable lookahead search
-    lookahead_depth=2,              # Lookahead depth
-    beam_width=15,                  # Number of candidates to track
-    enable_ambiguity_gating=True,   # Use ambiguity gating
-    ambiguity_threshold=0.05,       # Trigger lookahead when splits are close
-    min_samples_for_lookahead=800,  # Minimum samples to enable lookahead
-    
-    # === CROSS-METHOD LEARNING FEATURES ===
-    enable_robust_consensus_for_ambiguous=True, # Consensus for ambiguous splits
-    consensus_samples=12,                       # Bootstrap samples for consensus
-    consensus_threshold=0.7,                    # Agreement threshold
-    enable_winsorization=True,                  # Outlier clipping (from RobustPrefix)
-    winsor_quantiles=(0.02, 0.98),            # Outlier clipping bounds
-    enable_bootstrap_variance_tracking=True,   # Variance tracking (from Bootstrap)
-    variance_tracking_samples=10,              # Bootstrap samples for variance
-    
-    # === LEAF STABILIZATION ===  
-    leaf_smoothing=0.1,             # Shrinkage parameter (0=none, higher=more)
-    leaf_smoothing_strategy='m_estimate',  # 'm_estimate', 'shrink_to_parent', 'beta_smoothing'
-    
-    random_state=42
+result = stability_frontier(
+    lambda **kw: DecisionTreeRegressor(min_samples_leaf=10, random_state=0, **kw),
+    {"max_depth": [3, 5, 8], "ccp_alpha": [0.0, 0.005, 0.05]},
+    X_train,
+    y_train,
+    n_bootstrap=20,
+    random_state=0,
 )
 
-# Classification with conservative stability settings
-conservative_clf_tree = LessGreedyHybridTree(
-    task='classification',
-    max_depth=4,                                    # Shallower for more stability
-    min_samples_split=60,                           # Higher split threshold
-    min_samples_leaf=30,                            # Larger leaves for stability
-    leaf_smoothing=0.5,                             # Heavy smoothing
-    leaf_smoothing_strategy='m_estimate',           # Bayesian smoothing
-    enable_bootstrap_variance_tracking=True,       # Track prediction variance
-    enable_robust_consensus_for_ambiguous=True,    # Use consensus for ambiguous splits
-    consensus_threshold=0.8,                       # High agreement requirement
-    consensus_samples=15,                          # More bootstrap samples
-    enable_winsorization=True,                     # Enable outlier protection
-    classification_criterion='gini',              # Gini impurity criterion
-    random_state=42
-)
+for point in result["frontier"]:
+    print(
+        f"R2={point['accuracy']:.3f}  instability={point['instability']:.3f}  {point['params']}"
+    )
 
-# Fit and evaluate
-advanced_reg_tree.fit(X_train, y_train)
-conservative_clf_tree.fit(X_train_clf, y_train_clf)
-
-print(f"Regression R²: {advanced_reg_tree.score(X_test, y_test):.3f}")
-print(f"Classification accuracy: {conservative_clf_tree.score(X_test_clf, y_test_clf):.3f}")
+# R2=0.651  instability=0.107  {'ccp_alpha': 0.0,   'max_depth': 8}
+# R2=0.594  instability=0.079  {'ccp_alpha': 0.0,   'max_depth': 5}
+# R2=0.592  instability=0.078  {'ccp_alpha': 0.005, 'max_depth': 8}
+# R2=0.583  instability=0.074  {'ccp_alpha': 0.005, 'max_depth': 5}
+# R2=0.526  instability=0.057  {'ccp_alpha': 0.005, 'max_depth': 3}
+# R2=0.483  instability=0.053  {'ccp_alpha': 0.05,  'max_depth': 8}
 ```
 
-### Stability Measurement
+That is the exchange rate, stated: **halving the instability costs 12.5 points
+of R²** on this data (0.107 → 0.057, 0.651 → 0.526). Whether that trade is
+worth taking is not a question the package can answer, which is exactly why it
+returns the set rather than a winner.
+
+`frontier` holds the configurations no other configuration beats on *both*
+axes. Everything else in `points` is dominated — strictly worse on accuracy or
+stability or both — and knowing which is which is the whole exercise.
+
+### Show me where it is unreliable
 
 ```python
-from stable_cart import prediction_stability
+from stable_cart import bootstrap_predictions, plot_mape_by_prediction
 
-# Measure prediction stability across bootstrap samples
-stability_results = prediction_stability(
-    [advanced_reg_tree, conservative_clf_tree], 
-    [X_test, X_test_clf], 
-    n_bootstrap=20
+raw = bootstrap_predictions(
+    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
+    X_train,
+    y_train,
+    X_test,
+    n_bootstrap=100,
+    random_state=0,
 )
-
-print("Prediction variance (lower = more stable):")
-for model_name, variance in stability_results.items():
-    print(f"  {model_name}: {variance:.4f}")
+plot_mape_by_prediction(raw)
 ```
 
-## Algorithms
+![Where the model is unreliable](docs/figures/mape_by_prediction.png)
 
-All trees in stable-cart use a **unified architecture** that supports both regression and classification through a simple `task` parameter. This means you can use the same algorithm for both types of problems!
+Instability is not spread evenly. On this data it roughly quadruples between the
+cheapest and most expensive predictions — the overall average hides a model that
+is nearly four times less trustworthy at the top of its range. (The figure is
+drawn on a 4,000-row subsample, where the average is 0.36 rather than 0.275.)
 
-### LessGreedyHybridTree
+### A tree whose splits are averaged
 
-**🎯 When to use**: When you need stable predictions but can't afford the complexity of ensembles (works for both regression and classification)
+```python
+from stable_cart import StableTree
 
-**💡 Core intuition**: Like a careful decision-maker who considers multiple options before choosing, rather than going with the first good option. Standard CART makes greedy choices at each split - this algorithm looks ahead and thinks more carefully.
+tree = StableTree(
+    task="regression",
+    max_depth=5,
+    n_consensus=12,  # bootstrap replicates per split decision
+    consensus_threshold=0.3,  # a split needs this share of the vote, or the node becomes a leaf
+    leaf_shrinkage=5.0,  # pull leaf values toward the parent
+    random_state=0,
+).fit(X_train, y_train)
 
-**⚖️ Trade-offs**: 
-- ✅ **Gain**: 30-50% more stable predictions across different training runs
-- ✅ **Gain**: Better generalization with honest estimation
-- ✅ **Gain**: Works for both regression and classification with same API
-- ❌ **Cost**: ~5% accuracy reduction, slightly higher training time
-
-**🔧 How it works**:
-- **Honest data partitioning**: Separates data for structure learning vs. prediction estimation
-- **Lookahead with beam search**: Considers multiple future splits before deciding (not just immediate gain)
-- **Optional oblique root**: Can use linear combinations at the top (Lasso for regression, LogisticRegression for classification)
-- **Task-adaptive leaf estimation**: Shrinkage for regression, m-estimate smoothing for classification
-
-### BootstrapVariancePenalizedTree
-
-**🎯 When to use**: When prediction consistency is more important than squeezing out every bit of accuracy (both regression and classification)
-
-**💡 Core intuition**: Like choosing a reliable car over a faster but unpredictable one. This algorithm explicitly optimizes for models that give similar predictions even when trained on slightly different data samples.
-
-**⚖️ Trade-offs**:
-- ✅ **Gain**: Most consistent predictions across bootstrap samples
-- ✅ **Gain**: Excellent for scenarios where you retrain models frequently
-- ✅ **Gain**: Unified interface for regression and classification
-- ❌ **Cost**: Moderate training time increase due to bootstrap evaluation
-- ❌ **Cost**: May sacrifice some accuracy for consistency
-
-**🔧 How it works**:
-- **Variance penalty**: During training, penalizes splits that lead to high prediction variance across bootstrap samples
-- **Honest estimation**: Builds tree structure on one data subset, estimates leaf values on another
-- **Bootstrap evaluation**: Tests each potential split on multiple bootstrap samples to measure stability
-- **Task-adaptive loss**: Uses SSE for regression, Gini/entropy for classification
-
-### RobustPrefixHonestTree
-
-**🎯 When to use**: When you need reliable probability estimates and stable decision boundaries (supports both binary classification and regression)
-
-**💡 Core intuition**: Like making the big strategic decisions first with a committee consensus, then fine-tuning details with fresh information. This tree locks in the most important splits using agreement across multiple bootstrap samples, then uses separate data for final estimates.
-
-**⚖️ Trade-offs**:
-- ✅ **Gain**: Very stable decision boundaries across different training runs
-- ✅ **Gain**: Reliable probability estimates (classification) or predictions (regression)
-- ✅ **Gain**: Robust to outliers and data noise
-- ✅ **Gain**: Unified API for both regression and classification
-- ❌ **Cost**: Limited to binary classification (multi-class support coming soon)
-- ❌ **Cost**: May be conservative in capturing complex patterns
-
-**🔧 How it works**:
-- **Robust prefix**: Uses multiple bootstrap samples to find splits that consistently matter, then locks those in
-- **Honest leaves**: After structure is fixed, estimates values on completely separate data
-- **Task-adaptive smoothing**: Shrinkage for regression, m-estimate for classification
-- **Winsorization**: Caps extreme feature values to reduce outlier influence
-
-### CentroidTree
-
-**🎯 When to use**: When you need ensemble-like stability but must keep a single interpretable tree (supports both regression and classification)
-
-**💡 Core intuition**: Like picking the most "average" candidate from a pool. Train many trees with different random seeds, then select the one whose predictions best represent what all trees collectively predict. You get one interpretable tree that behaves like an ensemble.
-
-**⚖️ Trade-offs**:
-- ✅ **Gain**: Reduces prediction variance by ~3% compared to single CART
-- ✅ **Gain**: Single tree output—fully interpretable, auditable
-- ✅ **Gain**: Works with any base tree (CART, LessGreedyHybridTree, etc.)
-- ✅ **Gain**: Unified API for both regression and classification
-- ❌ **Cost**: N× training time (trains N candidate trees)
-- ❌ **Cost**: ~1% accuracy reduction vs single tree
-
-**🔧 How it works**:
-- **Candidate generation**: Trains N trees with different random seeds
-- **Ensemble mean**: Computes mean prediction across all candidates on validation set
-- **Selection**: Picks the tree closest to ensemble mean (RMSE for regression, disagreement for classification)
-- **Single output**: Returns just the selected tree—not an ensemble
-
-## Choosing the Right Algorithm
-
-### 🤔 Decision Guide
-
-**Start here**: What's your primary concern?
-
-```
-🌟 UNIFIED ARCHITECTURE:
-├── Need maximum stability? → BootstrapVariancePenalizedTree(task='regression'|'classification')
-├── Want balanced stability + flexibility? → LessGreedyHybridTree(task='regression'|'classification')
-├── Need robust prefix + reliable estimates? → RobustPrefixHonestTree(task='regression'|'classification')
-├── Need ensemble stability + single tree? → CentroidTree(task='regression'|'classification')
-└── Just need sklearn baseline? → DecisionTreeRegressor/DecisionTreeClassifier
+tree.split_supports()  # [1.0, 1.0, 0.58, 0.58, 0.67, 0.83, ...] — per split
+tree.stop_reasons_  # Counter({'max_depth': 32}) — why each node stopped growing
 ```
 
-**💡 Pro Tip**: All stable-cart trees use the same unified interface with the `task` parameter - switch between regression and classification effortlessly!
+At each node, `StableTree` resamples the node's rows `n_consensus` times, takes
+the best split in each replicate, elects the feature by vote, and sets the cut
+point to the **median** of the cut points that chose it. Cut-point variance is
+the part of a tree that actually moves — [Geurts and Wehenkel (2000)](https://www.semanticscholar.org/paper/Investigation-and-Reduction-of-Discretization-in-Geurts-Wehenkel/c116336862b6ab82f6374ca869d6493dfca702cc)
+found it high even at large sample sizes, and this package's own measurements
+put threshold agreement at 2–22% while the root *feature* agrees 100% of the
+time. A node whose winning feature cannot reach `consensus_threshold` becomes a
+leaf: a split the data cannot reproduce is not one worth showing a reviewer.
 
-### 📋 Use Case Comparison
+## The frontier, both families on one set of axes
 
-| Scenario | Best Choice | Why |
-|----------|-------------|-----|
-| **Financial risk models** | RobustPrefixHonestTree(task='classification') | Stable probability estimates crucial |
-| **A/B testing analysis** | BootstrapVariancePenalizedTree(task='regression') | Consistency across samples matters most |
-| **Medical diagnosis support** | RobustPrefixHonestTree(task='classification') | Reliable probabilities + robust to outliers |
-| **Demand forecasting** | LessGreedyHybridTree(task='regression') | Balance of accuracy + stability |
-| **Customer churn prediction** | LessGreedyHybridTree(task='classification') | Stable classification with probability estimates |
-| **Regulatory compliance (auditable model)** | CentroidTree(task='classification') | Single interpretable tree with ensemble stability |
-| **Real-time recommendations** | Standard CART | Speed over stability |
-| **Research/prototyping** | LessGreedyHybridTree(task='regression'/'classification') | Good general-purpose stable option |
+![Accuracy against stability](docs/figures/frontier.png)
 
-### ⚡ Quick Selection Rules
+Both families sweep the same depths, so neither gets a complexity advantage.
+Regenerate with `uv run python scripts/make_readme_figures.py`.
 
-**Choose BootstrapVariancePenalizedTree when**:
-- You retrain models frequently with new data
-- Prediction consistency is more important than peak accuracy
-- You have sufficient training time
-- **Works for both**: `task='regression'` or `task='classification'`
+## What actually works
 
-**Choose LessGreedyHybridTree when**:
-- You want stability without major accuracy loss
-- You need a general-purpose stable tree
-- Training time is somewhat constrained
-- **Works for both**: `task='regression'` or `task='classification'`
+Every claim below is measured by a script in this repository. Where an earlier
+version of this README claimed more, the retraction is in
+[CHANGELOG.md](CHANGELOG.md).
 
-**Choose RobustPrefixHonestTree when**:
-- You need trustworthy probability estimates (classification) or predictions (regression)
-- Your data may have outliers
-- You want very stable decision boundaries
-- **Works for both**: `task='regression'` or `task='classification'` (binary only for now)
+| approach | effect on instability | keeps one readable tree? |
+|---|---|---|
+| **Averaging predictions** (random forest) | −62% to −92% | **no** — and that is the whole difficulty |
+| **Pruning / depth limits** (`ccp_alpha`, `max_depth`) | the most reliable single-tree lever | yes |
+| **Averaging the split decision** (`StableTree`) | −20% to −60% at equal or better accuracy **in noisy regimes**; ~1% when the signal is nearly noiseless | yes |
+| **Leaf shrinkage** (`leaf_shrinkage`) | decisive when noise is high: the leaf component is 40–90% of prediction variance there, 2–11% when noise is low | yes |
+| **Global/optimal search** (GOSDT) | **nothing measurable** at matched complexity | yes |
+| **Picking the tree closest to the ensemble mean** (`CentroidTree`) | +18% against a random pick from the same pool; **nothing** against plain CART | yes |
 
-**Choose CentroidTree when**:
-- You need a single interpretable tree (for auditing, explanation, regulatory compliance)
-- You want ensemble-like stability without an actual ensemble
-- Training time is not a bottleneck (trains N candidates)
-- **Works for both**: `task='regression'` or `task='classification'`
+Two consequences worth stating plainly. **Pruning is the baseline anything new
+has to beat**, and it is one scikit-learn argument. And **which knob pays
+depends on the noise level** — where the leaf component dominates, averaging the
+split decision cannot help, because the structure was not the problem.
 
-**Stick with Standard CART when**:
-- You need maximum speed
-- You have very large datasets (>100k samples)
-- Stability is not a concern
+A third, less comfortable one. Run every estimator at *one fixed configuration*
+across the 14 benchmark datasets — `make benchmark`, report in
+[benchmark_results/](benchmark_results/comprehensive_benchmark_report.md) — and
+the average variance reduction against plain CART is **−3.2%**. The stable
+methods are, on average, no better. `StableTree` is the only one above water at
++16.8%, and a random forest beats all of them on every dataset while not being a
+tree.
 
-## Performance Comparison
+That is not a contradiction of the frontier table above; it is the reason the
+frontier exists. A single default configuration is a point, and the gain lives
+in *choosing* the point. If you take one thing from this package, make it
+`stability_frontier` rather than any particular estimator.
 
-Here's how stable-cart models typically perform compared to standard trees:
+## Which estimator do I reach for?
 
-| Metric | Standard Tree | Stable CART | Improvement |
-|--------|---------------|-------------|-------------|
-| **Prediction Variance** | High | Low | 30-50% reduction |
-| **Out-of-sample Stability** | Variable | Consistent | 20-40% more stable |
-| **Accuracy** | High | Slightly lower | 2-5% trade-off |
-| **Interpretability** | Good | Good | Maintained |
+The package ships five estimators plus plain CART as the reference.
+`experiments/frontier_eval.py` sweeps each one's own parameters on 14 datasets,
+pools every configuration, and asks which ones land on the *joint* frontier —
+the configurations no configuration of any family beats on both accuracy and
+stability. A model that clears no usable accuracy floor is dropped first, so a
+constant predictor cannot win by being perfectly stable.
 
-### CentroidTree Experimental Results
+| estimator | datasets with a frontier point | multi-class? | notes |
+|---|---|---|---|
+| **`StableTree`** | **11 / 14** | yes | start here |
+| `DecisionTree*` + `ccp_alpha` (sklearn) | 7 / 14 | yes | the baseline, and it wins outright on `iris` |
+| `CentroidTree` | 6 / 14 | yes | N× training cost; owns `digits_binary` and half of `xor_nonlinear` |
+| `LessGreedyHybridTree` | 4 / 14 | **no** | the only frontier point on `california_housing` |
+| `BootstrapVariancePenalizedTree` | 2 / 14 | **no** | |
+| `RobustPrefixHonestTree` | 2 / 14 | **no** | two of three points on `california_housing` |
 
-Results from synthetic classification experiments (500 samples, 10 features, 30 random seeds):
+Read this as a map, not a leaderboard. Several arms appear on the same frontier
+on most datasets, which means the curves cross and the operating point is your
+choice. And three of the four older estimators raise on multi-class targets,
+which is why they score zero on `wine`, `iris` and `digits_multiclass` — a
+limitation, not a defeat.
 
-| Method | Accuracy | Disagreement Rate | vs CART |
-|--------|----------|-------------------|---------|
-| CART | 0.85 | 26.4% | baseline |
-| CentroidTree (N=20) | 0.84 | 25.6% | **-3% disagreement** |
-| LessGreedyHybridTree | 0.80 | 26.2% | similar stability |
-| RandomForest (N=20) | 0.88 | 27.1% | ensemble baseline |
+Reproduce with `uv run python experiments/frontier_eval.py`.
 
-**Key finding**: CentroidTree achieves ~3% disagreement reduction with only ~1% accuracy loss, while maintaining single-tree interpretability. This makes it ideal for applications requiring auditable models.
-
-## Development and Testing
-
-### Running Tests
+## Development
 
 ```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=stable_cart
-
-# Run specific test categories
-pytest -m "not slow"        # Skip slow tests
-pytest -m "benchmark"       # Benchmark tests only
-pytest tests/               # All tests
+uv sync --all-extras
+uv run pytest
+uv run ruff check . && uv run ruff format --check .
+uv run pyright
 ```
 
-### Local CI Testing
+Local CI mirrors the GitHub workflow: `make ci-docker`.
 
-Test the CI pipeline locally using Docker:
+Scripts behind the numbers:
 
-```bash
-# Run the full CI pipeline in a clean Docker container
-make ci-docker
-
-# Or run individual steps
-make lint        # Check code formatting and style
-make test        # Run the test suite
-make coverage    # Run tests with coverage report
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and add tests
-4. Run the test suite (`make test`)
-5. Run linting (`make lint`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Benchmarking
-
-Run comprehensive benchmarks comparing CART vs stable-CART methods:
-
-```bash
-# Quick benchmark (4 key datasets, fast execution)
-make quick-benchmark
-
-# Comprehensive benchmark (all datasets)
-make benchmark
-
-# Stability-focused benchmark (datasets highlighting variance differences)
-make stability-benchmark
-
-# Custom benchmark
-python scripts/comprehensive_benchmark.py --datasets friedman1,breast_cancer --models CART,LessGreedyHybrid --quick
-
-# View results
-ls benchmark_results/
-cat benchmark_results/comprehensive_benchmark_report.md
-```
+| script | what it produces |
+|---|---|
+| `scripts/param_effect.py` | which documented parameters can change a prediction |
+| `scripts/make_readme_figures.py` | the three figures above |
+| `experiments/frontier_eval.py` | every estimator on the joint accuracy-stability frontier |
+| `experiments/variance_budget.py` | the leaf-versus-structure split of prediction variance |
+| `experiments/optimal_tree_premise.py` | the matched-complexity comparison against GOSDT |
+| `experiments/knob_study.py` | whether the measured variance budget predicts which knob to turn |
 
 ## Citation
 
-If you use stable-cart in your research, please cite:
-
 ```bibtex
-@software{stable_cart_2025,
-  title={Stable CART: Enhanced Decision Trees with Prediction Stability},
-  author={Sood, Gaurav and Bhosle, Arav},
-  year={2025},
-  url={https://github.com/finite-sample/stable-cart},
-  version={1.1.0}
+@software{stable_cart,
+  title  = {stable-cart: measuring and reducing decision tree prediction instability},
+  author = {Sood, Gaurav and Bhosle, Arav},
+  year   = {2026},
+  url    = {https://github.com/finite-sample/stable-cart}
 }
 ```
 
+## Related work
+
+- Riley and Collins, *Stability of clinical prediction models developed using
+  statistical or machine learning methods*, Biometrical Journal 65(8), 2023 —
+  the instability protocol implemented here, and the R package `pminternal`.
+- Geurts and Wehenkel, *Investigation and reduction of discretization variance
+  in decision tree induction*, ECML 2000 — threshold averaging.
+- Breiman, *Bagging predictors*, 1996 — why averaging works, and what it costs.
+- Athey and Imbens, *Recursive partitioning for heterogeneous causal effects*,
+  PNAS 2016 — honest estimation.
+- Vidal and Schiffer, *Born-again tree ensembles*, ICML 2020 — exact
+  distillation of a forest into one tree.
+- Marx, Calmon and Ustun, *Predictive multiplicity in classification*, ICML 2020
+  — a different construct (multiplicity within the near-optimal set), and
+  deliberately not implemented here.
+
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
+See [CHANGELOG.md](CHANGELOG.md). **2.0 is a breaking release and corrects
+results published in 1.1.0.**
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Related Work
-
-- **CART**: Breiman, L., et al. (1984). Classification and regression trees.
-- **Honest Trees**: Wager, S., & Athey, S. (2018). Estimation and inference of heterogeneous treatment effects using random forests.
-- **Bootstrap Aggregating**: Breiman, L. (1996). Bagging predictors.
+MIT — see [LICENSE](LICENSE).

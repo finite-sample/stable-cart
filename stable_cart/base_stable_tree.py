@@ -6,19 +6,28 @@ across different tree methods. Each method can inherit from this and configure
 different defaults to maintain their distinct personalities.
 """
 
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.base import BaseEstimator  # type: ignore[import-untyped]
 from sklearn.metrics import accuracy_score, r2_score  # type: ignore[import-untyped]
 from sklearn.utils.validation import (  # type: ignore[import-untyped]
-    check_array,
     check_X_y,
 )
 
-from .split_strategies import HybridStrategy, SplitStrategy, create_split_strategy
+from .split_strategies import (
+    AxisAlignedStrategy,
+    CompositeStrategy,
+    ConsensusStrategy,
+    LookaheadStrategy,
+    ObliqueStrategy,
+    SplitStrategy,
+    VariancePenalizedStrategy,
+    create_split_strategy,
+)
 from .stability_utils import (
+    check_predict_input,
     honest_data_partition,
     stabilize_leaf_estimate,
     winsorize_features,
@@ -64,10 +73,6 @@ class BaseStableTree(BaseEstimator):
         Use stratified sampling for data partitioning.
     enable_validation_checking
         Enable validation-checked split selection.
-    validation_metric
-        Metric for validation-based split selection.
-    validation_consistency_weight
-        Weight for validation consistency in split selection.
     enable_prefix_consensus
         Enable prefix stability through consensus on early splits.
     prefix_levels
@@ -84,8 +89,6 @@ class BaseStableTree(BaseEstimator):
         Smoothing parameter for leaf value stabilization.
     leaf_smoothing_strategy
         Strategy for leaf value stabilization.
-    enable_calibrated_smoothing
-        Use calibrated smoothing based on sample size.
     min_leaf_samples_for_stability
         Minimum samples required for stable leaf estimation.
     enable_winsorization
@@ -96,8 +99,6 @@ class BaseStableTree(BaseEstimator):
         Standardize features before splitting.
     enable_oblique_splits
         Enable oblique (linear combination) splits.
-    oblique_strategy
-        Where to apply oblique splits in the tree.
     oblique_regularization
         Regularization for oblique split learning.
     enable_correlation_gating
@@ -116,8 +117,6 @@ class BaseStableTree(BaseEstimator):
         Threshold for ambiguity detection.
     min_samples_for_lookahead
         Minimum samples required for lookahead.
-    enable_deterministic_preprocessing
-        Use deterministic preprocessing for reproducibility.
     enable_deterministic_tiebreaks
         Use deterministic tiebreaking in split selection.
     enable_margin_vetoes
@@ -126,12 +125,8 @@ class BaseStableTree(BaseEstimator):
         Threshold for margin-based vetoing.
     enable_variance_aware_stopping
         Enable variance-aware stopping criteria.
-    variance_stopping_weight
-        Weight for variance in stopping decisions.
     variance_stopping_strategy
         Strategy for variance-aware stopping.
-    enable_bootstrap_variance_tracking
-        Track split variance using bootstrap sampling.
     variance_tracking_samples
         Number of bootstrap samples for variance tracking.
     enable_explicit_variance_penalty
@@ -142,16 +137,12 @@ class BaseStableTree(BaseEstimator):
         Explicit split strategy specification.
     algorithm_focus
         Algorithm focus for automatic strategy selection.
-    classification_criterion
-        Splitting criterion for classification.
     random_state
         Random state for reproducibility.
     enable_threshold_binning
         Enable threshold binning for continuous features.
     enable_gain_margin_logic
         Apply margin logic to information gain.
-    enable_beam_search_for_consensus
-        Use beam search for consensus building.
     enable_robust_consensus_for_ambiguous
         Use robust consensus in ambiguous regions.
 
@@ -176,10 +167,6 @@ class BaseStableTree(BaseEstimator):
         enable_stratified_sampling: bool = True,
         # === 2. VALIDATION-CHECKED SPLIT SELECTION ===
         enable_validation_checking: bool = True,
-        validation_metric: Literal[
-            "median", "one_se", "variance_penalized"
-        ] = "variance_penalized",
-        validation_consistency_weight: float = 1.0,
         # === 1. PREFIX STABILITY ===
         enable_prefix_consensus: bool = False,
         prefix_levels: int = 2,
@@ -192,7 +179,6 @@ class BaseStableTree(BaseEstimator):
         leaf_smoothing_strategy: Literal[
             "m_estimate", "shrink_to_parent", "beta_smoothing"
         ] = "m_estimate",
-        enable_calibrated_smoothing: bool = False,
         min_leaf_samples_for_stability: int = 5,
         # === 5. DATA REGULARIZATION ===
         enable_winsorization: bool = False,
@@ -200,7 +186,6 @@ class BaseStableTree(BaseEstimator):
         enable_feature_standardization: bool = False,
         # === 6. CANDIDATE DIVERSITY ===
         enable_oblique_splits: bool = False,
-        oblique_strategy: Literal["root_only", "all_levels", "adaptive"] = "root_only",
         oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = "lasso",
         enable_correlation_gating: bool = True,
         min_correlation_threshold: float = 0.3,
@@ -210,17 +195,14 @@ class BaseStableTree(BaseEstimator):
         enable_ambiguity_gating: bool = True,
         ambiguity_threshold: float = 0.05,
         min_samples_for_lookahead: int = 100,
-        enable_deterministic_preprocessing: bool = False,
         enable_deterministic_tiebreaks: bool = True,
         enable_margin_vetoes: bool = False,
         margin_threshold: float = 0.03,
         # === 7. VARIANCE-AWARE STOPPING ===
         enable_variance_aware_stopping: bool = False,
-        variance_stopping_weight: float = 1.0,
         variance_stopping_strategy: Literal[
             "one_se", "variance_penalty", "both"
         ] = "variance_penalty",
-        enable_bootstrap_variance_tracking: bool = False,
         variance_tracking_samples: int = 10,
         enable_explicit_variance_penalty: bool = False,
         variance_penalty_weight: float = 0.1,
@@ -228,13 +210,11 @@ class BaseStableTree(BaseEstimator):
         split_strategy: str | None = None,
         algorithm_focus: Literal["speed", "stability", "accuracy"] = "stability",
         # === CLASSIFICATION ===
-        classification_criterion: Literal["gini", "entropy"] = "gini",
         # === OTHER ===
         random_state: int | None = None,
         # === ADDITIONAL PARAMETERS FOR CROSS-METHOD LEARNING ===
         enable_threshold_binning: bool = False,
         enable_gain_margin_logic: bool = False,
-        enable_beam_search_for_consensus: bool = False,
         enable_robust_consensus_for_ambiguous: bool = False,
     ):
         # Validate fractions sum to 1
@@ -256,8 +236,6 @@ class BaseStableTree(BaseEstimator):
 
         # === 2. VALIDATION ===
         self.enable_validation_checking = enable_validation_checking
-        self.validation_metric = validation_metric
-        self.validation_consistency_weight = validation_consistency_weight
 
         # === 1. PREFIX STABILITY ===
         self.enable_prefix_consensus = enable_prefix_consensus
@@ -272,7 +250,6 @@ class BaseStableTree(BaseEstimator):
         self.leaf_smoothing_strategy: Literal[
             "m_estimate", "shrink_to_parent", "beta_smoothing"
         ] = leaf_smoothing_strategy
-        self.enable_calibrated_smoothing = enable_calibrated_smoothing
         self.min_leaf_samples_for_stability = min_leaf_samples_for_stability
 
         # === 5. DATA REGULARIZATION ===
@@ -282,8 +259,9 @@ class BaseStableTree(BaseEstimator):
 
         # === 6. CANDIDATE DIVERSITY ===
         self.enable_oblique_splits = enable_oblique_splits
-        self.oblique_strategy = oblique_strategy
-        self.oblique_regularization = oblique_regularization
+        self.oblique_regularization: Literal["lasso", "ridge", "elastic_net"] = (
+            oblique_regularization
+        )
         self.enable_correlation_gating = enable_correlation_gating
         self.min_correlation_threshold = min_correlation_threshold
 
@@ -294,16 +272,15 @@ class BaseStableTree(BaseEstimator):
         self.ambiguity_threshold = ambiguity_threshold
         self.min_samples_for_lookahead = min_samples_for_lookahead
 
-        self.enable_deterministic_preprocessing = enable_deterministic_preprocessing
         self.enable_deterministic_tiebreaks = enable_deterministic_tiebreaks
         self.enable_margin_vetoes = enable_margin_vetoes
         self.margin_threshold = margin_threshold
 
         # === 7. VARIANCE-AWARE STOPPING ===
         self.enable_variance_aware_stopping = enable_variance_aware_stopping
-        self.variance_stopping_weight = variance_stopping_weight
-        self.variance_stopping_strategy = variance_stopping_strategy
-        self.enable_bootstrap_variance_tracking = enable_bootstrap_variance_tracking
+        self.variance_stopping_strategy: Literal[
+            "one_se", "variance_penalty", "both"
+        ] = variance_stopping_strategy
         self.variance_tracking_samples = variance_tracking_samples
         self.enable_explicit_variance_penalty = enable_explicit_variance_penalty
         self.variance_penalty_weight = variance_penalty_weight
@@ -315,7 +292,6 @@ class BaseStableTree(BaseEstimator):
         )
 
         # === CLASSIFICATION ===
-        self.classification_criterion = classification_criterion
 
         # === OTHER ===
         self.random_state = random_state
@@ -323,18 +299,31 @@ class BaseStableTree(BaseEstimator):
         # === CROSS-METHOD LEARNING ===
         self.enable_threshold_binning = enable_threshold_binning
         self.enable_gain_margin_logic = enable_gain_margin_logic
-        self.enable_beam_search_for_consensus = enable_beam_search_for_consensus
         self.enable_robust_consensus_for_ambiguous = (
             enable_robust_consensus_for_ambiguous
         )
 
-        # Initialize fitted attributes with proper type annotations
-        self.tree_: dict[str, Any] | None = None
-        self.classes_: np.ndarray | None = None
-        self.n_classes_: int | None = None
-        self._split_strategy_: SplitStrategy | None = None
-        self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
-        self._global_prior_: float | None = None
+    # Parameters this class exposes under one name and consumes under another.
+    # Subclasses fill this in; see :meth:`_resolve_params` for why it exists.
+    _PARAM_ALIASES: ClassVar[dict[str, str | tuple[str, ...]]] = {}
+
+    def _resolve_params(self) -> None:
+        """
+        Re-derive internal parameter names from the constructor's names.
+
+        ``set_params`` assigns the constructor's name and nothing else, so a
+        parameter renamed on the way to the base class stops taking effect the
+        moment it is set that way rather than passed. Measured on 1.1.0:
+        ``set_params(enable_gain_margin_logic=False)`` changed no prediction,
+        while passing the same value to the constructor did — which means every
+        ``GridSearchCV`` over such a parameter searched a single point without
+        saying so. Re-deriving before each fit is what makes the two paths agree.
+        """
+        for exposed, internal in self._PARAM_ALIASES.items():
+            value = getattr(self, exposed)
+            targets = (internal,) if isinstance(internal, str) else internal
+            for target in targets:
+                setattr(self, target, value)
 
     def fit(self, X: NDArray[np.floating], y: NDArray[Any]) -> "BaseStableTree":
         """
@@ -359,6 +348,14 @@ class BaseStableTree(BaseEstimator):
         """
         # Validate inputs
         X, y = check_X_y(X, y, accept_sparse=False)
+        self.n_features_in_ = X.shape[1]
+
+        # Fitted state is initialised here, not in ``__init__``: an estimator
+        # that already carries ``tree_`` before fitting cannot be distinguished
+        # from a fitted one, and ``check_is_fitted`` would wave it through.
+        self._winsor_bounds_: tuple[np.ndarray, np.ndarray] | None = None
+
+        self._resolve_params()
 
         # === 1. TASK SETUP ===
         if self.task == "classification":
@@ -401,6 +398,11 @@ class BaseStableTree(BaseEstimator):
         """
         Predict targets for samples in X.
 
+        Raises ``NotFittedError`` if the estimator has not been fitted, and
+        ``ValueError`` if X has a different number of columns than the training
+        data — predicting from a matrix of the wrong width would return
+        plausible numbers computed from the wrong columns.
+
         Parameters
         ----------
         X
@@ -410,16 +412,8 @@ class BaseStableTree(BaseEstimator):
         -------
         NDArray[Any]
             Predicted values of shape (n_samples,).
-
-        Raises
-        ------
-        ValueError
-            If the tree has not been fitted.
         """
-        check_array(X, accept_sparse=False)
-
-        if self.tree_ is None:
-            raise ValueError("Tree not fitted yet")
+        X = check_predict_input(self, X, "tree_")
 
         # Apply same preprocessing as training
         X_processed = self._preprocess_features(X, fitted=True)
@@ -454,15 +448,13 @@ class BaseStableTree(BaseEstimator):
         Raises
         ------
         ValueError
-            If called on regression task or tree not fitted.
+            If called on a regression task, or if X has a different number of
+            columns than the training data.
         """
         if self.task != "classification":
             raise ValueError("predict_proba is only available for classification tasks")
 
-        check_array(X, accept_sparse=False)
-
-        if self.tree_ is None:
-            raise ValueError("Tree not fitted yet")
+        X = check_predict_input(self, X, "tree_")
 
         # Apply same preprocessing as training
         X_processed = self._preprocess_features(X, fitted=True)
@@ -603,13 +595,87 @@ class BaseStableTree(BaseEstimator):
                 beam_width=self.beam_width,
                 variance_penalty_weight=self.variance_penalty_weight,
             )
-        else:
-            # Auto-select based on enabled features and algorithm focus
-            return HybridStrategy(
-                focus=self.algorithm_focus,
-                task=self.task,
-                random_state=self.random_state,
+        # Build the strategy graph from the documented switches. Previously this
+        # branch returned HybridStrategy(focus, task, random_state), which discarded
+        # every feature switch and numeric setting, leaving ~20 parameters per
+        # estimator inert (AUDIT.md C1).
+        axis = AxisAlignedStrategy(
+            max_candidates=self.max_threshold_bins
+            if self.enable_threshold_binning
+            else 20,
+            enable_deterministic_tiebreaking=self.enable_deterministic_tiebreaks,
+            enable_margin_veto=self.enable_margin_vetoes
+            or self.enable_gain_margin_logic,
+            margin_threshold=self.margin_threshold,
+            task=self.task,
+        )
+
+        strategies: list[SplitStrategy] = []
+
+        if self.enable_prefix_consensus:
+            strategies.append(
+                ConsensusStrategy(
+                    consensus_samples=self.consensus_samples,
+                    consensus_threshold=self.consensus_threshold,
+                    enable_quantile_binning=self.enable_quantile_grid_thresholds
+                    or self.enable_threshold_binning,
+                    max_bins=self.max_threshold_bins,
+                    prefix_levels=self.prefix_levels,
+                    fallback_strategy=axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
             )
+
+        if self.enable_oblique_splits:
+            strategies.append(
+                ObliqueStrategy(
+                    oblique_regularization=self.oblique_regularization,
+                    enable_correlation_gating=self.enable_correlation_gating,
+                    min_correlation=self.min_correlation_threshold,
+                    fallback_strategy=axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
+            )
+
+        if self.enable_lookahead:
+            strategies.append(
+                LookaheadStrategy(
+                    lookahead_depth=self.lookahead_depth,
+                    beam_width=self.beam_width,
+                    enable_ambiguity_gating=self.enable_ambiguity_gating,
+                    ambiguity_threshold=self.ambiguity_threshold,
+                    min_samples_for_lookahead=self.min_samples_for_lookahead,
+                    fallback_strategy=axis,
+                    task=self.task,
+                )
+            )
+
+        if self.enable_explicit_variance_penalty:
+            strategies.append(
+                VariancePenalizedStrategy(
+                    variance_penalty_weight=self.variance_penalty_weight,
+                    variance_estimation_samples=self.variance_tracking_samples,
+                    stopping_strategy=self.variance_stopping_strategy,
+                    base_strategy=strategies[-1] if strategies else axis,
+                    task=self.task,
+                    random_state=self.random_state,
+                )
+            )
+
+        if not strategies:
+            return axis
+        if len(strategies) == 1:
+            return strategies[0]
+
+        return CompositeStrategy(
+            [*strategies, axis],
+            selection_metric="variance_penalized"
+            if self.enable_explicit_variance_penalty
+            else "validation",
+            task=self.task,
+        )
 
     def _build_tree(
         self,
@@ -826,12 +892,9 @@ class BaseStableTree(BaseEstimator):
             if isinstance(stabilized_value, (float, int)):
                 prob = stabilized_value
             else:
-                # stabilized_value is an array of class probabilities
-                if len(stabilized_value) >= 2:
-                    prob = stabilized_value[1]  # P(class=1) for binary classification
-                else:
-                    # Only one class present, assume class 0
-                    prob = 0.0
+                # stabilized_value is an array of class probabilities;
+                # P(class=1) for binary, 0.0 when only one class is present
+                prob = stabilized_value[1] if len(stabilized_value) >= 2 else 0.0
             return {
                 "type": "leaf",
                 "proba": float(prob),

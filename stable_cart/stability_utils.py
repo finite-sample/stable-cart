@@ -12,6 +12,46 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.linear_model import ElasticNetCV, LassoCV, LogisticRegressionCV, RidgeCV
 from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_array, check_is_fitted
+
+
+def check_predict_input(
+    estimator: Any, X: NDArray[Any], fitted_attribute: str
+) -> NDArray[Any]:
+    """
+    Check that an estimator is fitted and that X is the width it was fitted on.
+
+    Parameters
+    ----------
+    estimator
+        The estimator being asked to predict.
+    X
+        Feature matrix supplied at prediction time.
+    fitted_attribute
+        Attribute that only exists once the estimator has been fitted.
+
+    Returns
+    -------
+    NDArray[Any]
+        The validated feature matrix.
+
+    Raises
+    ------
+    ValueError
+        If X does not have ``n_features_in_`` columns. Predicting from a matrix
+        of the wrong width is the failure mode that returns plausible numbers
+        computed from the wrong columns, so it is refused rather than
+        broadcast.
+    """
+    check_is_fitted(estimator, fitted_attribute)
+    X = check_array(X, accept_sparse=False)
+    expected = getattr(estimator, "n_features_in_", None)
+    if expected is not None and X.shape[1] != expected:
+        raise ValueError(
+            f"X has {X.shape[1]} features, but this {type(estimator).__name__} "
+            f"was fitted with {expected} features."
+        )
+    return X
 
 
 @dataclass(slots=True)
@@ -138,6 +178,11 @@ def bootstrap_consensus_split(
         # Find best splits in this sample
         candidates = _find_candidate_splits(X_boot, y_boot, max_candidates)
 
+        # One vote per replicate per distinct binned split. Counting each
+        # candidate separately lets several thresholds from the same replicate
+        # vote for the same bin, which pushes support above 1 — coarse binning
+        # reached 14.4 before this was deduplicated.
+        voted_this_replicate = set()
         for candidate in candidates:
             # Bin the threshold if enabled
             if enable_quantile_binning:
@@ -148,26 +193,31 @@ def bootstrap_consensus_split(
             else:
                 binned_threshold = candidate.threshold
 
-            key = (candidate.feature_idx, binned_threshold)
+            voted_this_replicate.add((candidate.feature_idx, binned_threshold))
+
+        for key in voted_this_replicate:
             candidate_votes[key] = candidate_votes.get(key, 0) + 1
 
     if not candidate_votes:
         return None, []
 
-    # Convert votes to candidates with consensus scores
+    # Convert votes to candidates with consensus scores. The split value is named
+    # `split_threshold`: unpacking it as `threshold` shadowed this function's
+    # consensus-threshold argument, so acceptance compared a support fraction
+    # against a feature value and the requested level was silently discarded.
     consensus_candidates = []
-    for (feature_idx, threshold), votes in candidate_votes.items():
+    for (feature_idx, split_threshold), votes in candidate_votes.items():
         consensus_score = votes / n_samples
 
         if consensus_score >= threshold:
             # Evaluate this consensus candidate on full data
-            left_mask = X[:, feature_idx] <= threshold
+            left_mask = X[:, feature_idx] <= split_threshold
             if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:
                 gain = _evaluate_split_gain(y, left_mask)
 
                 candidate = SplitCandidate(
                     feature_idx=feature_idx,
-                    threshold=threshold,
+                    threshold=split_threshold,
                     gain=gain,
                     left_indices=np.where(left_mask)[0],
                     right_indices=np.where(~left_mask)[0],
@@ -813,6 +863,8 @@ def generate_oblique_candidates(
             model.fit(X, y)
             weights = model.coef_[0] if model.coef_.ndim > 1 else model.coef_
 
+        weights = np.asarray(weights, dtype=float)
+
         # Only proceed if we got non-trivial weights
         if np.sum(np.abs(weights) > 1e-6) < 2:
             return []
@@ -1052,7 +1104,10 @@ def estimate_split_variance(
 
 
 def _find_candidate_splits(
-    X: np.ndarray, y: np.ndarray, max_candidates: int = 20
+    X: np.ndarray,
+    y: np.ndarray,
+    max_candidates: int = 20,
+    min_samples_leaf: int = 1,
 ) -> list[SplitCandidate]:
     """
     Find basic axis-aligned split candidates.
@@ -1065,44 +1120,146 @@ def _find_candidate_splits(
         Target values for split evaluation.
     max_candidates
         Maximum number of candidates to return.
+    min_samples_leaf
+        Minimum rows a split must leave on each side. Enforced while the
+        candidates are generated, not afterwards: a caller that vetoes an
+        inadmissible candidate later has no second choice and stops growing the
+        tree at that node.
 
     Returns
     -------
     list[SplitCandidate]
-        List of split candidates.
+        List of split candidates, every one of them admissible.
     """
     candidates = []
     n_features = X.shape[1]
 
+    # Per-feature budget, so no single feature can crowd the others out of the pool.
+    splits_per_feature = max(1, max_candidates // n_features)
+
     for feature_idx in range(n_features):
         feature_values = X[:, feature_idx]
-        unique_values = np.unique(feature_values)
+        thresholds, gains = _all_split_gains(feature_values, y, min_samples_leaf)
 
-        if len(unique_values) < 2:
+        if thresholds.size == 0:
             continue
 
-        # Try thresholds between unique values
-        # Ensure each feature gets at least 1 split candidate, up to max_candidates total
-        splits_per_feature = max(1, max_candidates // n_features)
-        for i in range(min(len(unique_values) - 1, splits_per_feature)):
-            threshold = (unique_values[i] + unique_values[i + 1]) / 2
+        # Keep this feature's *best* thresholds. Scanning every midpoint first is
+        # what makes that possible: taking a prefix of the sorted unique values
+        # only ever sees the bottom of the feature's range.
+        keep = np.argsort(gains)[::-1][:splits_per_feature]
+
+        for i in np.sort(keep):
+            threshold = float(thresholds[i])
             left_mask = feature_values <= threshold
-
-            if np.sum(left_mask) > 0 and np.sum(~left_mask) > 0:
-                gain = _evaluate_split_gain(y, left_mask)
-
-                candidate = SplitCandidate(
+            candidates.append(
+                SplitCandidate(
                     feature_idx=feature_idx,
                     threshold=threshold,
-                    gain=gain,
+                    gain=float(gains[i]),
                     left_indices=np.where(left_mask)[0],
                     right_indices=np.where(~left_mask)[0],
                 )
-                candidates.append(candidate)
+            )
 
     # Return top candidates
     candidates.sort(key=lambda c: c.gain, reverse=True)
     return candidates[:max_candidates]
+
+
+def _all_split_gains(
+    feature_values: np.ndarray, y: np.ndarray, min_samples_leaf: int = 1
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Score every admissible threshold of one feature in a single vectorized pass.
+
+    Equivalent to calling :func:`_evaluate_split_gain` on each midpoint between
+    consecutive distinct feature values, but O(n log n) rather than O(n) per
+    threshold, which is what makes an exhaustive scan affordable.
+
+    Parameters
+    ----------
+    feature_values
+        One column of the feature matrix.
+    y
+        Target values.
+    min_samples_leaf
+        Minimum rows on each side of the split.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Candidate thresholds and their gains, in ascending threshold order.
+    """
+    n = len(y)
+    empty = (np.empty(0), np.empty(0))
+    if n < 2:
+        return empty
+
+    order = np.argsort(feature_values, kind="mergesort")
+    xs = feature_values[order]
+    ys = y[order]
+
+    # A split is admissible only between two distinct feature values and only if
+    # it leaves enough rows on both sides.
+    admissible = xs[:-1] < xs[1:]
+    if min_samples_leaf > 1:
+        left_count = np.arange(1, n)
+        admissible &= (left_count >= min_samples_leaf) & (
+            n - left_count >= min_samples_leaf
+        )
+    if not np.any(admissible):
+        return empty
+
+    n_left = np.arange(1, n, dtype=float)
+    n_right = n - n_left
+
+    if _is_regression_target(y):
+        ys = ys.astype(float)
+        csum = np.cumsum(ys)[:-1]
+        csum_sq = np.cumsum(ys**2)[:-1]
+        total_sum, total_sq = float(ys.sum()), float((ys**2).sum())
+
+        mean_left = csum / n_left
+        mean_right = (total_sum - csum) / n_right
+        var_left = np.maximum(csum_sq / n_left - mean_left**2, 0.0)
+        var_right = np.maximum((total_sq - csum_sq) / n_right - mean_right**2, 0.0)
+
+        total_impurity = float(np.var(ys)) if n > 1 else 0.0
+        weighted = (n_left * var_left + n_right * var_right) / n
+    else:
+        _, codes = np.unique(ys, return_inverse=True)
+        onehot = np.zeros((n, codes.max() + 1))
+        onehot[np.arange(n), codes] = 1.0
+        counts_left = np.cumsum(onehot, axis=0)[:-1]
+        counts_right = onehot.sum(axis=0) - counts_left
+
+        gini_left = 1.0 - np.sum((counts_left / n_left[:, None]) ** 2, axis=1)
+        gini_right = 1.0 - np.sum((counts_right / n_right[:, None]) ** 2, axis=1)
+
+        total_impurity = _gini_impurity(ys)
+        weighted = (n_left * gini_left + n_right * gini_right) / n
+
+    thresholds = (xs[:-1] + xs[1:]) / 2.0
+    gains = total_impurity - weighted
+    return thresholds[admissible], gains[admissible]
+
+
+def _is_regression_target(y: np.ndarray) -> bool:
+    """
+    Report whether targets should be scored as regression rather than classification.
+
+    Parameters
+    ----------
+    y
+        Target values.
+
+    Returns
+    -------
+    bool
+        True when the targets look continuous.
+    """
+    return bool(len(np.unique(y)) > 10 or y.dtype in [np.float32, np.float64])
 
 
 def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
@@ -1125,7 +1282,7 @@ def _evaluate_split_gain(y: np.ndarray, left_mask: np.ndarray) -> float:
         return 0.0
 
     # Determine if this looks like regression or classification
-    if len(np.unique(y)) > 10 or y.dtype in [np.float32, np.float64]:
+    if _is_regression_target(y):
         # Regression: use variance reduction
         total_var = np.var(y) if len(y) > 1 else 0
         left_var = np.var(y[left_mask]) if np.sum(left_mask) > 1 else 0

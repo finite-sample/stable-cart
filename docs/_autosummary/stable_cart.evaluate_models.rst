@@ -1,5 +1,5 @@
-﻿evaluate_models
-===============
+﻿stable\_cart.evaluate\_models
+=============================
 
 .. currentmodule:: stable_cart
 

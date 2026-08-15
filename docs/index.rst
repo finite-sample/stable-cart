@@ -1,47 +1,72 @@
 Welcome to stable-cart's documentation!
 =======================================
 
-**stable-cart** provides individual decision trees with stability-focused modifications to the tree-building process. All trees follow the familiar scikit-learn API while incorporating advanced stability features.
+**stable-cart** answers two questions about a single decision tree: how much do
+its predictions move when the training data is resampled, and what would it cost
+in accuracy to make them move less.
 
-Key Features
+Why it matters
+--------------
+
+Fit a tree, resample the training data, fit it again. The second tree predicts
+something different for the same individual — often very different. On
+California housing a depth-8 tree moves a household's predicted value by
+$27,500 on average, and by $125,000 at the extreme. Averaging predictions fixes
+this and leaves you with a forest; if you have to ship one readable model, you
+need something else.
+
+Key features
 ------------
 
-🌳 **Individual Decision Trees**: Single trees (not ensembles) with stability-focused modifications
+**Measurement first**: the resampling protocol of Riley and Collins (2023),
+implemented for any scikit-learn estimator. The R package ``pminternal`` does
+this; scikit-learn had no equivalent.
 
-🎯 **Stability Mechanisms**: Multiple approaches including data partitioning, consensus, and bootstrap methods
+**The frontier, not a winner**: :func:`~stable_cart.stability_frontier` sweeps a
+parameter grid and returns the configurations no other configuration beats on
+both accuracy and stability — including plain ``DecisionTreeRegressor``, because
+the honest answer is often that pruning wins.
 
-📊 **sklearn Compatible**: Works seamlessly with pipelines, cross-validation, and grid search
+**A tree whose splits are averaged**: :class:`~stable_cart.StableTree` averages
+the split *decision* over bootstrap replicates rather than averaging
+predictions, so the output is still one tree you can read.
 
-🔬 **Analysis Tools**: Bootstrap variance measurement for evaluating prediction stability
-
-Quick Start
+Quick start
 -----------
 
 .. code-block:: python
 
-   from stable_cart import LessGreedyHybridTree
-   from sklearn.datasets import make_classification
-   
-   # Generate sample data
-   X, y = make_classification(n_samples=1000, n_features=10, random_state=42)
-   
-   # Create and train a stable tree
-   tree = LessGreedyHybridTree(
-       task='classification',
-       max_depth=6,
-       min_samples_leaf=2,
-       split_frac=0.9,
-       val_frac=0.05,
-       est_frac=0.05,
-       random_state=42
-   )
-   tree.fit(X, y)
-   predictions = tree.predict(X)
+   from sklearn.datasets import fetch_california_housing
+   from sklearn.model_selection import train_test_split
+   from sklearn.tree import DecisionTreeRegressor
 
-See the :ref:`tree_estimators` section for a complete list of available estimators and the :ref:`evaluation_functions` for assessing model stability.
+   from stable_cart import bootstrap_instability
+
+   X, y = fetch_california_housing(return_X_y=True)
+   X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+   bootstrap_instability(
+       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
+       X_train, y_train, X_test,
+       n_bootstrap=50, random_state=0,
+   )
+   # {'instability_mean': 0.102, 'instability_p90': 0.236,
+   #  'instability_max': 1.234, 'mape': 0.275}
+
+``mape`` is the headline: a model fitted on a resample predicts $27,500 away
+from what the model fitted on all the data predicts for the same household.
+
+Start at :ref:`measuring_stability`; :ref:`tree_estimators` lists the trees, and
+:ref:`plots` the three figures.
 
 Documentation
 -------------
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Guides:
+
+   operating_point
 
 .. toctree::
    :maxdepth: 2
@@ -53,7 +78,7 @@ Documentation
    :maxdepth: 2
    :caption: Examples:
 
-   notebooks/index
+   examples/index
 
 .. toctree::
    :maxdepth: 1

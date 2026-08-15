@@ -1,5 +1,5 @@
-﻿create_split_strategy
-=====================
+﻿stable\_cart.create\_split\_strategy
+====================================
 
 .. currentmodule:: stable_cart
 

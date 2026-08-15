@@ -1,0 +1,14 @@
+[
+  {
+    "sigma": 3.0,
+    "leaf_share": 0.3334424974292126,
+    "base": 1.0274026445785618,
+    "consensus_gain_pct": 19.638304283224137,
+    "shrinkage_gain_pct": 41.530179591239005,
+    "base_r2": 0.07927801075260144,
+    "consensus_r2": 0.0801044000284129,
+    "shrinkage_r2": 0.09847952335391974,
+    "predicted": "consensus",
+    "actual": "shrinkage"
+  }
+]

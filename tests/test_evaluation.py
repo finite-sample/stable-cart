@@ -84,7 +84,7 @@ def test_prediction_stability_categorical(classification_models_and_data):
 
 def test_prediction_stability_multiclass(multiclass_models_and_data):
     """Test prediction stability for multi-class classification."""
-    models, X_oos, y_oos, task = multiclass_models_and_data
+    models, X_oos, _y_oos, task = multiclass_models_and_data
     scores = prediction_stability(models, X_oos, task)
 
     assert len(scores) == len(models)
@@ -158,7 +158,9 @@ def test_evaluate_models_continuous():
 
     assert len(results) == 1
     metrics = results["dt"]
-    assert "mae" in metrics and "rmse" in metrics and "r2" in metrics
+    assert "mae" in metrics
+    assert "rmse" in metrics
+    assert "r2" in metrics
     assert metrics["mae"] >= 0
     assert metrics["rmse"] >= 0
     assert -1 <= metrics["r2"] <= 1
@@ -391,7 +393,7 @@ def test_full_evaluation_workflow():
     assert len(performance) == 3
     assert len(stability) == 3
 
-    for name in models.keys():
+    for name in models:
         assert "acc" in performance[name]
         assert 0 <= performance[name]["acc"] <= 1
         assert 0 <= stability[name] <= 1

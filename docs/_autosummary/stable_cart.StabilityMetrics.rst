@@ -1,5 +1,5 @@
-﻿StabilityMetrics
-================
+﻿stable\_cart.StabilityMetrics
+=============================
 
 .. currentmodule:: stable_cart
 

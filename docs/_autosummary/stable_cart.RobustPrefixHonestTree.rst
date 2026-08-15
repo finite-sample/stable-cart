@@ -1,5 +1,5 @@
-﻿RobustPrefixHonestTree
-======================
+﻿stable\_cart.RobustPrefixHonestTree
+===================================
 
 .. currentmodule:: stable_cart
 

@@ -3,7 +3,6 @@
 import json
 
 import numpy as np
-import pandas as pd
 import pytest
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
@@ -42,6 +41,8 @@ def test_regression_end_to_end(tmp_path):
 
     # Predict and persist predictions
     preds = {name: m.predict(Xte) for name, m in models.items()}
+    # pandas is a development dependency, not a runtime one.
+    pd = pytest.importorskip("pandas")
     df_pred = pd.DataFrame(
         {"y_true": yte, **{f"pred_{k}": v for k, v in preds.items()}}
     )
@@ -59,18 +60,24 @@ def test_regression_end_to_end(tmp_path):
     stab_path.write_text(json.dumps(stab, indent=2))
 
     # Assertions
-    assert pred_path.exists() and pred_path.stat().st_size > 0
-    assert metrics_path.exists() and metrics_path.stat().st_size > 0
-    assert stab_path.exists() and stab_path.stat().st_size > 0
+    assert pred_path.exists()
+    assert pred_path.stat().st_size > 0
+    assert metrics_path.exists()
+    assert metrics_path.stat().st_size > 0
+    assert stab_path.exists()
+    assert stab_path.stat().st_size > 0
 
     # Sanity checks
     for _name, d in perf.items():
-        assert np.isfinite(d["rmse"]) and d["rmse"] >= 0
-        assert np.isfinite(d["mae"]) and d["mae"] >= 0
+        assert np.isfinite(d["rmse"])
+        assert d["rmse"] >= 0
+        assert np.isfinite(d["mae"])
+        assert d["mae"] >= 0
         assert np.isfinite(d["r2"])
 
     for v in stab.values():
-        assert np.isfinite(v) and v >= 0.0
+        assert np.isfinite(v)
+        assert v >= 0.0
 
 
 @pytest.mark.e2e
@@ -166,7 +173,7 @@ def test_model_persistence():
     # Pickle and unpickle
     for model in [model1, model2]:
         pickled = pickle.dumps(model)
-        unpickled = pickle.loads(pickled)
+        unpickled = pickle.loads(pickled)  # noqa: S301
 
         # Test that predictions are the same
         orig_preds = model.predict(X)
