@@ -185,18 +185,44 @@ has to beat**, and it is one scikit-learn argument. And **which knob pays
 depends on the noise level** — where the leaf component dominates, averaging the
 split decision cannot help, because the structure was not the problem.
 
+A third, less comfortable one. Run every estimator at *one fixed configuration*
+across the 14 benchmark datasets — `make benchmark`, report in
+[benchmark_results/](benchmark_results/comprehensive_benchmark_report.md) — and
+the average variance reduction against plain CART is **−3.2%**. The stable
+methods are, on average, no better. `StableTree` is the only one above water at
++16.8%, and a random forest beats all of them on every dataset while not being a
+tree.
+
+That is not a contradiction of the frontier table above; it is the reason the
+frontier exists. A single default configuration is a point, and the gain lives
+in *choosing* the point. If you take one thing from this package, make it
+`stability_frontier` rather than any particular estimator.
+
 ## Which estimator do I reach for?
 
-The package ships five estimators. `StableTree` is the one to start with: it is
-the only one whose every parameter is measured to change a prediction, and it
-supports multi-class classification. The four older estimators
-(`LessGreedyHybridTree`, `BootstrapVariancePenalizedTree`,
-`RobustPrefixHonestTree`, `CentroidTree`) each combine several stability
-primitives at once; three of them are **binary classification only**.
+The package ships five estimators plus plain CART as the reference.
+`experiments/frontier_eval.py` sweeps each one's own parameters on 14 datasets,
+pools every configuration, and asks which ones land on the *joint* frontier —
+the configurations no configuration of any family beats on both accuracy and
+stability. A model that clears no usable accuracy floor is dropped first, so a
+constant predictor cannot win by being perfectly stable.
 
-Rather than argue about it, run `experiments/frontier_eval.py`, which sweeps
-every estimator on 14 datasets and reports which ones contribute points to the
-joint frontier.
+| estimator | datasets with a frontier point | multi-class? | notes |
+|---|---|---|---|
+| **`StableTree`** | **11 / 14** | yes | start here |
+| `DecisionTree*` + `ccp_alpha` (sklearn) | 7 / 14 | yes | the baseline, and it wins outright on `iris` |
+| `CentroidTree` | 6 / 14 | yes | N× training cost; owns `digits_binary` and half of `xor_nonlinear` |
+| `LessGreedyHybridTree` | 4 / 14 | **no** | the only frontier point on `california_housing` |
+| `BootstrapVariancePenalizedTree` | 2 / 14 | **no** | |
+| `RobustPrefixHonestTree` | 2 / 14 | **no** | two of three points on `california_housing` |
+
+Read this as a map, not a leaderboard. Several arms appear on the same frontier
+on most datasets, which means the curves cross and the operating point is your
+choice. And three of the four older estimators raise on multi-class targets,
+which is why they score zero on `wine`, `iris` and `digits_multiclass` — a
+limitation, not a defeat.
+
+Reproduce with `uv run python experiments/frontier_eval.py`.
 
 ## Development
 

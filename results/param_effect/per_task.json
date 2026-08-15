@@ -112,12 +112,6 @@
         }
       },
       "inert": {
-        "oblique_strategy": {
-          "default": "'root_only'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "oblique_regularization": {
           "default": "'lasso'",
           "section": "CLASSIFICATION",
@@ -154,12 +148,6 @@
           "moved_under": null,
           "moved_to": null
         },
-        "enable_bootstrap_variance_tracking": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "variance_tracking_samples": {
           "default": "10",
           "section": "CLASSIFICATION",
@@ -183,16 +171,10 @@
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
         }
       },
       "untestable": {},
-      "n_fits": 225
+      "n_fits": 193
     },
     "regression": {
       "live": {
@@ -244,12 +226,6 @@
           "moved_under": "defaults",
           "moved_to": "0.0"
         },
-        "enable_lookahead": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": "all_flags_on",
-          "moved_to": "False"
-        },
         "min_samples_for_lookahead": {
           "default": "600",
           "section": "CLASSIFICATION",
@@ -266,7 +242,7 @@
           "default": "12",
           "section": "CLASSIFICATION",
           "moved_under": "defaults",
-          "moved_to": "6"
+          "moved_to": "25"
         },
         "consensus_threshold": {
           "default": "0.5",
@@ -330,8 +306,8 @@
         }
       },
       "inert": {
-        "oblique_strategy": {
-          "default": "'root_only'",
+        "enable_lookahead": {
+          "default": "True",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
@@ -360,12 +336,6 @@
           "moved_under": null,
           "moved_to": null
         },
-        "enable_bootstrap_variance_tracking": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "variance_tracking_samples": {
           "default": "10",
           "section": "CLASSIFICATION",
@@ -377,16 +347,10 @@
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
         }
       },
       "untestable": {},
-      "n_fits": 158
+      "n_fits": 132
     }
   },
   "BootstrapVariancePenalizedTree": {
@@ -472,27 +436,9 @@
           "moved_under": null,
           "moved_to": null
         },
-        "bootstrap_max_depth": {
-          "default": "2",
-          "section": "BOOTSTRAP VARIANCE PENALTY",
-          "moved_under": null,
-          "moved_to": null
-        },
         "enable_variance_aware_stopping": {
           "default": "True",
           "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "enable_stratified_bootstraps": {
-          "default": "True",
-          "section": "ENHANCED: STRATIFIED BOOTSTRAPS (from RobustPrefix)",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "bootstrap_stratification_bins": {
-          "default": "5",
-          "section": "ENHANCED: STRATIFIED BOOTSTRAPS (from RobustPrefix)",
           "moved_under": null,
           "moved_to": null
         },
@@ -544,12 +490,6 @@
           "moved_under": null,
           "moved_to": null
         },
-        "oblique_strategy": {
-          "default": "'adaptive'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "oblique_regularization": {
           "default": "'lasso'",
           "section": "CLASSIFICATION",
@@ -585,16 +525,10 @@
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
         }
       },
       "untestable": {},
-      "n_fits": 450
+      "n_fits": 298
     },
     "regression": {
       "live": {
@@ -640,29 +574,11 @@
           "moved_under": "defaults",
           "moved_to": "(0.1, 0.9)"
         },
-        "enable_threshold_binning": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": "defaults",
-          "moved_to": "False"
-        },
         "max_threshold_bins": {
           "default": "24",
           "section": "CLASSIFICATION",
           "moved_under": "defaults",
           "moved_to": "12"
-        },
-        "enable_robust_consensus": {
-          "default": "True",
-          "section": "ENHANCED: ROBUST CONSENSUS (from RobustPrefix)",
-          "moved_under": "defaults",
-          "moved_to": "False"
-        },
-        "consensus_threshold": {
-          "default": "0.5",
-          "section": "CLASSIFICATION",
-          "moved_under": "defaults",
-          "moved_to": "0.0"
         },
         "enable_oblique_splits": {
           "default": "True",
@@ -744,27 +660,21 @@
           "moved_under": null,
           "moved_to": null
         },
-        "bootstrap_max_depth": {
-          "default": "2",
-          "section": "BOOTSTRAP VARIANCE PENALTY",
-          "moved_under": null,
-          "moved_to": null
-        },
         "enable_variance_aware_stopping": {
           "default": "True",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
         },
-        "enable_stratified_bootstraps": {
+        "enable_threshold_binning": {
           "default": "True",
-          "section": "ENHANCED: STRATIFIED BOOTSTRAPS (from RobustPrefix)",
+          "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
         },
-        "bootstrap_stratification_bins": {
-          "default": "5",
-          "section": "ENHANCED: STRATIFIED BOOTSTRAPS (from RobustPrefix)",
+        "enable_robust_consensus": {
+          "default": "True",
+          "section": "ENHANCED: ROBUST CONSENSUS (from RobustPrefix)",
           "moved_under": null,
           "moved_to": null
         },
@@ -774,8 +684,8 @@
           "moved_under": null,
           "moved_to": null
         },
-        "oblique_strategy": {
-          "default": "'adaptive'",
+        "consensus_threshold": {
+          "default": "0.5",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
@@ -791,21 +701,21 @@
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
         }
       },
       "untestable": {},
-      "n_fits": 211
+      "n_fits": 145
     }
   },
   "RobustPrefixHonestTree": {
     "classification": {
       "live": {
+        "top_levels": {
+          "default": "2",
+          "section": "ROBUST PREFIX CONSENSUS",
+          "moved_under": "defaults",
+          "moved_to": "5"
+        },
         "consensus_samples": {
           "default": "12",
           "section": "CLASSIFICATION",
@@ -835,18 +745,6 @@
           "section": "CLASSIFICATION",
           "moved_under": "defaults",
           "moved_to": "(0.1, 0.9)"
-        },
-        "enable_threshold_binning": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": "defaults",
-          "moved_to": "False"
-        },
-        "max_threshold_bins": {
-          "default": "24",
-          "section": "CLASSIFICATION",
-          "moved_under": "defaults",
-          "moved_to": "12"
         },
         "enable_oblique_splits": {
           "default": "True",
@@ -888,7 +786,7 @@
           "default": "0.03",
           "section": "CLASSIFICATION",
           "moved_under": "defaults",
-          "moved_to": "0.0"
+          "moved_to": "0.53"
         },
         "enable_explicit_variance_penalty": {
           "default": "False",
@@ -904,20 +802,14 @@
         }
       },
       "inert": {
-        "top_levels": {
-          "default": "2",
-          "section": "ROBUST PREFIX CONSENSUS",
+        "enable_threshold_binning": {
+          "default": "True",
+          "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
         },
-        "consensus_subsample_frac": {
-          "default": "0.8",
-          "section": "ROBUST PREFIX CONSENSUS",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "oblique_strategy": {
-          "default": "'root_only'",
+        "max_threshold_bins": {
+          "default": "24",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
@@ -940,19 +832,7 @@
           "moved_under": null,
           "moved_to": null
         },
-        "enable_beam_search_for_consensus": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "enable_ambiguity_gating": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "enable_bootstrap_variance_tracking": {
           "default": "True",
           "section": "CLASSIFICATION",
           "moved_under": null,
@@ -975,12 +855,6 @@
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
         }
       },
       "untestable": {
@@ -997,15 +871,15 @@
           "moved_to": null
         }
       },
-      "n_fits": 162
+      "n_fits": 124
     },
     "regression": {
       "live": {
-        "consensus_samples": {
-          "default": "12",
-          "section": "CLASSIFICATION",
+        "top_levels": {
+          "default": "2",
+          "section": "ROBUST PREFIX CONSENSUS",
           "moved_under": "defaults",
-          "moved_to": "6"
+          "moved_to": "5"
         },
         "consensus_threshold": {
           "default": "0.5",
@@ -1041,7 +915,7 @@
           "default": "24",
           "section": "CLASSIFICATION",
           "moved_under": "defaults",
-          "moved_to": "12"
+          "moved_to": "49"
         },
         "enable_oblique_splits": {
           "default": "True",
@@ -1123,20 +997,8 @@
         }
       },
       "inert": {
-        "top_levels": {
-          "default": "2",
-          "section": "ROBUST PREFIX CONSENSUS",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "consensus_subsample_frac": {
-          "default": "0.8",
-          "section": "ROBUST PREFIX CONSENSUS",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "oblique_strategy": {
-          "default": "'root_only'",
+        "consensus_samples": {
+          "default": "12",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
@@ -1147,19 +1009,7 @@
           "moved_under": null,
           "moved_to": null
         },
-        "enable_beam_search_for_consensus": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
         "enable_ambiguity_gating": {
-          "default": "True",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "enable_bootstrap_variance_tracking": {
           "default": "True",
           "section": "CLASSIFICATION",
           "moved_under": null,
@@ -1167,12 +1017,6 @@
         },
         "variance_tracking_samples": {
           "default": "10",
-          "section": "CLASSIFICATION",
-          "moved_under": null,
-          "moved_to": null
-        },
-        "classification_criterion": {
-          "default": "'gini'",
           "section": "CLASSIFICATION",
           "moved_under": null,
           "moved_to": null
@@ -1192,7 +1036,7 @@
           "moved_to": null
         }
       },
-      "n_fits": 120
+      "n_fits": 76
     }
   },
   "CentroidTree": {

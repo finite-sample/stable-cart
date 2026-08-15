@@ -13,16 +13,6 @@
       },
       {
         "params": {
-          "enable_oblique_splits": true,
-          "leaf_smoothing": 5.0
-        },
-        "accuracy": 0.61739384812438,
-        "instability": 2.9051205329041716,
-        "mape": 1.7214416431501718,
-        "arm": "less_greedy"
-      },
-      {
-        "params": {
           "leaf_smoothing": 5.0,
           "variance_penalty": 1.0
         },
@@ -61,7 +51,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 89.92950370698964
+    "seconds": 20.911078251003346
   },
   "friedman2": {
     "joint_frontier": [
@@ -71,8 +61,8 @@
           "variance_penalty": 0.0
         },
         "accuracy": 0.9433945747306782,
-        "instability": 7633.287663408581,
-        "mape": 86.73875550511119,
+        "instability": 7851.157334253499,
+        "mape": 86.80210146739104,
         "arm": "bootstrap_var"
       },
       {
@@ -97,7 +87,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 70.19454708400008
+    "seconds": 14.119472209007654
   },
   "friedman3": {
     "joint_frontier": [
@@ -107,8 +97,8 @@
           "leaf_smoothing": 5.0
         },
         "accuracy": 0.05904651289627427,
-        "instability": 0.05542901252231658,
-        "mape": 0.19422811749385746,
+        "instability": 0.05873510995847952,
+        "mape": 0.2023737365322322,
         "arm": "less_greedy"
       },
       {
@@ -124,16 +114,16 @@
       {
         "params": {
           "smoothing": 1.0,
-          "top_levels": 1
+          "top_levels": 2
         },
         "accuracy": 0.05403669868494976,
-        "instability": 0.03119250018845078,
-        "mape": 0.1526882772281992,
+        "instability": 0.031001883239528155,
+        "mape": 0.15330730639017384,
         "arm": "robust_prefix"
       }
     ],
     "n_fits": 377,
-    "seconds": 32.05369374900329
+    "seconds": 9.339654125993547
   },
   "quadrant_interaction": {
     "joint_frontier": [
@@ -167,7 +157,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 60.34951245698903
+    "seconds": 15.817513250003685
   },
   "high_dim_sparse": {
     "joint_frontier": [
@@ -186,8 +176,8 @@
           "leaf_smoothing": 5.0
         },
         "accuracy": 0.6906161956109638,
-        "instability": 2.4954064736480466,
-        "mape": 1.9617429125588632,
+        "instability": 2.458421763820522,
+        "mape": 1.9328640951404408,
         "arm": "less_greedy"
       },
       {
@@ -222,7 +212,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 193.2320292930017
+    "seconds": 74.98558187599701
   },
   "heteroscedastic": {
     "joint_frontier": [
@@ -247,7 +237,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 54.29714991700894
+    "seconds": 16.762971543001186
   },
   "xor_nonlinear": {
     "joint_frontier": [
@@ -293,7 +283,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 30.231744582997635
+    "seconds": 13.020916499997838
   },
   "california_housing": {
     "joint_frontier": [
@@ -302,9 +292,9 @@
           "enable_oblique_splits": true,
           "leaf_smoothing": 5.0
         },
-        "accuracy": 0.6373959875314943,
-        "instability": 0.09359139564314971,
-        "mape": 0.3319468113665685,
+        "accuracy": 0.6310513442536178,
+        "instability": 0.09150772130297571,
+        "mape": 0.3297955293367774,
         "arm": "less_greedy"
       },
       {
@@ -313,8 +303,8 @@
           "top_levels": 1
         },
         "accuracy": 0.6245721326349112,
-        "instability": 0.08885281416584721,
-        "mape": 0.3174364915691898,
+        "instability": 0.08882824780675652,
+        "mape": 0.3178293440273385,
         "arm": "robust_prefix"
       },
       {
@@ -323,13 +313,13 @@
           "top_levels": 1
         },
         "accuracy": 0.6201224540923264,
-        "instability": 0.08826149175347899,
-        "mape": 0.32129440466250203,
+        "instability": 0.0883300777231485,
+        "mape": 0.32253398910609593,
         "arm": "robust_prefix"
       }
     ],
     "n_fits": 377,
-    "seconds": 63.4435540419945
+    "seconds": 26.580127749992243
   },
   "diabetes": {
     "joint_frontier": [
@@ -385,7 +375,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 22.59756829199614
+    "seconds": 13.453592376004963
   },
   "breast_cancer": {
     "joint_frontier": [
@@ -420,7 +410,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 34.612771166997845
+    "seconds": 19.76638895701035
   },
   "wine": {
     "joint_frontier": [
@@ -445,7 +435,7 @@
       }
     ],
     "n_fits": 195,
-    "seconds": 1.8056046239944408
+    "seconds": 0.9932434590082266
   },
   "iris": {
     "joint_frontier": [
@@ -460,7 +450,7 @@
       }
     ],
     "n_fits": 195,
-    "seconds": 0.900493083994661
+    "seconds": 0.49834550001105526
   },
   "digits_binary": {
     "joint_frontier": [
@@ -476,7 +466,7 @@
       }
     ],
     "n_fits": 377,
-    "seconds": 60.28973779100488
+    "seconds": 37.82605633401545
   },
   "digits_multiclass": {
     "joint_frontier": [
@@ -522,6 +512,6 @@
       }
     ],
     "n_fits": 195,
-    "seconds": 24.523673957999563
+    "seconds": 17.866813584005286
   }
 }

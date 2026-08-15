@@ -27,8 +27,10 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from stable_cart import (
     BootstrapVariancePenalizedTree,
+    CentroidTree,
     LessGreedyHybridTree,
     RobustPrefixHonestTree,
+    StableTree,
 )
 
 # ============================================================================
@@ -94,6 +96,20 @@ def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]
                 consensus_samples=12,
                 random_state=random_state,
             ),
+            "StableTree": lambda: StableTree(
+                task="regression",
+                max_depth=6,
+                min_samples_leaf=20,
+                n_consensus=12,
+                consensus_threshold=0.3,
+                random_state=random_state,
+            ),
+            "CentroidTree": lambda: CentroidTree(
+                task="regression",
+                n_candidates=20,
+                base_params={"max_depth": 6, "min_samples_leaf": 20},
+                random_state=random_state,
+            ),
         }
     else:  # classification
         return {
@@ -149,6 +165,20 @@ def get_unified_models(task: str, random_state: int = 42) -> dict[str, Callable]
                 est_frac=0.4,
                 smoothing=1.0,
                 consensus_samples=12,
+                random_state=random_state,
+            ),
+            "StableTree": lambda: StableTree(
+                task="classification",
+                max_depth=6,
+                min_samples_leaf=20,
+                n_consensus=12,
+                consensus_threshold=0.3,
+                random_state=random_state,
+            ),
+            "CentroidTree": lambda: CentroidTree(
+                task="classification",
+                n_candidates=20,
+                base_params={"max_depth": 6, "min_samples_leaf": 20},
                 random_state=random_state,
             ),
         }

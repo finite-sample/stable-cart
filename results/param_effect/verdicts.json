@@ -1,10 +1,6 @@
 {
   "LessGreedyHybridTree": {
-    "delete": [
-      "classification_criterion",
-      "enable_bootstrap_variance_tracking",
-      "oblique_strategy"
-    ],
+    "delete": [],
     "inert_but_read": {
       "ambiguity_threshold": 2,
       "beam_width": 3,
@@ -15,15 +11,12 @@
     }
   },
   "BootstrapVariancePenalizedTree": {
-    "delete": [
-      "bootstrap_max_depth",
-      "bootstrap_stratification_bins",
-      "classification_criterion",
-      "enable_stratified_bootstraps",
-      "oblique_strategy"
-    ],
+    "delete": [],
     "inert_but_read": {
       "consensus_samples": 3,
+      "consensus_threshold": 4,
+      "enable_robust_consensus": 1,
+      "enable_threshold_binning": 3,
       "enable_variance_aware_stopping": 1,
       "leaf_smoothing_strategy": 1,
       "lookahead_depth": 3,
@@ -31,14 +24,7 @@
     }
   },
   "RobustPrefixHonestTree": {
-    "delete": [
-      "classification_criterion",
-      "consensus_subsample_frac",
-      "enable_beam_search_for_consensus",
-      "enable_bootstrap_variance_tracking",
-      "oblique_strategy",
-      "top_levels"
-    ],
+    "delete": [],
     "inert_but_read": {
       "enable_ambiguity_gating": 2,
       "lookahead_depth": 3,

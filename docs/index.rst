@@ -64,6 +64,12 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
+   :caption: Guides:
+
+   operating_point
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference:
 
    api
