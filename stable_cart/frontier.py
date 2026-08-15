@@ -133,13 +133,17 @@ def stability_frontier(
 
     Examples
     --------
+    >>> from sklearn.datasets import make_regression
     >>> from sklearn.tree import DecisionTreeRegressor
+    >>> from stable_cart import stability_frontier
+    >>> X, y = make_regression(n_samples=300, n_features=5, noise=5.0, random_state=0)
     >>> result = stability_frontier(
-    ...     lambda **kw: DecisionTreeRegressor(**kw),
-    ...     {"ccp_alpha": [0.0, 0.01, 0.1]},
-    ...     X, y, task="continuous",
+    ...     lambda **kw: DecisionTreeRegressor(random_state=0, **kw),
+    ...     {"max_depth": [2, 5, 8]},
+    ...     X, y, task="continuous", n_bootstrap=8, random_state=0,
     ... )
-    >>> [(p["accuracy"], p["instability"]) for p in result["frontier"]]
+    >>> len(result["points"]), len(result["frontier"]) <= len(result["points"])
+    (3, True)
     """
     if task not in ("continuous", "categorical"):
         raise ValueError("task must be 'continuous' or 'categorical'")

@@ -86,8 +86,18 @@ def plot_prediction_instability(
 
     Examples
     --------
-    >>> raw = bootstrap_predictions(lambda: DecisionTreeRegressor(), X, y, X_test)
-    >>> plot_prediction_instability(raw)
+    >>> import matplotlib
+    >>> matplotlib.use("Agg")
+    >>> from sklearn.datasets import make_regression
+    >>> from sklearn.tree import DecisionTreeRegressor
+    >>> from stable_cart import bootstrap_predictions, plot_prediction_instability
+    >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+    >>> raw = bootstrap_predictions(
+    ...     lambda: DecisionTreeRegressor(max_depth=5, random_state=0),
+    ...     X[:150], y[:150], X[150:], n_bootstrap=10, random_state=0,
+    ... )
+    >>> type(plot_prediction_instability(raw)).__name__
+    'Axes'
     """
     plt = _require_matplotlib()
     ax = ax or plt.subplots(figsize=(5.5, 5.0))[1]
@@ -243,7 +253,18 @@ def plot_stability_frontier(
 
     Examples
     --------
-    >>> plot_stability_frontier({"CART": cart_result, "StableTree": stable_result})
+    >>> import matplotlib
+    >>> matplotlib.use("Agg")
+    >>> from sklearn.datasets import make_regression
+    >>> from sklearn.tree import DecisionTreeRegressor
+    >>> from stable_cart import plot_stability_frontier, stability_frontier
+    >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+    >>> cart = stability_frontier(
+    ...     lambda **kw: DecisionTreeRegressor(random_state=0, **kw),
+    ...     {"max_depth": [2, 5]}, X, y, n_bootstrap=8, random_state=0,
+    ... )
+    >>> type(plot_stability_frontier({"CART": cart})).__name__
+    'Axes'
     """
     if metric not in ("instability", "mape"):
         raise ValueError("metric must be 'instability' or 'mape'")

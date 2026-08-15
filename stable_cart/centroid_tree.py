@@ -82,9 +82,9 @@ class CentroidTree(BaseEstimator, ClassifierMixin, RegressorMixin):
     >>> from sklearn.datasets import make_classification
     >>> from stable_cart import CentroidTree
     >>> X, y = make_classification(n_samples=500, random_state=42)
-    >>> model = CentroidTree(n_candidates=20, random_state=42)
-    >>> model.fit(X, y)
-    >>> predictions = model.predict(X[:5])
+    >>> model = CentroidTree(n_candidates=20, random_state=42).fit(X, y)
+    >>> model.predict(X[:5]).shape
+    (5,)
 
     Notes
     -----

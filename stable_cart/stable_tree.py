@@ -93,9 +93,12 @@ class StableTree(BaseEstimator):
     Examples
     --------
     >>> from sklearn.datasets import make_regression
+    >>> from stable_cart import StableTree
     >>> X, y = make_regression(n_samples=500, n_features=6, random_state=0)
-    >>> tree = StableTree(task="regression", random_state=0).fit(X, y)
-    >>> tree.split_supports()  # how reproducible each split is
+    >>> tree = StableTree(task="regression", max_depth=3, random_state=0).fit(X, y)
+    >>> supports = tree.split_supports()  # how reproducible each split is
+    >>> all(0.0 <= s <= 1.0 for s in supports)
+    True
     """
 
     def __init__(

@@ -68,17 +68,23 @@ def prediction_stability(
 
     Examples
     --------
-    >>> from sklearn.tree import DecisionTreeClassifier
+    >>> from sklearn.datasets import make_classification
     >>> from sklearn.model_selection import train_test_split
-    >>> X, y = make_classification(n_samples=100, random_state=42)
-    >>> X_train, X_test, y_train, y_test = train_test_split(X, y)
+    >>> from sklearn.tree import DecisionTreeClassifier
+    >>> from stable_cart import prediction_stability
+    >>> X, y = make_classification(n_samples=200, random_state=42)
+    >>> X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
     >>> models = {
-    ...     'tree1': DecisionTreeClassifier(random_state=1).fit(X_train, y_train),
-    ...     'tree2': DecisionTreeClassifier(random_state=2).fit(X_train, y_train),
+    ...     "shallow": DecisionTreeClassifier(max_depth=2, random_state=1).fit(
+    ...         X_train, y_train
+    ...     ),
+    ...     "deep": DecisionTreeClassifier(max_depth=8, random_state=2).fit(
+    ...         X_train, y_train
+    ...     ),
     ... }
-    >>> stability = prediction_stability(models, X_test, task='categorical')
-    >>> print(stability)  # Lower values = more stable predictions
-    {'tree1': 0.15, 'tree2': 0.15}
+    >>> stability = prediction_stability(models, X_test, task="categorical")
+    >>> sorted(stability)  # one disagreement rate per model; lower is more stable
+    ['deep', 'shallow']
 
     Notes
     -----
@@ -187,15 +193,17 @@ def evaluate_models(
 
     Examples
     --------
+    >>> from sklearn.datasets import make_regression
     >>> from sklearn.tree import DecisionTreeRegressor
-    >>> X, y = make_regression(n_samples=100, random_state=42)
+    >>> from stable_cart import evaluate_models
+    >>> X, y = make_regression(n_samples=200, random_state=42)
     >>> models = {
-    ...     'shallow': DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y),
-    ...     'deep': DecisionTreeRegressor(max_depth=10, random_state=42).fit(X, y),
+    ...     "shallow": DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y),
+    ...     "deep": DecisionTreeRegressor(max_depth=10, random_state=42).fit(X, y),
     ... }
-    >>> performance = evaluate_models(models, X, y, task='continuous')
-    >>> print(performance['shallow'])
-    {'mae': 12.3, 'rmse': 15.7, 'r2': 0.85}
+    >>> performance = evaluate_models(models, X, y, task="continuous")
+    >>> sorted(performance["shallow"])
+    ['mae', 'r2', 'rmse']
 
     Notes
     -----
@@ -323,12 +331,16 @@ def bootstrap_predictions(
 
     Examples
     --------
+    >>> from sklearn.datasets import make_regression
     >>> from sklearn.tree import DecisionTreeRegressor
+    >>> from stable_cart import bootstrap_predictions
+    >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
     >>> out = bootstrap_predictions(
-    ...     lambda: DecisionTreeRegressor(max_depth=6),
-    ...     X_train, y_train, X_test,
+    ...     lambda: DecisionTreeRegressor(max_depth=6, random_state=0),
+    ...     X[:150], y[:150], X[150:], n_bootstrap=10, random_state=0,
     ... )
-    >>> out["bootstrap"].shape
+    >>> out["bootstrap"].shape  # one row per resample, one column per eval point
+    (10, 50)
     """
     if task not in ("continuous", "categorical"):
         raise ValueError("task must be 'categorical' or 'continuous'.")
@@ -429,11 +441,16 @@ def bootstrap_instability(
 
     Examples
     --------
+    >>> from sklearn.datasets import make_regression
     >>> from sklearn.tree import DecisionTreeRegressor
-    >>> bootstrap_instability(
-    ...     lambda: DecisionTreeRegressor(max_depth=6),
-    ...     X_train, y_train, X_test, task="continuous",
+    >>> from stable_cart import bootstrap_instability
+    >>> X, y = make_regression(n_samples=200, n_features=5, random_state=0)
+    >>> result = bootstrap_instability(
+    ...     lambda: DecisionTreeRegressor(max_depth=6, random_state=0),
+    ...     X[:150], y[:150], X[150:], n_bootstrap=10, random_state=0,
     ... )
+    >>> sorted(result)
+    ['instability_max', 'instability_mean', 'instability_p90', 'mape']
     """
     raw = bootstrap_predictions(
         model_factory,
