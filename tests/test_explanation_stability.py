@@ -7,14 +7,14 @@ number moved.
 
 import numpy as np
 import pytest
-from sklearn.datasets import make_regression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from stable_cart import LessGreedyHybridTree
+from stable_cart import RepresentativeEstimator
 from stable_cart.explanation_stability import (
     explanation_instability,
     path_agreement,
     root_agreement,
+    split_feature_paths,
     split_features,
 )
 
@@ -108,23 +108,42 @@ def test_path_agreement_is_one_for_identical_trees():
     assert path_agreement(trees, X) == 1.0
 
 
-def test_metrics_read_this_packages_dict_trees():
-    """The metrics must work on stable-cart's own tree representation."""
-    X, y = make_regression(n_samples=400, n_features=6, noise=1.0, random_state=0)
-    trees = [
-        LessGreedyHybridTree(
-            task="regression", max_depth=4, min_samples_leaf=20, random_state=seed
-        ).fit(X, y)
-        for seed in (0, 1)
-    ]
+def test_feature_paths_follow_sklearn_missing_value_routing():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(30, 2))
+    y = rng.normal(size=30)
+    X[rng.choice(len(X), 5, replace=False), 0] = np.nan
+    tree = DecisionTreeRegressor(max_depth=3, random_state=0).fit(X, y)
+    rows = np.array([[np.nan, 2.0], [-2.0, np.nan], [0.0, np.nan]])
 
-    features = split_features(trees[0])
-    assert sum(features.values()) >= 1
+    expected = []
+    for row in rows:
+        nodes = tree.decision_path(row.reshape(1, -1)).indices
+        expected.append(
+            tuple(
+                int(tree.tree_.feature[node])
+                for node in nodes
+                if node < tree.tree_.node_count and tree.tree_.feature[node] >= 0
+            )
+        )
 
-    result = explanation_instability(trees)
-    assert 0.0 <= result["jaccard_mean"] <= 1.0
-    assert 0.0 <= root_agreement(trees) <= 1.0
-    assert 0.0 <= path_agreement(trees, X[:20]) <= 1.0
+    assert split_feature_paths(tree, rows) == expected
+
+
+def test_metrics_read_tree_selected_by_representative_estimator():
+    """A supported wrapper exposes the selected fitted tree structure."""
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(240, 4))
+    y = X[:, 2] + rng.normal(scale=0.1, size=len(X))
+    model = RepresentativeEstimator(
+        estimator=DecisionTreeRegressor(max_depth=3),
+        task="regression",
+        n_candidates=4,
+        random_state=6,
+    ).fit(X, y)
+
+    assert split_features(model)
+    assert path_agreement([model, model], X[:12]) == 1.0
 
 
 def test_rejects_too_few_trees():

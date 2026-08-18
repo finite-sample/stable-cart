@@ -7,8 +7,8 @@ most. These plots put both on the page.
 
 They follow Riley and Collins, *Stability of clinical prediction models
 developed using statistical or machine learning methods*, Biometrical Journal
-65(8), 2023 — the same protocol implemented by the R package ``pminternal``,
-which has had no scikit-learn equivalent.
+65(8), 2023, and implement the protocol for scikit-learn-compatible fitting
+procedures.
 
 Matplotlib is an optional dependency::
 
@@ -21,6 +21,8 @@ the caller controls rather than dictating one.
 from typing import Any
 
 import numpy as np
+
+from .frontier import pareto_front
 
 __all__ = [
     "plot_prediction_instability",
@@ -41,6 +43,50 @@ def _require_matplotlib():
     return plt
 
 
+def _display_predictions(
+    result: dict[str, Any], class_label: Any
+) -> tuple[np.ndarray, np.ndarray, str, np.ndarray | None]:
+    """Select the one-dimensional predictions a scatter plot can display."""
+    original = np.asarray(result["original"])
+    bootstrap = np.asarray(result["bootstrap"])
+    if result.get("metric") != "probability_vector":
+        if result.get("task") != "categorical":
+            return original.astype(float), bootstrap.astype(float), "prediction", None
+        supplied_classes = result.get("classes")
+        classes = (
+            np.asarray(supplied_classes)
+            if supplied_classes is not None
+            else np.unique(np.concatenate([original.ravel(), bootstrap.ravel()]))
+        )
+        encoded_original = np.full(original.shape, np.nan, dtype=float)
+        encoded_bootstrap = np.full(bootstrap.shape, np.nan, dtype=float)
+        for index, label in enumerate(classes):
+            encoded_original[original == label] = index
+            encoded_bootstrap[bootstrap == label] = index
+        if np.any(np.isnan(encoded_original)) or np.any(np.isnan(encoded_bootstrap)):
+            raise ValueError("result contains a class absent from result['classes']")
+        return encoded_original, encoded_bootstrap, "class label", classes
+
+    if class_label is None:
+        raise ValueError(
+            "class_label is required to plot probability vectors; the audit "
+            "metrics still use the full vector."
+        )
+    classes = np.asarray(result.get("classes"))
+    matches = np.flatnonzero(classes == class_label)
+    if len(matches) != 1:
+        raise ValueError(
+            "class_label must identify exactly one class in result['classes']"
+        )
+    column = int(matches[0])
+    return (
+        original[:, column].astype(float),
+        bootstrap[:, :, column].astype(float),
+        f"predicted probability for class {class_label!r}",
+        None,
+    )
+
+
 def plot_prediction_instability(
     result: dict[str, Any],
     ax: Any = None,
@@ -48,6 +94,7 @@ def plot_prediction_instability(
     random_state: int | None = 0,
     band: bool = True,
     n_bins: int = 25,
+    class_label: Any = None,
 ) -> Any:
     """
     Draw the instability plot: original prediction against resampled predictions.
@@ -78,11 +125,15 @@ def plot_prediction_instability(
         makes the width of the cloud readable rather than merely visible.
     n_bins
         Number of equal-count bins for that band.
+    class_label
+        Class whose probability to put on the axes when ``result`` contains
+        probability vectors. Required for probability audits. This affects only
+        the display; the audit statistics use the full probability vector.
 
     Returns
     -------
     Any
-        The axes, for further customisation.
+        The axes, for further customization.
 
     Examples
     --------
@@ -102,8 +153,9 @@ def plot_prediction_instability(
     plt = _require_matplotlib()
     ax = ax or plt.subplots(figsize=(5.5, 5.0))[1]
 
-    original = np.asarray(result["original"], dtype=float)
-    boot = np.asarray(result["bootstrap"], dtype=float)
+    original, boot, prediction_label, tick_labels = _display_predictions(
+        result, class_label
+    )
 
     columns = np.arange(len(original))
     if len(columns) > max_points:
@@ -117,14 +169,14 @@ def plot_prediction_instability(
     alpha = float(np.clip(3000.0 / max(len(x), 1), 0.02, 0.35))
     ax.scatter(x, y, s=4, alpha=alpha, edgecolors="none", color="#1f77b4")
 
-    if band and len(original) > n_bins:
+    if band and tick_labels is None and len(original) > n_bins:
         order = np.argsort(original)
         groups = [g for g in np.array_split(order, n_bins) if len(g)]
-        centres = np.array([np.mean(original[g]) for g in groups])
+        centers = np.array([np.mean(original[g]) for g in groups])
         lower = np.array([np.percentile(boot[:, g], 5) for g in groups])
         upper = np.array([np.percentile(boot[:, g], 95) for g in groups])
-        ax.plot(centres, lower, color="#1f77b4", lw=1.4)
-        ax.plot(centres, upper, color="#1f77b4", lw=1.4, label="5th-95th percentile")
+        ax.plot(centers, lower, color="#1f77b4", lw=1.4)
+        ax.plot(centers, upper, color="#1f77b4", lw=1.4, label="5th-95th percentile")
 
     limits = [
         min(float(np.min(x)), float(np.min(y))),
@@ -132,15 +184,23 @@ def plot_prediction_instability(
     ]
     ax.plot(limits, limits, color="#d62728", lw=1.4, ls="--", label="perfect stability")
 
-    ax.set_xlabel("prediction from the model fitted on all the data")
-    ax.set_ylabel("prediction from a model fitted on a resample")
+    ax.set_xlabel(f"full-data {prediction_label}")
+    ax.set_ylabel(f"resampled {prediction_label}")
+    if tick_labels is not None:
+        positions = np.arange(len(tick_labels))
+        labels = [str(label) for label in tick_labels]
+        ax.set_xticks(positions, labels)
+        ax.set_yticks(positions, labels)
     ax.set_title(f"Prediction instability ({boot.shape[0]} resamples)")
     ax.legend(loc="upper left", frameon=False)
     return ax
 
 
 def plot_mape_by_prediction(
-    result: dict[str, Any], ax: Any = None, n_bins: int = 20
+    result: dict[str, Any],
+    ax: Any = None,
+    n_bins: int = 20,
+    class_label: Any = None,
 ) -> Any:
     """
     Show instability as a function of predicted value: *who* the model is unsure about.
@@ -163,6 +223,10 @@ def plot_mape_by_prediction(
         so when there are fewer distinct predictions than bins the distinct
         values are used directly — otherwise one leaf is split across two bins
         and the difference between them is noise drawn as signal.
+    class_label
+        Class whose original-fit probability defines the horizontal axis when
+        ``result`` contains probability vectors. Required for probability
+        audits. The vertical statistic still measures the full vector.
 
     Returns
     -------
@@ -172,7 +236,8 @@ def plot_mape_by_prediction(
     Raises
     ------
     ValueError
-        If ``n_bins`` is below 2.
+        If ``n_bins`` is below 2, or probability vectors are supplied without
+        one valid ``class_label``.
     """
     if n_bins < 2:
         raise ValueError("n_bins must be at least 2")
@@ -180,7 +245,9 @@ def plot_mape_by_prediction(
     plt = _require_matplotlib()
     ax = ax or plt.subplots(figsize=(6.0, 4.0))[1]
 
-    original = np.asarray(result["original"], dtype=float)
+    original, _boot, prediction_label, tick_labels = _display_predictions(
+        result, class_label
+    )
     mape = np.asarray(result["mape_per_point"], dtype=float)
 
     distinct = np.unique(original)
@@ -189,25 +256,30 @@ def plot_mape_by_prediction(
     else:
         order = np.argsort(original)
         groups = np.array_split(order, min(n_bins, len(order)))
-    centres = np.array([np.mean(original[g]) for g in groups if len(g)])
+    centers = np.array([np.mean(original[g]) for g in groups if len(g)])
     heights = np.array([np.mean(mape[g]) for g in groups if len(g)])
     spread = np.array([np.percentile(mape[g], 90) for g in groups if len(g)])
 
     ax.fill_between(
-        centres, heights, spread, alpha=0.2, color="#1f77b4", label="90th pct"
+        centers, heights, spread, alpha=0.2, color="#1f77b4", label="90th pct"
     )
-    ax.plot(centres, heights, marker="o", ms=4, color="#1f77b4", label="mean")
+    ax.plot(centers, heights, marker="o", ms=4, color="#1f77b4", label="mean")
     ax.axhline(
         float(np.mean(mape)), color="#7f7f7f", lw=1.0, ls=":", label="overall mean"
     )
 
-    label = (
-        "disagreement with the original model"
-        if result.get("task") == "categorical"
-        else "mean absolute prediction error"
-    )
-    ax.set_xlabel("prediction from the model fitted on all the data")
+    if result.get("metric") == "probability_vector":
+        label = "mean absolute probability-vector difference"
+    elif result.get("task") == "categorical":
+        label = "disagreement with the original model"
+    else:
+        label = "mean absolute prediction error"
+    ax.set_xlabel(f"full-data {prediction_label}")
     ax.set_ylabel(label)
+    if tick_labels is not None:
+        ax.set_xticks(
+            np.arange(len(tick_labels)), [str(value) for value in tick_labels]
+        )
     ax.set_title("Where the model is unreliable")
     ax.legend(frameon=False)
     return ax
@@ -220,7 +292,7 @@ def plot_stability_frontier(
     metric: str = "instability",
 ) -> Any:
     """
-    Plot one or more model families on the accuracy-stability plane.
+    Plot one or more model families on the validation-score/stability plane.
 
     The point of putting families on shared axes is that the answer is often
     "pruning wins", and a plot that cannot show that is advocacy rather than
@@ -238,8 +310,8 @@ def plot_stability_frontier(
         Label each frontier point with its parameters. Turn off when the grid is
         large enough that the labels collide.
     metric
-        ``'instability'`` (variance across resamples) or ``'mape'`` (Riley and
-        Collins's mean absolute prediction error).
+        ``'instability'`` (the quantity selected when constructing the frontier)
+        or ``'mape'`` (Riley and Collins's mean absolute prediction error).
 
     Returns
     -------
@@ -275,27 +347,28 @@ def plot_stability_frontier(
     palette = plt.rcParams["axes.prop_cycle"].by_key().get("color", ["#1f77b4"])
 
     for index, (name, result) in enumerate(results.items()):
-        colour = palette[index % len(palette)]
-        front = {id(p) for p in result["frontier"]}
+        plot_color = palette[index % len(palette)]
+        plotted_frontier = pareto_front(result["points"], instability_key=metric)
+        front = {id(p) for p in plotted_frontier}
 
         dominated = [p for p in result["points"] if id(p) not in front]
         if dominated:
             ax.scatter(
                 [p[metric] for p in dominated],
-                [p["accuracy"] for p in dominated],
+                [p["score"] for p in dominated],
                 s=28,
                 facecolors="none",
-                edgecolors=colour,
+                edgecolors=plot_color,
                 alpha=0.5,
             )
 
-        ordered = sorted(result["frontier"], key=lambda p: p[metric])
+        ordered = sorted(plotted_frontier, key=lambda p: p[metric])
         ax.plot(
             [p[metric] for p in ordered],
-            [p["accuracy"] for p in ordered],
+            [p["score"] for p in ordered],
             marker="o",
             ms=6,
-            color=colour,
+            color=plot_color,
             label=name,
         )
         if annotate:
@@ -303,19 +376,21 @@ def plot_stability_frontier(
                 text = ", ".join(f"{k}={v}" for k, v in point["params"].items())
                 ax.annotate(
                     text,
-                    (point[metric], point["accuracy"]),
+                    (point[metric], point["score"]),
                     textcoords="offset points",
                     xytext=(6, 4),
                     fontsize=7,
-                    color=colour,
+                    color=plot_color,
                 )
 
     ax.set_xlabel(
-        "prediction variance across resamples"
+        "prediction instability"
         if metric == "instability"
         else "mean absolute prediction error"
     )
-    ax.set_ylabel("held-out accuracy")
-    ax.set_title("Accuracy against stability — up and to the left is better")
+    score_names = {result.get("score_name", "score") for result in results.values()}
+    score_label = score_names.pop() if len(score_names) == 1 else "score"
+    ax.set_ylabel(f"validation {score_label}")
+    ax.set_title("Validation score against instability — up and left is better")
     ax.legend(frameon=False)
     return ax

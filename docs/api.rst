@@ -1,103 +1,85 @@
 .. _api_reference:
 
-API Reference
+API reference
 =============
 
-Two halves. The **measurement** functions work on any scikit-learn estimator and
-are the ones to reach for first — you cannot choose an operating point on the
-accuracy-stability tradeoff without seeing it. The **estimators** are trees that
-try to sit further up that curve.
+The top-level API measures instability for arbitrary fitted procedures and
+includes one representative-model selector plus fixed-design linear
+calibration tools. Inclusion means the implementation and workflow are
+supported; it does not imply a universal stabilization guarantee.
 
 .. currentmodule:: stable_cart
 
-.. _measuring_stability:
-
-Measuring prediction stability
-------------------------------
-
-The protocol is Riley and Collins, *Stability of clinical prediction models
-developed using statistical or machine learning methods*, Biometrical Journal
-65(8), 2023: refit the whole model-building step on bootstrap resamples of the
-training data and compare each refitted model's predictions with the original
-model's, **for the same individuals**.
+Bootstrap audits
+----------------
 
 .. autosummary::
    :toctree: _autosummary
    :nosignatures:
 
-   ~bootstrap_instability
-   ~bootstrap_predictions
-   ~stability_frontier
-   ~pareto_front
+   bootstrap_predictions
+   bootstrap_instability
 
-.. note::
+``bootstrap_predictions`` returns every refitted prediction and the per-case
+statistics. ``bootstrap_instability`` returns aggregate summaries and Monte
+Carlo standard errors.
 
-   Instability on its own is meaningless: a model that ignores its training
-   data scores a perfect zero. Read every number here next to an accuracy
-   measure, which is why :func:`stability_frontier` reports both and returns the
-   Pareto set rather than a winner.
+Model-selection frontier
+------------------------
 
-.. _plots:
+.. autosummary::
+   :toctree: _autosummary
+   :nosignatures:
+
+   stability_frontier
+   pareto_front
+
+The score used to construct a frontier is a validation score. It is not a final
+test-set performance estimate.
+
+Tree-structure audits
+---------------------
+
+.. autosummary::
+   :toctree: _autosummary
+   :nosignatures:
+
+   split_features
+   split_feature_paths
+   explanation_instability
+   root_agreement
+   path_agreement
+
+Read structural instability beside prediction instability. A consistently
+shallow or inaccurate tree can have perfectly stable structure.
 
 Plots
 -----
 
-Install with ``pip install "stable-cart[plots]"``. Each takes an ``ax`` and
-returns it, so they compose into a figure you control.
+Install plotting dependencies with ``pip install "stable-cart[plots]"``.
 
 .. autosummary::
    :toctree: _autosummary
    :nosignatures:
 
-   ~plot_prediction_instability
-   ~plot_mape_by_prediction
-   ~plot_stability_frontier
+   plot_prediction_instability
+   plot_mape_by_prediction
+   plot_stability_frontier
 
-.. _tree_estimators:
+Supported estimator and analytic tools
+---------------------------------------
 
-Tree estimators
----------------
-
-:class:`StableTree` is the one to start with: every one of its parameters is
-measured to change a prediction, and it handles multi-class classification. The
-other four combine several stability primitives at once and three of them are
-binary-classification only.
-
-.. autosummary::
-   :toctree: _autosummary
-   :nosignatures:
-
-   ~StableTree
-   ~LessGreedyHybridTree
-   ~BootstrapVariancePenalizedTree
-   ~RobustPrefixHonestTree
-   ~CentroidTree
-
-.. _evaluation_functions:
-
-Comparing already-fitted models
--------------------------------
-
-A different question from resampling instability: whether a *set* of fitted
-models agree with each other. A model can agree with its peers and still move
-wildly under resampling.
+``RepresentativeEstimator`` supports multiclass classification and selects a
+single fitted candidate by validation-set prediction centrality. Its observed
+stability benefit is task dependent. The linear functions are exact or
+calibrated calculations under their documented fixed-design assumptions; they
+are not general estimators.
 
 .. autosummary::
    :toctree: _autosummary
    :nosignatures:
 
-   ~prediction_stability
-   ~evaluate_models
-
-Base classes and research APIs
-------------------------------
-
-.. autosummary::
-   :toctree: _autosummary
-   :nosignatures:
-
-   ~BaseStableTree
-   ~SplitCandidate
-   ~StabilityMetrics
-   ~SplitStrategy
-   ~create_split_strategy
+   RepresentativeEstimator
+   linear_instability
+   linear_frontier
+   shrinkage_coefficients

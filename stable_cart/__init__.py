@@ -2,19 +2,20 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-# Base class for advanced users
-from .base_stable_tree import BaseStableTree
-
-# Centroid tree: select tree closest to ensemble mean
-from .centroid_tree import CentroidTree
 from .evaluation import (
     bootstrap_instability,
     bootstrap_predictions,
-    evaluate_models,
-    prediction_stability,
+)
+from .explanation_stability import (
+    explanation_instability,
+    path_agreement,
+    root_agreement,
+    split_feature_paths,
+    split_features,
 )
 from .frontier import pareto_front, stability_frontier
-from .split_strategies import SplitStrategy, create_split_strategy
+from .linear import linear_frontier, linear_instability, shrinkage_coefficients
+from .representative_estimator import RepresentativeEstimator
 
 # Plots: matplotlib is imported lazily inside these, so the extra is only
 # needed by callers who actually draw something.
@@ -24,39 +25,27 @@ from .stability_plots import (
     plot_stability_frontier,
 )
 
-# Stability utilities for researchers
-from .stability_utils import SplitCandidate, StabilityMetrics
-from .stable_tree import StableTree
-from .unified_bootstrap_variance_tree import BootstrapVariancePenalizedTree
-
-# Unified tree classes with all stability primitives
-from .unified_less_greedy_tree import LessGreedyHybridTree
-from .unified_robust_prefix_tree import RobustPrefixHonestTree
-
 __all__ = [
     # Evaluation utilities
-    "prediction_stability",
     "bootstrap_instability",
     "bootstrap_predictions",
     "stability_frontier",
     "pareto_front",
-    "evaluate_models",
+    # Supported estimator and fixed-design calibration
+    "RepresentativeEstimator",
+    "linear_instability",
+    "linear_frontier",
+    "shrinkage_coefficients",
+    # Tree-structure diagnostics
+    "split_features",
+    "split_feature_paths",
+    "explanation_instability",
+    "root_agreement",
+    "path_agreement",
     # Plots (need the optional matplotlib extra)
     "plot_prediction_instability",
     "plot_mape_by_prediction",
     "plot_stability_frontier",
-    # Main tree classes
-    "StableTree",
-    "LessGreedyHybridTree",
-    "BootstrapVariancePenalizedTree",
-    "RobustPrefixHonestTree",
-    "CentroidTree",
-    # Advanced/research APIs
-    "BaseStableTree",
-    "SplitCandidate",
-    "StabilityMetrics",
-    "SplitStrategy",
-    "create_split_strategy",
 ]
 
 try:

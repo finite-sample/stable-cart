@@ -12,7 +12,8 @@ These functions measure the structural half. Read them beside a prediction
 measure such as :func:`stable_cart.bootstrap_instability`, never alone — a stump
 that always tests the same feature scores perfectly here and may still be useless.
 
-Supports both scikit-learn trees and this package's dict-structured trees.
+Supports fitted scikit-learn trees and tree estimators selected by
+``RepresentativeEstimator``.
 """
 
 from collections import Counter
@@ -30,6 +31,16 @@ __all__ = [
 ]
 
 
+def _readable_tree(model: Any) -> Any:
+    """Return a fitted scikit-learn tree estimator exposed by ``model``."""
+    if hasattr(getattr(model, "tree_", None), "feature"):
+        return model
+    selected = getattr(model, "selected_estimator_", None)
+    if hasattr(getattr(selected, "tree_", None), "feature"):
+        return selected
+    raise TypeError(f"no readable tree structure on {type(model).__name__}")
+
+
 def _sklearn_splits(tree: Any, max_depth: int) -> list[tuple[int, int]]:
     """Collect (depth, feature) for a fitted sklearn tree, breadth-first."""
     inner = tree.tree_
@@ -45,20 +56,8 @@ def _sklearn_splits(tree: Any, max_depth: int) -> list[tuple[int, int]]:
     return out
 
 
-def _dict_splits(node: Any, max_depth: int, depth: int = 0) -> list[tuple[int, int]]:
-    """Collect (depth, feature) for this package's dict-structured trees."""
-    if not isinstance(node, dict) or depth > max_depth:
-        return []
-    if node.get("type") == "leaf" or node.get("feature_idx") is None:
-        return []
-    out = [(depth, int(node["feature_idx"]))]
-    out.extend(_dict_splits(node.get("left"), max_depth, depth + 1))
-    out.extend(_dict_splits(node.get("right"), max_depth, depth + 1))
-    return out
-
-
 def _splits(model: Any, max_depth: int) -> list[tuple[int, int]]:
-    """Collect (depth, feature) pairs from either tree representation.
+    """Collect (depth, feature) pairs from a fitted scikit-learn tree.
 
     Parameters
     ----------
@@ -76,18 +75,8 @@ def _splits(model: Any, max_depth: int) -> list[tuple[int, int]]:
     ------
     TypeError
         If no readable tree structure can be found on the object.
-    """
-    inner = getattr(model, "tree_", None)
-    if inner is None:
-        inner = getattr(getattr(model, "selected_tree_", None), "tree_", None)
-        if inner is None:
-            raise TypeError(f"no readable tree structure on {type(model).__name__}")
-        return _sklearn_splits(model.selected_tree_, max_depth)
-    if isinstance(inner, dict):
-        return _dict_splits(inner, max_depth)
-    if hasattr(inner, "feature"):
-        return _sklearn_splits(model, max_depth)
-    raise TypeError(f"unrecognised tree structure on {type(model).__name__}")
+    """  # noqa: DOC502
+    return _sklearn_splits(_readable_tree(model), max_depth)
 
 
 def split_features(model: Any, max_depth: int = 3) -> Counter:
@@ -119,7 +108,7 @@ def split_feature_paths(model: Any, X: NDArray[np.floating]) -> list[tuple[int, 
 
     This is the explanation an individual case receives — "you were declined
     because of X, then Y" — so it is the right unit when the audience is the
-    subject of a decision rather than the modeller.
+    subject of a decision rather than the modeler.
 
     Parameters
     ----------
@@ -137,41 +126,20 @@ def split_feature_paths(model: Any, X: NDArray[np.floating]) -> list[tuple[int, 
     ------
     TypeError
         If no readable tree structure can be found on the object.
-    """
-    inner = getattr(model, "tree_", None)
-    paths = []
-
-    if isinstance(inner, dict):
-        for row in np.asarray(X, dtype=float):
-            node, path = inner, []
-            while isinstance(node, dict) and node.get("type") != "leaf":
-                feature = node.get("feature_idx")
-                if feature is None:
-                    break
-                path.append(int(feature))
-                node = (
-                    node["left"]
-                    if row[int(feature)] <= node["threshold"]
-                    else node["right"]
-                )
-            paths.append(tuple(path))
-        return paths
-
-    sk = inner if inner is not None and hasattr(inner, "feature") else None
-    if sk is None:
-        raise TypeError(f"no readable tree structure on {type(model).__name__}")
-    for row in np.asarray(X, dtype=float):
-        node, path = 0, []
-        while sk.feature[node] >= 0:
-            feature = int(sk.feature[node])
-            path.append(feature)
-            node = (
-                int(sk.children_left[node])
-                if row[feature] <= sk.threshold[node]
-                else int(sk.children_right[node])
-            )
-        paths.append(tuple(path))
-    return paths
+    """  # noqa: DOC502
+    tree = _readable_tree(model)
+    inner = tree.tree_
+    indicator = tree.decision_path(np.asarray(X, dtype=float))
+    return [
+        tuple(
+            int(inner.feature[node])
+            for node in indicator.indices[
+                indicator.indptr[row] : indicator.indptr[row + 1]
+            ]
+            if inner.feature[node] >= 0
+        )
+        for row in range(indicator.shape[0])
+    ]
 
 
 def _jaccard_distance(a: Counter, b: Counter) -> float:

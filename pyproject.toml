@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stable-cart"
-description = "Unified stable CART decision trees with 7 stability primitives and cross-method learning for enhanced prediction stability."
+description = "Bootstrap audits of prediction instability for fitted models and model-building pipelines."
 authors = [
     { name = "Gaurav Sood", email = "contact@gsood.com" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
@@ -15,27 +15,26 @@ license-files = ["LICENSE"]
 requires-python = ">=3.11"
 keywords = [
     "machine learning",
-    "decision trees",
-    "CART",
     "stability",
-    "variance reduction",
     "sklearn",
     "prediction stability",
     "bootstrap",
-    "honest learning"
+    "model validation",
+    "reproducibility"
 ]
 dependencies = [
     "numpy>=1.23.0",
-    "scikit-learn>=1.2.0"
+    "scikit-learn>=1.6.0"
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -54,22 +53,22 @@ Issues = "https://github.com/finite-sample/stable-cart/issues"
 plots = ["matplotlib>=3.5"]
 
 [dependency-groups]
-dev = [
+test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-xdist>=3.0",
     "pandas>=1.5.0",
+    "matplotlib>=3.5",
+]
+dev = [
+    { include-group = "test" },
+    "codespell>=2.4",
     "ruff>=0.7.0",
     "pre-commit>=3.0",
-    "matplotlib>=3.3.0",
     "pyright>=1.1.300",
     "vulture>=2.14",
     "deadcode>=2.4.1",
     "pydoclint>=0.5",
-]
-benchmark = [
-    "seaborn>=0.11.0",
-    "jupyterlab>=3.0.0",
 ]
 docs = [
     "sphinx>=7.0",
@@ -77,13 +76,6 @@ docs = [
     "sphinx-autodoc-typehints>=1.25",
     "sphinx-copybutton>=0.5",
     "myst-parser>=2.0",
-    "nbsphinx>=0.9.0",
-    "pandoc>=2.0",
-    "jupyter>=1.0.0",
-    "ipykernel>=6.0.0",
-    "matplotlib>=3.3.0",
-    "seaborn>=0.11.0",
-    "pandas>=1.5.0",
     "py-canon @ git+https://github.com/gojiplus/py-canon@v1",
 ]
 
@@ -91,7 +83,6 @@ docs = [
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-# Notebooks are rendered documentation, not library source.
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
@@ -99,7 +90,7 @@ external = ["DOC"]
 select = ["E", "W", "F", "I", "B", "C4", "UP", "N", "D", "S", "SIM", "T20", "PT", "RUF"]
 # N803/N806: the sklearn API names feature matrices X, X_train, X_val — uppercase
 # is the convention every estimator in the ecosystem follows.
-# RUF022: __all__ is grouped by role (trees, evaluation, research APIs), not sorted.
+# RUF022: __all__ is grouped by workflow rather than sorted.
 ignore = ["D203", "D213", "B008", "C901", "E501", "N803", "N806", "RUF022"]
 
 # The package is documented in NumPy style throughout; the fleet default is google.
@@ -109,13 +100,8 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "D"]
 "docs/**" = ["D"]
-# S101: the library uses assert for internal invariants. Note that four of these
-# validate user-supplied fractions and so vanish under `python -O` (see AUDIT.md).
+"examples/**" = ["T201"]
 "stable_cart/**" = ["S101"]
-# Benchmark and experiment drivers report progress on stdout by design, and skip
-# a dataset rather than abort the sweep when one model fails on it.
-"scripts/**" = ["T201", "D", "S110", "RUF001"]
-"experiments/**" = ["T201", "D", "S110"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -131,7 +117,6 @@ filterwarnings = [
 markers = [
     "e2e: end-to-end integration tests",
     "slow: slow running tests",
-    "benchmark: benchmark tests",
 ]
 
 [tool.coverage.run]
@@ -141,11 +126,11 @@ omit = [
     "*/tests/*",
     "*/test_*.py",
     "*/__pycache__/*",
-    "*/benchmark/*",
 ]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 85
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -156,13 +141,11 @@ exclude_lines = [
 
 [tool.codespell]
 # docs/_build is a local Sphinx artifact (gitignored); .venv and uv.lock are vendored.
-skip = "./docs/_build,./.venv,./uv.lock,./dist,./htmlcov,./.git,./results"
+skip = "./docs/_build,./.venv,./uv.lock,./dist,./htmlcov,./.git,./.research-archive"
+builtin = "clear,rare,en-GB_to_en-US"
 # MAPE is the standard acronym for mean absolute prediction error (Riley &
 # Collins 2023), not a misspelling of "map".
-ignore-words-list = "mape"
-
-[tool.deptry]
-extend_exclude = ["scripts"]
+ignore-words-list = "mape,noone"
 
 [tool.pydoclint]
 style = "numpy"
@@ -170,7 +153,7 @@ arg-type-hints-in-docstring = false
 check-return-types = false
 check-class-attributes = false
 allow-init-docstring = true
-exclude = '\.venv|tests|docs|scripts|experiments'
+exclude = '\.venv|\.research-archive|tests|docs|examples'
 
 [tool.pyright]
 include = ["stable_cart"]
@@ -181,6 +164,9 @@ source = "uv-dynamic-versioning"
 
 [tool.hatch.build.targets.wheel]
 packages = ["stable_cart"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.claude", "/.research-archive"]
 
 [tool.uv-dynamic-versioning]
 vcs = "git"

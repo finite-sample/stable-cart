@@ -1,4 +1,4 @@
-"""Map the accuracy-stability frontier for a model family on your own data.
+"""Map the validation-score/instability frontier for a model family.
 
 Choosing a model is not a single decision between two estimators; it is a choice
 of where to sit on a tradeoff. This module sweeps a parameter grid, measures how
@@ -7,8 +7,8 @@ Pareto set — the configurations for which no other configuration is both more
 accurate and more stable — so the exchange rate is visible before anyone commits.
 
 It is deliberately model-agnostic. A user can put a plain
-``DecisionTreeRegressor(ccp_alpha=...)`` and a :class:`~stable_cart.StableTree`
-on the same axes, and the honest answer may well be that pruning wins.
+``DecisionTreeRegressor(ccp_alpha=...)`` and a regularized linear model on the
+same axes without either model family receiving special treatment.
 
 The instability measures follow the protocol of Riley and Collins, *Stability of
 clinical prediction models developed using statistical or machine learning
@@ -25,30 +25,40 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
-from numpy.typing import NDArray
+from sklearn.metrics import accuracy_score, r2_score
 from sklearn.model_selection import ParameterGrid, train_test_split
+from sklearn.utils.validation import column_or_1d
+
+from .evaluation import bootstrap_predictions
 
 __all__ = ["stability_frontier", "pareto_front"]
+
+
+def _n_rows(data: Any) -> int:
+    """Return the first dimension for supported sklearn containers."""
+    return int(data.shape[0]) if hasattr(data, "shape") else len(data)
 
 
 def _score(pred, y_true, task):
     """R² for continuous outcomes, accuracy for categorical ones."""
     if task == "categorical":
-        return float(np.mean(pred == y_true))
-    ss_res = float(np.sum((y_true - pred) ** 2))
-    ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
-    return 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+        return float(accuracy_score(y_true, pred))
+    return float(r2_score(y_true, pred))
 
 
-def pareto_front(points: list[dict]) -> list[dict]:
+def pareto_front(
+    points: list[dict], *, instability_key: str = "instability"
+) -> list[dict]:
     """
     Keep the configurations no other configuration beats on both axes.
 
     Parameters
     ----------
     points
-        Dicts carrying ``accuracy`` (higher is better) and ``instability``
+        Dicts carrying ``score`` (higher is better) and ``instability``
         (lower is better).
+    instability_key
+        Key containing the quantity to minimize.
 
     Returns
     -------
@@ -58,11 +68,11 @@ def pareto_front(points: list[dict]) -> list[dict]:
     front = []
     for point in points:
         dominated = any(
-            other["accuracy"] >= point["accuracy"]
-            and other["instability"] <= point["instability"]
+            other["score"] >= point["score"]
+            and other[instability_key] <= point[instability_key]
             and (
-                other["accuracy"] > point["accuracy"]
-                or other["instability"] < point["instability"]
+                other["score"] > point["score"]
+                or other[instability_key] < point[instability_key]
             )
             for other in points
         )
@@ -73,8 +83,11 @@ def pareto_front(points: list[dict]) -> list[dict]:
     # knob that does nothing on this data. Keeping both would overstate how many
     # distinct operating points a family actually offers.
     deduped, seen = [], set()
-    for point in sorted(front, key=lambda p: -p["accuracy"]):
-        key = (round(point["accuracy"], 12), round(point["instability"], 12))
+    for point in sorted(front, key=lambda p: -p["score"]):
+        key = (
+            round(point["score"], 12),
+            round(point[instability_key], 12),
+        )
         if key not in seen:
             seen.add(key)
             deduped.append(point)
@@ -84,15 +97,20 @@ def pareto_front(points: list[dict]) -> list[dict]:
 def stability_frontier(
     estimator_factory: Callable[..., Any],
     param_grid: dict | list[dict],
-    X: NDArray[Any],
-    y: NDArray[Any],
+    X: Any,
+    y: Any,
     task: str = "continuous",
     n_bootstrap: int = 20,
     test_size: float = 0.3,
     random_state: int | None = None,
+    *,
+    X_eval: Any = None,
+    y_eval: Any = None,
+    prediction_method: str = "predict",
+    instability_metric: str = "pairwise",
 ) -> dict[str, Any]:
     """
-    Sweep a parameter grid and return the accuracy-stability tradeoff.
+    Sweep a parameter grid and return the validation-score/instability tradeoff.
 
     Parameters
     ----------
@@ -102,34 +120,48 @@ def stability_frontier(
     param_grid
         Grid in scikit-learn's ``ParameterGrid`` form.
     X
-        Feature matrix. Split once into a fitting part and a held-out part; every
-        configuration is scored on the same held-out rows.
+        Feature matrix used to fit the models. When ``X_eval`` and ``y_eval`` are
+        omitted, it is split once into fitting and validation parts.
     y
-        Targets, split alongside ``X``.
+        Training targets, or targets to split alongside ``X``.
     task
         ``'continuous'`` or ``'categorical'``.
     n_bootstrap
-        Resamples per configuration. Riley and Collins use many more for a final
-        report; 20 is enough to rank configurations, and the cost is linear.
+        Resamples per configuration. The returned Monte Carlo standard error is
+        the guide to whether this is enough; 20 is only a quick diagnostic.
     test_size
         Fraction held out for evaluation.
     random_state
-        Seed. The **same** resampled index sets are reused for every
-        configuration, so the comparison is paired and cheaper.
+        Seed for resampling and the internal validation split. The **same**
+        resampled index sets are reused for every configuration, so the data
+        comparison is paired. Estimator randomness remains under
+        ``estimator_factory``.
+    X_eval
+        Optional explicit validation features. Supply with ``y_eval``.
+    y_eval
+        Optional explicit validation targets. Supply with ``X_eval``. The score is
+        a model-selection score, not a final test-set performance estimate.
+    prediction_method
+        ``'predict'`` or, for classification, ``'predict_proba'``. See
+        :func:`~stable_cart.bootstrap_predictions`.
+    instability_metric
+        Quantity minimized on the frontier: ``'pairwise'`` compares two
+        independently refitted models; ``'mape'`` compares each refit with the
+        model fitted on all training data.
 
     Returns
     -------
     dict[str, Any]
-        ``points`` — every configuration with ``accuracy``, ``instability``
-        (variance of predictions across resamples), ``mape`` (Riley and Collins's
-        mean absolute prediction error) and ``params``;
+        ``points`` — every configuration with ``score`` (validation accuracy or
+        R²), the selected ``instability``, its Monte Carlo standard error,
+        ``pairwise``, ``mape``, resampling counts, and ``params``;
         ``frontier`` — the non-dominated subset;
         ``n_fits`` and ``seconds`` — what the answer cost.
 
     Raises
     ------
     ValueError
-        If ``task`` is not recognised or ``n_bootstrap`` is below 2.
+        If an argument is invalid.
 
     Examples
     --------
@@ -149,45 +181,65 @@ def stability_frontier(
         raise ValueError("task must be 'continuous' or 'categorical'")
     if n_bootstrap < 2:
         raise ValueError("n_bootstrap must be at least 2")
+    if instability_metric not in ("pairwise", "mape"):
+        raise ValueError("instability_metric must be 'pairwise' or 'mape'")
+    if (X_eval is None) != (y_eval is None):
+        raise ValueError("X_eval and y_eval must be supplied together")
 
     started = time.perf_counter()
-    stratify = y if task == "categorical" else None
-    X_fit, X_eval, y_fit, y_eval = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=stratify
-    )
+    y_array = column_or_1d(y)
+    if X_eval is None:
+        stratify = y_array if task == "categorical" else None
+        X_fit, X_validation, y_fit, y_validation = train_test_split(
+            X,
+            y_array,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=stratify,
+        )
+        evaluation_source = "internal_validation_split"
+    else:
+        X_fit, y_fit = X, y_array
+        X_validation, y_validation = X_eval, y_eval
+        evaluation_source = "user_supplied_validation_data"
 
-    # One set of resamples, shared by every configuration: this is what makes the
-    # comparison paired rather than merely parallel, and it halves the noise.
-    rng = np.random.default_rng(random_state)
-    n = len(X_fit)
-    resamples = [rng.integers(0, n, n) for _ in range(n_bootstrap)]
+    y_fit = column_or_1d(y_fit)
+    y_validation = column_or_1d(y_validation)
+    n_validation = _n_rows(X_validation)
+    if n_validation != len(y_validation):
+        raise ValueError("X_eval and y_eval must contain the same number of rows")
 
     points, n_fits = [], 0
     for params in ParameterGrid(param_grid):
-        original = estimator_factory(**params).fit(X_fit, y_fit)
-        base_pred = np.asarray(original.predict(X_eval), dtype=float)
-        n_fits += 1
+        raw = bootstrap_predictions(
+            lambda params=params: estimator_factory(**params),
+            X_fit,
+            y_fit,
+            X_validation,
+            task=task,
+            n_bootstrap=n_bootstrap,
+            random_state=random_state,
+            prediction_method=prediction_method,
+        )
+        n_fits += raw["n_fit_attempts"]
 
-        boot_preds = []
-        for idx in resamples:
-            if task == "categorical" and len(np.unique(y_fit[idx])) < 2:
-                continue
-            model = estimator_factory(**params).fit(X_fit[idx], y_fit[idx])
-            boot_preds.append(np.asarray(model.predict(X_eval), dtype=float))
-            n_fits += 1
-
-        if len(boot_preds) < 2:
-            continue
-        boot = np.array(boot_preds)
+        pairwise = float(np.mean(raw["pairwise"]))
+        mape = float(np.mean(raw["mape_per_point"]))
+        selected = {"pairwise": pairwise, "mape": mape}[instability_metric]
+        standard_error = raw[f"{instability_metric}_standard_error"]
 
         points.append(
             {
                 "params": dict(params),
-                "accuracy": _score(original.predict(X_eval), y_eval, task),
-                "instability": float(np.mean(np.var(boot, axis=0))),
-                # Riley and Collins's MAPE: how far a resampled model's prediction
-                # for an individual sits from the original model's, on average.
-                "mape": float(np.mean(np.abs(boot - base_pred))),
+                "score": _score(raw["original_labels"], y_validation, task),
+                "instability": selected,
+                "instability_standard_error": standard_error,
+                "pairwise": pairwise,
+                "pairwise_standard_error": raw["pairwise_standard_error"],
+                "mape": mape,
+                "mape_standard_error": raw["mape_standard_error"],
+                "n_resample_attempts": raw["n_resample_attempts"],
+                "n_rejected_resamples": raw["n_rejected_resamples"],
             }
         )
 
@@ -196,4 +248,9 @@ def stability_frontier(
         "frontier": pareto_front(points),
         "n_fits": n_fits,
         "seconds": time.perf_counter() - started,
+        "task": task,
+        "score_name": "accuracy" if task == "categorical" else "r2",
+        "instability_metric": instability_metric,
+        "prediction_method": prediction_method,
+        "evaluation_source": evaluation_source,
     }

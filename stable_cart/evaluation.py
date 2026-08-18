@@ -1,287 +1,93 @@
-"""Evaluation utilities for model performance and prediction stability.
-
-Evaluation utilities for assessing both model performance and prediction stability.
-
-This module provides functions to:
-1. Measure prediction stability across multiple models (how consistent are predictions?)
-2. Evaluate predictive performance across standard metrics (accuracy, RMSE, etc.)
-
-These functions are designed to work with collections of fitted sklearn-compatible models
-and are useful for comparing different tree algorithms, ensemble methods, or parameter settings.
-"""
+"""Resampling-based prediction-instability audits."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.metrics import (
-    accuracy_score,
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score,
-    roc_auc_score,
-)
-from sklearn.preprocessing import label_binarize
+from sklearn.utils import resample
 
 
-# -------------------------------
-# Prediction Stability (OOS)
-# -------------------------------
-def prediction_stability(
-    models: dict, X_oos: NDArray[np.floating], task: str = "categorical"
-) -> dict[str, float]:
-    """
-    Measure how consistent model predictions are across models on the SAME OOS data.
-
-    This metric quantifies prediction stability by measuring how much models agree
-    with each other on the same out-of-sample data. Lower values indicate more
-    stable/consistent predictions.
-
-    Parameters
-    ----------
-    models
-        Mapping of model name -> fitted model (must have .predict() method).
-        Requires at least 2 models.
-    X_oos
-        Out-of-sample feature matrix to evaluate on.
-    task
-        Type of prediction task.
-
-    Returns
-    -------
-    dict[str, float]
-        Stability score for each model.
-
-        For 'categorical':
-            Average pairwise DISAGREEMENT rate per model (range: 0-1).
-            Lower is better (more stable). 0 = perfect agreement with all other models.
-
-        For 'continuous':
-            RMSE of each model's predictions vs the ensemble mean.
-            Lower is better (more stable). 0 = identical to ensemble mean.
-
-    Raises
-    ------
-    ValueError
-        If fewer than 2 models provided, or if task is not 'categorical' or 'continuous'.
-
-    Examples
-    --------
-    >>> from sklearn.datasets import make_classification
-    >>> from sklearn.model_selection import train_test_split
-    >>> from sklearn.tree import DecisionTreeClassifier
-    >>> from stable_cart import prediction_stability
-    >>> X, y = make_classification(n_samples=200, random_state=42)
-    >>> X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-    >>> models = {
-    ...     "shallow": DecisionTreeClassifier(max_depth=2, random_state=1).fit(
-    ...         X_train, y_train
-    ...     ),
-    ...     "deep": DecisionTreeClassifier(max_depth=8, random_state=2).fit(
-    ...         X_train, y_train
-    ...     ),
-    ... }
-    >>> stability = prediction_stability(models, X_test, task="categorical")
-    >>> sorted(stability)  # one disagreement rate per model; lower is more stable
-    ['deep', 'shallow']
-
-    Notes
-    -----
-    - Stability is measured relative to other models in the collection
-    - For categorical tasks, uses pairwise agreement rates
-    - For continuous tasks, uses RMSE to ensemble mean as stability proxy
-    - This metric is complementary to predictive accuracy - a model can be
-      accurate but unstable, or stable but inaccurate
-    """
-    names = list(models.keys())
-    K = len(names)
-
-    if K < 2:
-        raise ValueError("Need at least 2 models to assess stability.")
-
-    match task:
-        case "categorical":
-            # --- CATEGORICAL: pairwise disagreement (1 - agreement rate) ---
-            preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-
-            # Ensure numeric label space for comparisons
-            if not np.issubdtype(preds.dtype, np.number):
-                # Map labels to integers consistently
-                _unique, inv = np.unique(preds, return_inverse=True)
-                preds = inv.reshape(preds.shape)
-
-            # Compute pairwise agreement matrix A[k,j] = mean(pred_k == pred_j)
-            agree = np.ones((K, K), dtype=float)
-            for k in range(K):
-                for j in range(k + 1, K):
-                    agreement_rate = float(np.mean(preds[:, k] == preds[:, j]))
-                    agree[k, j] = agree[j, k] = agreement_rate
-
-            # Per-model disagreement = average disagreement over pairs involving the model
-            scores = {}
-            for k, name in enumerate(names):
-                # Exclude self-comparison
-                other_agreements = [agree[k, j] for j in range(K) if j != k]
-                avg_disagreement = float(np.mean([1.0 - a for a in other_agreements]))
-                scores[name] = avg_disagreement
-            return scores
-
-        case "continuous":
-            # --- CONTINUOUS: RMSE to ensemble mean ---
-            preds = np.column_stack([models[n].predict(X_oos) for n in names])  # (n, K)
-            mean_pred = np.mean(preds, axis=1)  # Ensemble mean per sample
-
-            scores = {}
-            for k, name in enumerate(names):
-                deviation = mean_pred - preds[:, k]
-                rmse = float(np.sqrt(np.mean(np.square(deviation))))
-                scores[name] = rmse  # Lower = more stable
-            return scores
-
-        case _:
-            raise ValueError("task must be 'categorical' or 'continuous'.")
+def _standard_error(values: NDArray[np.floating]) -> float:
+    """Monte Carlo standard error of a mean across independent draws."""
+    values = np.asarray(values, dtype=float)
+    if len(values) < 2:
+        return float("nan")
+    return float(np.std(values, ddof=1) / np.sqrt(len(values)))
 
 
-# -------------------------------
-# Model Performance Evaluation
-# -------------------------------
-def evaluate_models(
-    models: dict,
-    X: NDArray[np.floating],
-    y: NDArray[np.floating],
-    task: str = "categorical",
-) -> dict[str, dict[str, float]]:
-    """
-    Evaluate predictive performance of multiple models using standard metrics.
+def _pairwise_standard_error(predictions: NDArray[Any], *, numeric: bool) -> float:
+    """Jackknife SE of the mean over every unordered pair of refits."""
+    predictions = np.asarray(predictions)
+    n_draws = predictions.shape[0]
+    if n_draws < 3:
+        return float("nan")
 
-    Computes task-appropriate performance metrics for each model. For classification,
-    includes accuracy and AUC (if predict_proba available). For regression, includes
-    MAE, RMSE, and R².
+    n_eval = predictions.shape[1]
+    if numeric:
+        flat = predictions.astype(float).reshape(n_draws, -1)
+        # Squared distances are translation invariant. Centering before the
+        # norm identity avoids catastrophic cancellation when predictions have
+        # a large common level and comparatively small between-refit movement.
+        flat = flat - flat[0]
+        squared_norms = np.sum(flat**2, axis=1)
+        row_sums = (
+            n_draws * squared_norms
+            + np.sum(squared_norms)
+            - 2.0 * (flat @ np.sum(flat, axis=0))
+        ) / n_eval
+    else:
+        row_sums = np.zeros(n_draws, dtype=float)
+        for column in predictions.T:
+            _values, inverse, counts = np.unique(
+                column, return_inverse=True, return_counts=True
+            )
+            row_sums += n_draws - counts[inverse]
+        row_sums /= n_eval
 
-    Parameters
-    ----------
-    models
-        Model name -> fitted model mapping. Models must have .predict() method.
-    X
-        Feature matrix for evaluation.
-    y
-        Ground-truth labels (classification) or targets (regression).
-    task
-        Type of prediction task.
-
-    Returns
-    -------
-    dict[str, dict[str, float]]
-        Nested dictionary: {model_name: {metric_name: value}}
-
-        For 'categorical':
-            - 'acc': Classification accuracy (0-1)
-            - 'auc': ROC AUC score (0-1, if predict_proba available)
-                    For binary: standard AUC
-                    For multi-class: one-vs-rest macro AUC
-
-        For 'continuous':
-            - 'mae': Mean Absolute Error (lower is better)
-            - 'rmse': Root Mean Squared Error (lower is better)
-            - 'r2': R² coefficient of determination (-∞ to 1, higher is better)
-
-    Raises
-    ------
-    ValueError
-        If task is not 'categorical' or 'continuous'.
-
-    Examples
-    --------
-    >>> from sklearn.datasets import make_regression
-    >>> from sklearn.tree import DecisionTreeRegressor
-    >>> from stable_cart import evaluate_models
-    >>> X, y = make_regression(n_samples=200, random_state=42)
-    >>> models = {
-    ...     "shallow": DecisionTreeRegressor(max_depth=3, random_state=42).fit(X, y),
-    ...     "deep": DecisionTreeRegressor(max_depth=10, random_state=42).fit(X, y),
-    ... }
-    >>> performance = evaluate_models(models, X, y, task="continuous")
-    >>> sorted(performance["shallow"])
-    ['mae', 'r2', 'rmse']
-
-    Notes
-    -----
-    - AUC computation gracefully handles cases where predict_proba is not available
-    - For multi-class classification, uses one-vs-rest strategy for AUC
-    - All metrics use standard sklearn implementations
-    - Consider using separate train/test sets to avoid overfitting bias
-    """
-    results: dict[str, dict[str, float]] = {}
-
-    match task:
-        case "categorical":
-            y_unique = np.unique(y)
-            is_binary = len(y_unique) == 2
-
-            for name, mdl in models.items():
-                y_hat = mdl.predict(X)
-                try:
-                    acc = float(accuracy_score(y, y_hat))
-                except ValueError:
-                    # Handle cases where predictions contain NaN or invalid values
-                    acc = np.nan
-                entry = {"acc": acc}
-
-                # Compute AUC if model supports probability predictions
-                if hasattr(mdl, "predict_proba"):
-                    try:
-                        # Direct method call - type checker will verify compatibility
-                        proba = mdl.predict_proba(X)  # type: ignore[attr-defined]
-                        if is_binary:
-                            auc = float(roc_auc_score(y, proba[:, 1]))
-                        else:
-                            # One-vs-rest macro AUC for multi-class
-                            Yb = label_binarize(y, classes=y_unique)
-                            auc = float(
-                                roc_auc_score(
-                                    Yb, proba, average="macro", multi_class="ovr"
-                                )
-                            )
-                        entry["auc"] = auc
-                    except Exception:  # noqa: S110
-                        # AUC is undefined for a single-class fold; the metric is
-                        # optional, so the entry is simply left without it
-                        pass
-
-                results[name] = entry
-
-        case "continuous":
-            for name, mdl in models.items():
-                y_pred = mdl.predict(X)
-                try:
-                    mae = float(mean_absolute_error(y, y_pred))
-                    rmse = float(np.sqrt(mean_squared_error(y, y_pred)))
-                    r2 = float(r2_score(y, y_pred))
-                except ValueError:
-                    # Handle cases where predictions contain NaN or invalid values
-                    mae = np.nan
-                    rmse = np.nan
-                    r2 = np.nan
-                results[name] = {"mae": mae, "rmse": rmse, "r2": r2}
-
-        case _:
-            raise ValueError("task must be 'categorical' or 'continuous'.")
-
-    return results
+    total = 0.5 * float(np.sum(row_sums))
+    leave_one_out_pairs = (n_draws - 1) * (n_draws - 2) / 2
+    leave_one_out = (total - row_sums) / leave_one_out_pairs
+    variance = (
+        (n_draws - 1)
+        / n_draws
+        * float(np.sum((leave_one_out - np.mean(leave_one_out)) ** 2))
+    )
+    return float(np.sqrt(max(variance, 0.0)))
 
 
-# -------------------------------
-# Instability under resampling
-# -------------------------------
+def _aligned_probabilities(model: Any, X: NDArray[Any], classes: NDArray[Any]):
+    """Return probability columns in the reference class order."""
+    if not hasattr(model, "predict_proba") or not hasattr(model, "classes_"):
+        raise ValueError(
+            "prediction_method='predict_proba' needs every refitted estimator "
+            "to expose predict_proba and classes_."
+        )
+    probabilities = np.asarray(model.predict_proba(X), dtype=float)
+    model_classes = np.asarray(model.classes_)
+    if probabilities.ndim != 2 or probabilities.shape[1] != len(model_classes):
+        raise ValueError("predict_proba columns do not match the estimator's classes_.")
+
+    aligned = np.zeros((probabilities.shape[0], len(classes)), dtype=float)
+    for source_column, label in enumerate(model_classes):
+        target = np.flatnonzero(classes == label)
+        if len(target) != 1:
+            raise ValueError(
+                f"A refitted estimator exposed unknown or duplicate class {label!r}."
+            )
+        aligned[:, target[0]] = probabilities[:, source_column]
+    return aligned
+
+
 def bootstrap_predictions(
     model_factory: Callable[[], Any],
-    X_train: NDArray[np.floating],
-    y_train: NDArray[Any],
-    X_eval: NDArray[np.floating],
+    X_train: Any,
+    y_train: Any,
+    X_eval: Any,
     task: str = "continuous",
     n_bootstrap: int = 20,
     random_state: int | None = None,
+    prediction_method: str = "predict",
 ) -> dict[str, Any]:
     """
     Refit a model on bootstrap resamples and return every prediction it made.
@@ -308,26 +114,49 @@ def bootstrap_predictions(
     n_bootstrap
         Number of bootstrap resamples.
     random_state
-        Seed for reproducibility.
+        Seed for the bootstrap samples. Randomness inside the estimator remains
+        under ``model_factory``; set estimator seeds there when the audit should
+        isolate sampling variation or be exactly reproducible.
+    prediction_method
+        ``'predict'`` measures movement in predicted values or class labels.
+        For classification, ``'predict_proba'`` measures movement in the full
+        probability vector, with columns aligned by the estimator's ``classes_``
+        attribute. Probability movement is summarized by squared Euclidean
+        distance for pairwise instability and mean absolute difference for MAPE.
 
     Returns
     -------
     dict[str, Any]
         ``original`` — predictions of the model fitted on the full training data,
-        shape (n_eval,);
+        shape (n_eval,) for values or labels and (n_eval, n_classes) for class
+        probabilities;
+        ``original_labels`` — class labels or numeric predictions from the
+        original fit, used to score a frontier;
         ``bootstrap`` — predictions of each resampled model, shape
-        (n_bootstrap, n_eval);
+        (n_bootstrap, n_eval) or (n_bootstrap, n_eval, n_classes);
         ``per_point`` — the instability statistic for each evaluation point
         (variance across resamples for 'continuous', disagreement with the modal
         prediction for 'categorical');
+        ``pairwise`` — the expected disagreement between two *independently*
+        resampled models at each point. For 'continuous' this is the mean squared
+        difference; for categorical labels, the probability that two resampled
+        models disagree; for class probabilities, squared Euclidean distance.
+        It is computed from every unordered pair, not an arbitrary subset;
         ``mape_per_point`` — mean absolute prediction error against the original
         model, per evaluation point;
+        ``mape_standard_error`` and ``pairwise_standard_error`` — Monte Carlo
+        standard errors for the two aggregate means. The pairwise error uses the
+        delete-one jackknife for the all-pairs U-statistic;
+        ``n_fit_attempts`` — the original fit plus every accepted bootstrap fit;
+        ``n_resample_attempts`` — all bootstrap draws, including rejected ones;
+        ``n_rejected_resamples`` — one-class classification draws that were
+        redrawn because common classifiers are undefined on them;
         ``task`` — echoed back so downstream code need not be told again.
 
     Raises
     ------
     ValueError
-        If task is not 'continuous' or 'categorical', or n_bootstrap < 2.
+        If an argument is invalid or probability columns cannot be aligned.
 
     Examples
     --------
@@ -346,55 +175,156 @@ def bootstrap_predictions(
         raise ValueError("task must be 'categorical' or 'continuous'.")
     if n_bootstrap < 2:
         raise ValueError("n_bootstrap must be at least 2.")
+    if prediction_method not in ("predict", "predict_proba"):
+        raise ValueError("prediction_method must be 'predict' or 'predict_proba'.")
+    if prediction_method == "predict_proba" and task != "categorical":
+        raise ValueError("predict_proba is only meaningful for categorical outcomes.")
 
+    y_array = np.asarray(y_train)
     rng = np.random.default_rng(random_state)
-    n_train = X_train.shape[0]
+    n_train = X_train.shape[0] if hasattr(X_train, "shape") else len(X_train)
+    if n_train == 0:
+        raise ValueError("X_train and y_train must not be empty.")
+    if len(y_array) != n_train:
+        raise ValueError("X_train and y_train must contain the same number of rows.")
+    n_eval = X_eval.shape[0] if hasattr(X_eval, "shape") else len(X_eval)
+    if n_eval == 0:
+        raise ValueError("X_eval must not be empty.")
+    if y_array.ndim != 1:
+        raise ValueError("y_train must be one-dimensional.")
 
-    original = np.asarray(model_factory().fit(X_train, y_train).predict(X_eval))
+    original_model = model_factory().fit(X_train, y_train)
+    classes = (
+        np.asarray(getattr(original_model, "classes_", np.unique(y_array)))
+        if task == "categorical"
+        else None
+    )
+    if prediction_method == "predict_proba":
+        if not hasattr(original_model, "predict_proba") or not hasattr(
+            original_model, "classes_"
+        ):
+            raise ValueError(
+                "prediction_method='predict_proba' needs an estimator with "
+                "predict_proba and classes_."
+            )
+        assert classes is not None
+        original = _aligned_probabilities(original_model, X_eval, classes)
+    else:
+        original = np.asarray(original_model.predict(X_eval))
 
     predictions = []
-    for _ in range(n_bootstrap):
-        idx = rng.integers(0, n_train, n_train)
-        if task == "categorical" and len(np.unique(y_train[idx])) < 2:
-            idx = np.arange(n_train)
-        model = model_factory()
-        model.fit(X_train[idx], y_train[idx])
-        predictions.append(model.predict(X_eval))
-
-    preds = np.atleast_2d(np.asarray(predictions))
-
-    if task == "continuous":
-        per_point = np.var(preds.astype(float), axis=0)
-        mape_per_point = np.mean(
-            np.abs(preds.astype(float) - original.astype(float)), axis=0
+    n_fit_attempts = 1
+    n_resample_attempts = 0
+    n_rejected_resamples = 0
+    max_attempts = n_bootstrap + max(100, 10 * n_bootstrap)
+    while len(predictions) < n_bootstrap:
+        if n_resample_attempts >= max_attempts:
+            raise ValueError(
+                "Could not obtain the requested number of valid bootstrap fits. "
+                "Too many classification resamples contained only one class."
+            )
+        # sklearn's public resample API preserves pandas and sparse containers.
+        # This is the ordinary pairs bootstrap: class prevalence is allowed to
+        # vary, because freezing it can materially understate instability.
+        seed = int(rng.integers(np.iinfo(np.int32).max))
+        resampled = cast(
+            list[Any],
+            resample(
+                X_train,
+                y_train,
+                replace=True,
+                n_samples=n_train,
+                random_state=seed,
+            ),
         )
+        X_resampled, y_resampled = resampled
+        n_resample_attempts += 1
+        # A one-class draw is part of an unconditional pairs bootstrap, but many
+        # standard classifiers are mathematically undefined on it. Use one
+        # estimator-independent policy so every configuration in a frontier is
+        # evaluated on the same conditional bootstrap distribution.
+        if task == "categorical" and len(np.unique(y_resampled)) == 1:
+            n_rejected_resamples += 1
+            continue
+        model = model_factory()
+        n_fit_attempts += 1
+        model.fit(X_resampled, y_resampled)
+        if prediction_method == "predict_proba":
+            assert classes is not None
+            predictions.append(_aligned_probabilities(model, X_eval, classes))
+        else:
+            predictions.append(model.predict(X_eval))
+
+    preds = np.asarray(predictions)
+    if preds.ndim < 2:
+        preds = np.atleast_2d(preds)
+
+    if prediction_method == "predict_proba":
+        numeric = preds.astype(float)
+        original_numeric = original.astype(float)
+        per_point = np.sum(np.var(numeric, axis=0, ddof=1), axis=1)
+        pairwise = 2.0 * per_point
+        mape_per_point = np.mean(
+            np.mean(np.abs(numeric - original_numeric), axis=2), axis=0
+        )
+        mape_samples = np.mean(np.abs(numeric - original_numeric), axis=(1, 2))
+        metric = "probability_vector"
+    elif task == "continuous":
+        numeric = preds.astype(float)
+        original_numeric = original.astype(float)
+        per_point = np.var(numeric, axis=0, ddof=1)
+        mape_per_point = np.mean(np.abs(numeric - original_numeric), axis=0)
+        pairwise = 2.0 * per_point
+        mape_samples = np.mean(np.abs(numeric - original_numeric), axis=1)
+        metric = "numeric_prediction"
     else:
-        per_point = np.empty(preds.shape[1], dtype=float)
-        for j in range(preds.shape[1]):
+        n_eval = len(original)
+        per_point = np.empty(n_eval, dtype=float)
+        pairwise = np.empty(n_eval, dtype=float)
+        n_draws = preds.shape[0]
+        for j in range(n_eval):
             values, counts = np.unique(preds[:, j], return_counts=True)
             modal = values[np.argmax(counts)]
             per_point[j] = float(np.mean(preds[:, j] != modal))
+            agreement = np.sum(counts * (counts - 1)) / (n_draws * (n_draws - 1))
+            pairwise[j] = 1.0 - agreement
         # For labels, "absolute error" is disagreement with the original model.
         mape_per_point = np.mean(preds != original, axis=0).astype(float)
+        mape_samples = np.mean(preds != original, axis=1).astype(float)
+        metric = "class_label"
 
     return {
         "original": original,
+        "original_labels": np.asarray(original_model.predict(X_eval)),
         "bootstrap": preds,
         "per_point": per_point,
         "mape_per_point": mape_per_point,
+        "pairwise": pairwise,
         "task": task,
+        "prediction_method": prediction_method,
+        "metric": metric,
+        "classes": classes,
+        "n_fit_attempts": n_fit_attempts,
+        "n_resample_attempts": n_resample_attempts,
+        "n_rejected_resamples": n_rejected_resamples,
+        "mape_standard_error": _standard_error(mape_samples),
+        "pairwise_standard_error": _pairwise_standard_error(
+            preds,
+            numeric=prediction_method == "predict_proba" or task == "continuous",
+        ),
     }
 
 
 def bootstrap_instability(
     model_factory: Callable[[], Any],
-    X_train: NDArray[np.floating],
-    y_train: NDArray[Any],
-    X_eval: NDArray[np.floating],
+    X_train: Any,
+    y_train: Any,
+    X_eval: Any,
     task: str = "continuous",
     n_bootstrap: int = 20,
     random_state: int | None = None,
-) -> dict[str, float]:
+    prediction_method: str = "predict",
+) -> dict[str, float | int]:
     """
     Measure how much a model's predictions move when the training data is perturbed.
 
@@ -402,11 +332,9 @@ def bootstrap_instability(
     on bootstrap resamples of the training data and measure the spread of its
     predictions **for the same evaluation point**. Lower is better.
 
-    It is a different question from :func:`prediction_stability`, which measures
-    whether a *set* of already-fitted models agree with each other. A model can
-    agree with its peers and still be wildly unstable under resampling, and a
-    model that ignores its training data entirely scores a perfect zero here — so
-    always read this next to an accuracy measure.
+    A model that ignores its training data scores a perfect zero here, so always
+    read instability next to an appropriate performance measure on separate
+    validation or test data.
 
     Parameters
     ----------
@@ -424,17 +352,24 @@ def bootstrap_instability(
     n_bootstrap
         Number of bootstrap resamples.
     random_state
-        Seed for reproducibility.
+        Seed for the bootstrap samples. Estimator randomness remains under
+        ``model_factory``.
+    prediction_method
+        Prediction representation to compare; see
+        :func:`bootstrap_predictions`.
 
     Returns
     -------
-    dict[str, float]
+    dict[str, float | int]
         ``instability_mean``, ``instability_p90`` and ``instability_max`` over the
         evaluation points. For 'continuous' the per-point statistic is the
-        variance of predictions; for 'categorical' it is the fraction of
+        variance of predictions; for categorical labels it is the fraction of
         resamples disagreeing with that point's modal prediction. ``mape`` is
         Riley and Collins's mean absolute prediction error against the model
-        fitted on the full training data.
+        fitted on the full training data. ``pairwise_mean`` compares two
+        independently refitted models. Monte Carlo standard errors accompany
+        both aggregate comparison measures. Fit, draw, and one-class rejection
+        counts expose the classification bootstrap's conditioning.
 
     Raises ``ValueError`` (from :func:`bootstrap_predictions`) if task is not
     'continuous' or 'categorical', or n_bootstrap is below 2.
@@ -449,8 +384,8 @@ def bootstrap_instability(
     ...     lambda: DecisionTreeRegressor(max_depth=6, random_state=0),
     ...     X[:150], y[:150], X[150:], n_bootstrap=10, random_state=0,
     ... )
-    >>> sorted(result)
-    ['instability_max', 'instability_mean', 'instability_p90', 'mape']
+    >>> 0.0 <= result["mape_standard_error"] < result["mape"]
+    True
     """
     raw = bootstrap_predictions(
         model_factory,
@@ -460,6 +395,7 @@ def bootstrap_instability(
         task=task,
         n_bootstrap=n_bootstrap,
         random_state=random_state,
+        prediction_method=prediction_method,
     )
     per_point = raw["per_point"]
 
@@ -468,4 +404,10 @@ def bootstrap_instability(
         "instability_p90": float(np.percentile(per_point, 90)),
         "instability_max": float(np.max(per_point)),
         "mape": float(np.mean(raw["mape_per_point"])),
+        "mape_standard_error": raw["mape_standard_error"],
+        "pairwise_mean": float(np.mean(raw["pairwise"])),
+        "pairwise_standard_error": raw["pairwise_standard_error"],
+        "n_fit_attempts": int(raw["n_fit_attempts"]),
+        "n_resample_attempts": int(raw["n_resample_attempts"]),
+        "n_rejected_resamples": int(raw["n_rejected_resamples"]),
     }

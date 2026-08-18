@@ -1,7 +1,7 @@
 # Makefile for stable-cart project
 # Simple, focused targets for essential development tasks
 
-.PHONY: help install test lint format check clean coverage benchmark quick-benchmark stability-benchmark ci-docker
+.PHONY: help install test lint format check docs doctest clean coverage ci-docker
 
 # Default target
 help:
@@ -11,10 +11,9 @@ help:
 	@echo "  lint        Run ruff lint and format checks"
 	@echo "  format      Apply ruff formatting"
 	@echo "  check       Run preen conformance checks"
+	@echo "  docs        Build documentation with warnings as errors"
+	@echo "  doctest     Run documentation examples"
 	@echo "  coverage    Run tests with coverage report"
-	@echo "  benchmark         Run comprehensive benchmark (all datasets)"
-	@echo "  quick-benchmark   Run quick benchmark (key datasets, fast)"
-	@echo "  stability-benchmark  Run stability-focused benchmark"
 	@echo "  ci-docker   Run CI pipeline in Docker container"
 	@echo "  clean       Clean up generated files"
 
@@ -27,34 +26,31 @@ test:
 	uv run pytest tests/ -v
 
 coverage:
-	uv run pytest tests/ -v --cov=stable_cart --cov-report=term-missing --cov-report=html
+	uv run pytest tests/ -v --cov=stable_cart --cov-report=term-missing
 
 # Linting and formatting
 lint:
-	uv run ruff check stable_cart/ tests/
-	uv run ruff format --check stable_cart/ tests/
+	uv run ruff check stable_cart/ tests/ examples/
+	uv run ruff format --check stable_cart/ tests/ examples/
 
 format:
-	uv run ruff format stable_cart/ tests/
-	uv run ruff check --fix stable_cart/ tests/
+	uv run ruff format stable_cart/ tests/ examples/
+	uv run ruff check --fix stable_cart/ tests/ examples/
 
 check:
-	preen check
+	uv run codespell
+	uv run --with preen preen check --strict --skip codespell
+
+docs:
+	uv run sphinx-build -W --keep-going -b html docs docs/_build/html
+
+doctest:
+	uv run sphinx-build -W --keep-going -b doctest docs docs/_build/doctest
 
 # Docker-based CI (simple and clean)
 ci-docker:
 	docker run --rm -v $$(pwd):/app -w /app python:3.11 bash -c \
 		"pip install uv && uv sync --all-groups && make lint && make test"
-
-# Benchmarking
-benchmark:
-	PYTHONPATH=. uv run python scripts/comprehensive_benchmark.py --datasets comprehensive
-
-quick-benchmark:
-	PYTHONPATH=. uv run python scripts/comprehensive_benchmark.py --datasets quick --quick
-
-stability-benchmark:
-	PYTHONPATH=. uv run python scripts/comprehensive_benchmark.py --datasets stability_showcase
 
 # Cleanup
 clean:

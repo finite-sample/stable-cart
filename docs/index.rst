@@ -1,88 +1,65 @@
-Welcome to stable-cart's documentation!
-=======================================
+Prediction instability audits
+=============================
 
-**stable-cart** answers two questions about a single decision tree: how much do
-its predictions move when the training data is resampled, and what would it cost
-in accuracy to make them move less.
+This package measures how much a fitted model's predictions change when its
+training data change. It repeats the complete model-building procedure on
+bootstrap samples and preserves the resulting prediction distribution for every
+evaluation case.
 
-Why it matters
---------------
-
-Fit a tree, resample the training data, fit it again. The second tree predicts
-something different for the same individual — often very different. On
-California housing a depth-8 tree moves a household's predicted value by
-$27,500 on average, and by $125,000 at the extreme. Averaging predictions fixes
-this and leaves you with a forest; if you have to ship one readable model, you
-need something else.
-
-Key features
-------------
-
-**Measurement first**: the resampling protocol of Riley and Collins (2023),
-implemented for any scikit-learn estimator. The R package ``pminternal`` does
-this; scikit-learn had no equivalent.
-
-**The frontier, not a winner**: :func:`~stable_cart.stability_frontier` sweeps a
-parameter grid and returns the configurations no other configuration beats on
-both accuracy and stability — including plain ``DecisionTreeRegressor``, because
-the honest answer is often that pruning wins.
-
-**A tree whose splits are averaged**: :class:`~stable_cart.StableTree` averages
-the split *decision* over bootstrap replicates rather than averaging
-predictions, so the output is still one tree you can read.
+The package works with arbitrary estimators and pipelines. It does not claim to
+stabilize them. Its job is to measure instability correctly, expose where it is
+concentrated, and compare candidate procedures without mistaking a constant
+predictor for a success.
 
 Quick start
 -----------
 
 .. code-block:: python
 
-   from sklearn.datasets import fetch_california_housing
-   from sklearn.model_selection import train_test_split
-   from sklearn.tree import DecisionTreeRegressor
+   from sklearn.datasets import make_regression
+   from sklearn.linear_model import RidgeCV
+   from sklearn.pipeline import make_pipeline
+   from sklearn.preprocessing import StandardScaler
 
    from stable_cart import bootstrap_instability
 
-   X, y = fetch_california_housing(return_X_y=True)
-   X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+   X, y = make_regression(n_samples=400, n_features=10, random_state=0)
 
-   bootstrap_instability(
-       lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
-       X_train, y_train, X_test,
-       n_bootstrap=50, random_state=0,
+   result = bootstrap_instability(
+       lambda: make_pipeline(StandardScaler(), RidgeCV()),
+       X[:300],
+       y[:300],
+       X[300:],
+       n_bootstrap=200,
+       random_state=0,
    )
-   # {'instability_mean': 0.102, 'instability_p90': 0.236,
-   #  'instability_max': 1.234, 'mape': 0.275}
 
-``mape`` is the headline: a model fitted on a resample predicts $27,500 away
-from what the model fitted on all the data predicts for the same household.
+   print(result["mape"], result["mape_standard_error"])
 
-Start at :ref:`measuring_stability`; :ref:`tree_estimators` lists the trees, and
-:ref:`plots` the three figures.
+The factory returns a fresh, unfitted procedure. Put preprocessing, feature
+selection, and tuning inside that procedure if they should be repeated in the
+audit.
 
-Documentation
--------------
+Start with :doc:`operating_point` for the evaluation workflow and
+:doc:`theory` for the quantities being estimated.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Guides:
+   :caption: Guides
 
    operating_point
+   theory
+   scope
 
 .. toctree::
    :maxdepth: 2
-   :caption: API Reference:
+   :caption: Reference
 
    api
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Examples:
-
-   examples/index
-
-.. toctree::
    :maxdepth: 1
-   :caption: Links:
-   
-   GitHub Repository <https://github.com/finite-sample/stable-cart>
-   PyPI Package <https://pypi.org/project/stable-cart/>
+   :caption: Links
+
+   GitHub repository <https://github.com/finite-sample/stable-cart>
+   PyPI package <https://pypi.org/project/stable-cart/>

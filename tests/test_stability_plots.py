@@ -24,6 +24,7 @@ from sklearn.tree import (  # noqa: E402
 
 from stable_cart import (  # noqa: E402
     bootstrap_predictions,
+    pareto_front,
     plot_mape_by_prediction,
     plot_prediction_instability,
     plot_stability_frontier,
@@ -116,6 +117,60 @@ class TestInstabilityPlot:
 
         assert np.mean(tight["mape_per_point"]) < np.mean(loose["mape_per_point"])
 
+    def test_probability_plot_requires_and_uses_a_class(self):
+        X, y = make_classification(
+            n_samples=240,
+            n_features=6,
+            n_informative=4,
+            n_classes=3,
+            random_state=0,
+        )
+        result = bootstrap_predictions(
+            lambda: DecisionTreeClassifier(max_depth=4, random_state=0),
+            X[:180],
+            y[:180],
+            X[180:],
+            task="categorical",
+            prediction_method="predict_proba",
+            n_bootstrap=8,
+            random_state=0,
+        )
+
+        with pytest.raises(ValueError, match="class_label is required"):
+            plot_prediction_instability(result)
+
+        _fig, ax = plt.subplots()
+        plot_prediction_instability(result, ax=ax, class_label=result["classes"][1])
+
+        assert "probability" in ax.get_xlabel()
+        assert ax.collections[0].get_offsets().shape[0] == 8 * 60
+        plt.close("all")
+
+    def test_string_class_labels_are_encoded_and_displayed(self):
+        X, y = make_classification(
+            n_samples=180, n_features=5, n_informative=3, random_state=0
+        )
+        labels = np.where(y == 1, "approved", "declined")
+        result = bootstrap_predictions(
+            lambda: DecisionTreeClassifier(max_depth=4, random_state=0),
+            X[:130],
+            labels[:130],
+            X[130:],
+            task="categorical",
+            n_bootstrap=6,
+            random_state=0,
+        )
+        _fig, axes = plt.subplots(1, 2)
+
+        plot_prediction_instability(result, ax=axes[0])
+        plot_mape_by_prediction(result, ax=axes[1])
+
+        expected = {"approved", "declined"}
+        assert {tick.get_text() for tick in axes[0].get_xticklabels()} == expected
+        assert {tick.get_text() for tick in axes[0].get_yticklabels()} == expected
+        assert {tick.get_text() for tick in axes[1].get_xticklabels()} == expected
+        plt.close("all")
+
 
 class TestMapePlot:
     """Instability as a function of predicted value."""
@@ -165,6 +220,30 @@ class TestMapePlot:
         assert "disagreement" in ax.get_ylabel()
         plt.close("all")
 
+    def test_probability_plot_keeps_full_vector_instability(self):
+        result = {
+            "original": np.array([[0.8, 0.2], [0.3, 0.7]]),
+            "bootstrap": np.array(
+                [
+                    [[0.7, 0.3], [0.4, 0.6]],
+                    [[0.9, 0.1], [0.2, 0.8]],
+                ]
+            ),
+            "mape_per_point": np.array([0.1, 0.2]),
+            "metric": "probability_vector",
+            "task": "categorical",
+            "classes": np.array(["no", "yes"]),
+        }
+        _fig, ax = plt.subplots()
+
+        plot_mape_by_prediction(result, ax=ax, n_bins=2, class_label="yes")
+
+        assert np.allclose(ax.lines[0].get_xdata(), [0.2, 0.7])
+        assert np.allclose(ax.lines[0].get_ydata(), [0.1, 0.2])
+        assert "probability" in ax.get_xlabel()
+        assert "probability-vector difference" in ax.get_ylabel()
+        plt.close("all")
+
 
 class TestFrontierPlot:
     """Two families on one set of axes — the comparison the package exists for."""
@@ -190,14 +269,14 @@ class TestFrontierPlot:
         assert drawn == len(frontiers["CART"]["frontier"])
         plt.close("all")
 
-    def test_accuracy_is_the_vertical_axis(self, frontiers):
+    def test_score_is_the_vertical_axis(self, frontiers):
         """Flipping the axes would invert the reading of the plot."""
         _fig, ax = plt.subplots()
 
         plot_stability_frontier(frontiers, ax=ax, annotate=False)
 
         assert set(ax.lines[0].get_ydata()) == {
-            p["accuracy"] for p in frontiers["CART"]["frontier"]
+            p["score"] for p in frontiers["CART"]["frontier"]
         }
         plt.close("all")
 
@@ -207,6 +286,26 @@ class TestFrontierPlot:
         plot_stability_frontier(frontiers, ax=ax, metric="mape", annotate=False)
 
         assert "absolute" in ax.get_xlabel()
+        plt.close("all")
+
+    def test_recomputes_the_frontier_for_the_displayed_metric(self):
+        points = [
+            {"params": {"name": "a"}, "score": 0.9, "instability": 0.1, "mape": 0.9},
+            {"params": {"name": "b"}, "score": 0.8, "instability": 0.2, "mape": 0.1},
+        ]
+        result = {
+            "points": points,
+            "frontier": pareto_front(points),
+            "score_name": "accuracy",
+        }
+        _fig, ax = plt.subplots()
+
+        plot_stability_frontier(
+            {"models": result}, ax=ax, metric="mape", annotate=False
+        )
+
+        assert set(ax.lines[0].get_xdata()) == {0.1, 0.9}
+        assert set(ax.lines[0].get_ydata()) == {0.8, 0.9}
         plt.close("all")
 
     def test_rejects_an_unknown_metric(self, frontiers):

@@ -1,287 +1,261 @@
-## stable-cart: measure and reduce the instability of a single tree
+# Prediction instability audits for fitted models
 
-[![Python application](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
-[![Downloads](https://pepy.tech/badge/stable-cart)](https://pepy.tech/project/stable-cart)
-[![Documentation](https://github.com/finite-sample/stable-cart/actions/workflows/docs.yml/badge.svg)](https://finite-sample.github.io/stable-cart/)
-[![License](https://img.shields.io/github/license/finite-sample/stable-cart)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+This package measures how much a model's predictions change when its training
+data change. It refits the complete model-building procedure on bootstrap
+samples, predicts the same evaluation cases, and returns the individual
+prediction distributions and their aggregate uncertainty.
 
-Fit a decision tree, resample the training data, fit it again. The second tree
-predicts something different for the same person — often *very* different. That
-movement is not sampling error in the estimate; it is a property of the
-procedure, and if you have to ship one readable model rather than a forest, it
-is your problem.
+The package does not claim to stabilize a model. It tells you whether a fitted
+procedure is stable enough for its intended use, where it is unstable, and how
+candidate procedures trade validation performance for stability.
 
-This package does two things about it:
+The supported API works with arbitrary estimators and pipelines and includes a
+representative-model selector plus fixed-design linear calibration. Their names
+describe their mechanisms rather than claiming that they stabilize a model.
 
-1. **Measures it.** `bootstrap_instability` and `stability_frontier` implement
-   the resampling protocol of [Riley and Collins (2023)](https://onlinelibrary.wiley.com/doi/full/10.1002/bimj.202200302),
-   the standard way to report prediction instability. The R package
-   `pminternal` implements it; scikit-learn had no equivalent.
-2. **Reduces it**, without giving up the single tree. `StableTree` averages the
-   *split decision* over bootstrap replicates instead of averaging predictions,
-   so the output is still one tree you can read.
+## What the package measures
 
-The frontier is the point. Instability alone is meaningless — a model that
-ignores its training data scores a perfect zero — so every measurement here is
-reported next to accuracy, and the tool returns the Pareto set rather than a
-winner.
+`bootstrap_predictions` repeats the full call to `fit` on bootstrap samples of
+the training data. This matters because preprocessing, feature selection,
+hyperparameter tuning, and estimation can all contribute to instability. Put
+those steps in the supplied estimator or pipeline and the audit repeats them.
+The audit seed controls resampling; estimator seeds remain the responsibility
+of the supplied factory, so algorithmic randomness can be included or held
+fixed deliberately.
 
-![Prediction instability](docs/figures/instability.png)
+The function reports two comparisons:
 
-*California housing, depth-8 tree, 100 bootstrap resamples, 400 randomly chosen
-households. Each dot is one household under one resampled model; the solid lines
-are the 5th and 95th percentiles. For the 505 households predicted at $150k, 90%
-of the resampled predictions land between $89k and $223k.*
+* MAPE compares each bootstrap refit with the model fitted on the full training
+  data. For class labels, this is disagreement with the original classifier.
+* Pairwise instability compares two independently refitted models. For numeric
+  predictions it is mean squared difference. For class labels it is the
+  probability of disagreement. For class probabilities it is squared Euclidean
+  distance between the full probability vectors.
 
-## Install
+Classification uses a pairs bootstrap conditional on a draw containing at
+least two observed classes, so class prevalence can otherwise vary across
+refits and standard classifiers remain usable. Rejected draws are reported.
+Probability columns are aligned by class, and
+the result is invariant to renaming or renumbering classes.
+
+## Installation
 
 ```bash
-pip install stable-cart          # core: numpy + scikit-learn
-pip install "stable-cart[plots]" # adds matplotlib for the three figures
+pip install stable-cart
 ```
 
-## Quick start
+The plotting functions need matplotlib:
 
-### How unstable is my model?
+```bash
+pip install "stable-cart[plots]"
+```
 
-Works on any scikit-learn estimator, not just the ones in this package.
+## Audit one model-building procedure
 
 ```python
-from sklearn.datasets import fetch_california_housing
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.datasets import make_regression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import RidgeCV
 
 from stable_cart import bootstrap_instability
 
-X, y = fetch_california_housing(return_X_y=True)
-X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
-
-bootstrap_instability(
-    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
-    X_train,
-    y_train,
-    X_test,
-    n_bootstrap=50,
+X, y = make_regression(
+    n_samples=500,
+    n_features=12,
+    noise=10,
     random_state=0,
 )
-# {'instability_mean': 0.102, 'instability_p90': 0.236,
-#  'instability_max': 1.234, 'mape': 0.275}
-```
+X_train, X_eval = X[:350], X[350:]
+y_train = y[:350]
 
-`mape` is Riley and Collins's headline: on average, a model fitted on a
-resample predicts **$27.5k** away from what the model fitted on all the data
-predicts for the same household — on a target whose values run from $15k to
-$500k. `instability_max` says some household moves by $123k.
-Both seeds are pinned: without them the max is a different number every run.
-
-### What would it cost me to be more stable?
-
-```python
-from stable_cart import stability_frontier
-
-result = stability_frontier(
-    lambda **kw: DecisionTreeRegressor(min_samples_leaf=10, random_state=0, **kw),
-    {"max_depth": [3, 5, 8], "ccp_alpha": [0.0, 0.005, 0.05]},
+result = bootstrap_instability(
+    lambda: make_pipeline(StandardScaler(), RidgeCV()),
     X_train,
     y_train,
-    n_bootstrap=20,
+    X_eval,
+    task="continuous",
+    n_bootstrap=500,
     random_state=0,
 )
 
-for point in result["frontier"]:
-    print(
-        f"R2={point['accuracy']:.3f}  instability={point['instability']:.3f}  {point['params']}"
-    )
-
-# R2=0.651  instability=0.107  {'ccp_alpha': 0.0,   'max_depth': 8}
-# R2=0.594  instability=0.079  {'ccp_alpha': 0.0,   'max_depth': 5}
-# R2=0.592  instability=0.078  {'ccp_alpha': 0.005, 'max_depth': 8}
-# R2=0.583  instability=0.074  {'ccp_alpha': 0.005, 'max_depth': 5}
-# R2=0.526  instability=0.057  {'ccp_alpha': 0.005, 'max_depth': 3}
-# R2=0.483  instability=0.053  {'ccp_alpha': 0.05,  'max_depth': 8}
+print(result)
 ```
 
-That is the exchange rate, stated: **halving the instability costs 12.5 points
-of R²** on this data (0.107 → 0.057, 0.651 → 0.526). Whether that trade is
-worth taking is not a question the package can answer, which is exactly why it
-returns the set rather than a winner.
+The result includes the mean, 90th percentile, and maximum per-case prediction
+variance; MAPE against the original fit; pairwise instability; and Monte Carlo
+standard errors for both aggregate comparisons. Use the standard errors to
+decide whether more resamples are needed. Twenty resamples are useful for a
+quick diagnostic, not a final estimate.
 
-`frontier` holds the configurations no other configuration beats on *both*
-axes. Everything else in `points` is dominated — strictly worse on accuracy or
-stability or both — and knowing which is which is the whole exercise.
-
-### Show me where it is unreliable
+To inspect the raw prediction distribution:
 
 ```python
-from stable_cart import bootstrap_predictions, plot_mape_by_prediction
+from stable_cart import bootstrap_predictions, plot_prediction_instability
 
 raw = bootstrap_predictions(
-    lambda: DecisionTreeRegressor(max_depth=8, min_samples_leaf=10, random_state=0),
+    lambda: make_pipeline(StandardScaler(), RidgeCV()),
     X_train,
     y_train,
-    X_test,
-    n_bootstrap=100,
+    X_eval,
+    n_bootstrap=500,
     random_state=0,
 )
-plot_mape_by_prediction(raw)
+
+plot_prediction_instability(raw)
 ```
 
-![Where the model is unreliable](docs/figures/mape_by_prediction.png)
+## Audit a multiclass probability model
 
-Instability is not spread evenly. On this data it roughly quadruples between the
-cheapest and most expensive predictions — the overall average hides a model that
-is nearly four times less trustworthy at the top of its range. (The figure is
-drawn on a 4,000-row subsample, where the average is 0.36 rather than 0.275.)
-
-### A tree whose splits are averaged
+Class labels have no numerical spacing. The package therefore measures either
+label disagreement or movement in aligned probability vectors. It never takes
+the variance of integer class codes or the variance of maximum confidence.
 
 ```python
-from stable_cart import StableTree
+from sklearn.datasets import load_wine
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
-tree = StableTree(
-    task="regression",
-    max_depth=5,
-    n_consensus=12,  # bootstrap replicates per split decision
-    consensus_threshold=0.3,  # a split needs this share of the vote, or the node becomes a leaf
-    leaf_shrinkage=5.0,  # pull leaf values toward the parent
+from stable_cart import bootstrap_instability
+
+X, y = load_wine(return_X_y=True)
+
+result = bootstrap_instability(
+    lambda: make_pipeline(
+        StandardScaler(),
+        LogisticRegression(max_iter=2000),
+    ),
+    X[:130],
+    y[:130],
+    X[130:],
+    task="categorical",
+    prediction_method="predict_proba",
+    n_bootstrap=500,
     random_state=0,
-).fit(X_train, y_train)
-
-tree.split_supports()  # [1.0, 1.0, 0.58, 0.58, 0.67, 0.83, ...] — per split
-tree.stop_reasons_  # Counter({'max_depth': 32}) — why each node stopped growing
+)
 ```
 
-At each node, `StableTree` resamples the node's rows `n_consensus` times, takes
-the best split in each replicate, elects the feature by vote, and sets the cut
-point to the **median** of the cut points that chose it. Cut-point variance is
-the part of a tree that actually moves — [Geurts and Wehenkel (2000)](https://www.semanticscholar.org/paper/Investigation-and-Reduction-of-Discretization-in-Geurts-Wehenkel/c116336862b6ab82f6374ca869d6493dfca702cc)
-found it high even at large sample sizes, and this package's own measurements
-put threshold agreement at 2–22% while the root *feature* agrees 100% of the
-time. A node whose winning feature cannot reach `consensus_threshold` becomes a
-leaf: a split the data cannot reproduce is not one worth showing a reviewer.
+Probability columns are aligned through each estimator's `classes_` attribute.
+The raw result keeps the complete `(resample, case, class)` array.
 
-## The frontier, both families on one set of axes
+## Compare procedures on a validation frontier
 
-![Accuracy against stability](docs/figures/frontier.png)
+`stability_frontier` sweeps a parameter grid and returns the configurations no
+other configuration beats on both validation score and instability.
 
-Both families sweep the same depths, so neither gets a complexity advantage.
-Regenerate with `uv run python scripts/make_readme_figures.py`.
+```python
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
 
-## What actually works
+from stable_cart import stability_frontier
 
-Every claim below is measured by a script in this repository. Where an earlier
-version of this README claimed more, the retraction is in
-[CHANGELOG.md](CHANGELOG.md).
+X_train, X_validation, y_train, y_validation = train_test_split(
+    X,
+    y,
+    test_size=0.3,
+    random_state=0,
+)
 
-| approach | effect on instability | keeps one readable tree? |
-|---|---|---|
-| **Averaging predictions** (random forest) | −62% to −92% | **no** — and that is the whole difficulty |
-| **Pruning / depth limits** (`ccp_alpha`, `max_depth`) | the most reliable single-tree lever | yes |
-| **Averaging the split decision** (`StableTree`) | −20% to −60% at equal or better accuracy **in noisy regimes**; ~1% when the signal is nearly noiseless | yes |
-| **Leaf shrinkage** (`leaf_shrinkage`) | decisive when noise is high: the leaf component is 40–90% of prediction variance there, 2–11% when noise is low | yes |
-| **Global/optimal search** (GOSDT) | **nothing measurable** at matched complexity | yes |
-| **Picking the tree closest to the ensemble mean** (`CentroidTree`) | +18% against a random pick from the same pool; **nothing** against plain CART | yes |
+frontier = stability_frontier(
+    lambda **params: DecisionTreeRegressor(random_state=0, **params),
+    {
+        "max_depth": [2, 4, 8],
+        "ccp_alpha": [0.0, 0.001, 0.01],
+    },
+    X_train,
+    y_train,
+    X_eval=X_validation,
+    y_eval=y_validation,
+    task="continuous",
+    n_bootstrap=200,
+    random_state=0,
+)
 
-Two consequences worth stating plainly. **Pruning is the baseline anything new
-has to beat**, and it is one scikit-learn argument. And **which knob pays
-depends on the noise level** — where the leaf component dominates, averaging the
-split decision cannot help, because the structure was not the problem.
+for point in frontier["frontier"]:
+    print(point["score"], point["instability"], point["params"])
+```
 
-A third, less comfortable one. Run every estimator at *one fixed configuration*
-across the 14 benchmark datasets — `make benchmark`, report in
-[benchmark_results/](benchmark_results/comprehensive_benchmark_report.md) — and
-the average variance reduction against plain CART is **−3.2%**. The stable
-methods are, on average, no better. `StableTree` is the only one above water at
-+16.8%, and a random forest beats all of them on every dataset while not being a
-tree.
+The reported score is a validation score used to construct the frontier. It is
+not an unbiased final performance estimate. Evaluate the selected procedure on
+an untouched test set or use an outer resampling loop.
 
-That is not a contradiction of the frontier table above; it is the reason the
-frontier exists. A single default configuration is a point, and the gain lives
-in *choosing* the point. If you take one thing from this package, make it
-`stability_frontier` rather than any particular estimator.
+The frontier does not choose a model for you. A procedure that ignores its data
+has zero instability and poor predictive performance. Reading stability beside
+validation performance makes that failure visible.
 
-## Which estimator do I reach for?
+## Select a representative fitted model
 
-The package ships five estimators plus plain CART as the reference.
-`experiments/frontier_eval.py` sweeps each one's own parameters on 14 datasets,
-pools every configuration, and asks which ones land on the *joint* frontier —
-the configurations no configuration of any family beats on both accuracy and
-stability. A model that clears no usable accuracy floor is dropped first, so a
-constant predictor cannot win by being perfectly stable.
+The top-level API contains a generic representative-model selector and
+fixed-design linear calibration:
 
-| estimator | datasets with a frontier point | multi-class? | notes |
-|---|---|---|---|
-| **`StableTree`** | **11 / 14** | yes | start here |
-| `DecisionTree*` + `ccp_alpha` (sklearn) | 7 / 14 | yes | the baseline, and it wins outright on `iris` |
-| `CentroidTree` | 6 / 14 | yes | N× training cost; owns `digits_binary` and half of `xor_nonlinear` |
-| `LessGreedyHybridTree` | 4 / 14 | **no** | the only frontier point on `california_housing` |
-| `BootstrapVariancePenalizedTree` | 2 / 14 | **no** | |
-| `RobustPrefixHonestTree` | 2 / 14 | **no** | two of three points on `california_housing` |
+```python
+from sklearn.linear_model import Ridge
 
-Read this as a map, not a leaderboard. Several arms appear on the same frontier
-on most datasets, which means the curves cross and the operating point is your
-choice. And three of the four older estimators raise on multi-class targets,
-which is why they score zero on `wine`, `iris` and `digits_multiclass` — a
-limitation, not a defeat.
+from stable_cart import RepresentativeEstimator
 
-Reproduce with `uv run python experiments/frontier_eval.py`.
+representative = RepresentativeEstimator(
+    estimator=Ridge(),
+    task="regression",
+    n_candidates=20,
+    random_state=0,
+)
+representative.fit(X_train, y_train)
+predictions = representative.predict(X_eval)
+```
+
+`RepresentativeEstimator` passes scikit-learn's maintained estimator checks in
+regression and classification modes, supports multiclass classification, and is
+not tree-specific. In a frozen 288-dataset evaluation, selecting the prediction
+medoid reduced median prediction instability relative to selecting the
+best-validation candidate from the same pool in every design cell. The score
+tradeoff was acceptable for linear classification and tree regression, not for
+tree classification; linear regression showed negligible benefit. This is
+task-specific evidence, not a universal guarantee.
+
+The supported surface and its limits are listed in
+[`PACKAGE_SCOPE.md`](PACKAGE_SCOPE.md).
+
+## Complete user workflow
+
+[`examples/user_workflow.py`](examples/user_workflow.py) runs the public API as
+an installed user would: regression and multiclass audits, a validation
+score-instability frontier followed by untouched test evaluation,
+representative-model selection, tree-structure diagnostics, fixed-design linear
+calibration, plots, and a JSON summary.
+
+```bash
+python examples/user_workflow.py --output workflow-output
+```
 
 ## Development
 
 ```bash
-uv sync --all-extras
-uv run pytest
-uv run ruff check . && uv run ruff format --check .
+uv sync --all-groups
+make lint
+make test
 uv run pyright
+make docs
 ```
 
-Local CI mirrors the GitHub workflow: `make ci-docker`.
+`make ci-docker` runs the same lint and test checks in a standard Python 3.11
+container.
 
-Scripts behind the numbers:
+## Methodological basis
 
-| script | what it produces |
-|---|---|
-| `scripts/param_effect.py` | which documented parameters can change a prediction |
-| `scripts/make_readme_figures.py` | the three figures above |
-| `experiments/frontier_eval.py` | every estimator on the joint accuracy-stability frontier |
-| `experiments/variance_budget.py` | the leaf-versus-structure split of prediction variance |
-| `experiments/optimal_tree_premise.py` | the matched-complexity comparison against GOSDT |
-| `experiments/knob_study.py` | whether the measured variance budget predicts which knob to turn |
+The bootstrap protocol follows Riley and Collins, "Stability of clinical
+prediction models developed using statistical or machine learning methods,"
+*Biometrical Journal* 65(8), 2023. Their `pminternal` R package implements the
+clinical prediction workflow that motivated this package.
 
-## Citation
+The identity behind squared pairwise instability is elementary:
 
-```bibtex
-@software{stable_cart,
-  title  = {stable-cart: measuring and reducing decision tree prediction instability},
-  author = {Sood, Gaurav and Bhosle, Arav},
-  year   = {2026},
-  url    = {https://github.com/finite-sample/stable-cart}
-}
+```text
+E[(f_D(x) - f_D'(x))^2] = 2 Var(f_D(x))
 ```
 
-## Related work
-
-- Riley and Collins, *Stability of clinical prediction models developed using
-  statistical or machine learning methods*, Biometrical Journal 65(8), 2023 —
-  the instability protocol implemented here, and the R package `pminternal`.
-- Geurts and Wehenkel, *Investigation and reduction of discretization variance
-  in decision tree induction*, ECML 2000 — threshold averaging.
-- Breiman, *Bagging predictors*, 1996 — why averaging works, and what it costs.
-- Athey and Imbens, *Recursive partitioning for heterogeneous causal effects*,
-  PNAS 2016 — honest estimation.
-- Vidal and Schiffer, *Born-again tree ensembles*, ICML 2020 — exact
-  distillation of a forest into one tree.
-- Marx, Calmon and Ustun, *Predictive multiplicity in classification*, ICML 2020
-  — a different construct (multiplicity within the near-optimal set), and
-  deliberately not implemented here.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md). **2.0 is a breaking release and corrects
-results published in 1.1.0.**
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+It requires independent, identically distributed refits. The package's
+contribution is operational: repeat the actual model-building procedure,
+preserve the individual prediction distributions, apply valid classification
+metrics, quantify Monte Carlo error, and connect the result to model selection
+without reporting the validation frontier as final test performance.
