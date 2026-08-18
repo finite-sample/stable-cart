@@ -11,6 +11,12 @@ on:
           from a branch this is a build-and-check rehearsal.
         type: boolean
         default: false
+      existing_release_tag:
+        description: >-
+          Publish distributions from an existing GitHub release. Intended only
+          to recover from a failed PyPI upload after the release was created.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -23,6 +29,7 @@ concurrency:
 
 jobs:
   release:
+    if: github.event_name == 'push' || inputs.existing_release_tag == ''
     uses: gojiplus/py-canon/.github/workflows/reusable-release.yml@v1
     permissions:
       contents: write
@@ -54,7 +61,7 @@ jobs:
           name: dist
           path: dist/
       - name: Publish (trusted publishing, PEP 740 attestations)
-        uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26 # v1.14.2
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           attestations: true
           # The `if:` above decides *which builds may publish*. This decides what
@@ -66,4 +73,33 @@ jobs:
           # covered by concurrency at all, so a plain rerun does the same. PyPI
           # answers with a 400 and the release goes red having already
           # succeeded, which is the worst of both readings.
+          skip-existing: true
+
+  publish-existing:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish &&
+      inputs.existing_release_tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download existing GitHub release distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.existing_release_tag }}
+        run: |
+          mkdir -p dist
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.whl' \
+            --pattern '*.tar.gz' \
+            --dir dist
+      - name: Publish (trusted publishing, PEP 740 attestations)
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          attestations: true
           skip-existing: true
