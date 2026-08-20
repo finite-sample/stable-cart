@@ -1,10 +1,20 @@
 """Smoke the documented user workflow through public package imports."""
 
+import importlib.util
 import json
+import pathlib
 
 import pytest
 
-from examples.user_workflow import run_workflow
+# examples/ is not part of the distribution, and the wheel job runs this suite
+# with the repository root off sys.path on purpose -- so that `stable_cart`
+# resolves to the installed wheel rather than the working tree. Load the
+# example from disk instead of importing it as a package.
+_EXAMPLE = pathlib.Path(__file__).resolve().parents[1] / "examples" / "user_workflow.py"
+_spec = importlib.util.spec_from_file_location("stable_cart_example_workflow", _EXAMPLE)
+_example = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_example)
+run_workflow = _example.run_workflow
 
 
 @pytest.mark.e2e
