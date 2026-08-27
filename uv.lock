@@ -1306,7 +1306,7 @@ wheels = [
 
 [[package]]
 name = "py-canon"
-version = "1"
+version = "1.0.0.post44.dev0+f359753"
 source = { git = "https://github.com/gojiplus/py-canon?rev=v1#f35975356c8240e3e1d861c1eb22b3946e367579" }
 
 [[package]]
@@ -1921,6 +1921,7 @@ wheels = [
 
 [[package]]
 name = "stable-cart"
+version = "3.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
