@@ -545,3 +545,15 @@ class TestClusterBootstrap:
                 random_state=0,
                 groups=groups,
             )
+
+
+@pytest.mark.parametrize("missing", [np.nan, None, np.datetime64("NaT")])
+def test_cluster_bootstrap_rejects_missing_labels_before_fitting(missing):
+    groups = np.array([0, 0, 1, 1, missing, missing], dtype=object)
+    X = np.arange(6.0).reshape(-1, 1)
+
+    def model_factory():
+        pytest.fail("Missing cluster labels must be rejected before fitting")
+
+    with pytest.raises(ValueError, match=r"missing.*label"):
+        bootstrap_predictions(model_factory, X, X[:, 0], X, groups=groups)

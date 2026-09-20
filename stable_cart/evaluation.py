@@ -100,6 +100,14 @@ def _cluster_rows(groups: Any, n_train: int) -> tuple[NDArray[Any], list[NDArray
         raise ValueError("groups must be one-dimensional.")
     if len(group_array) != n_train:
         raise ValueError("groups must contain one label per training row.")
+    try:
+        missing = any(label is None or bool(label != label) for label in group_array)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "groups must not contain missing or nonscalar labels."
+        ) from None
+    if missing:
+        raise ValueError("groups must not contain missing labels.")
     labels = np.unique(group_array)
     if len(labels) < 2:
         raise ValueError("groups must contain at least two distinct clusters.")
@@ -159,7 +167,7 @@ def bootstrap_predictions(
         with replacement and each drawn cluster is taken whole, so within-cluster
         correlation survives the resample. Rows that are correlated in the data
         but resampled independently make the audit look far more stable than it
-        is: with a cluster random effect twice the idiosyncratic noise, the row
+        is: with a cluster random effect three times the idiosyncratic noise, the row
         bootstrap recovered 0.19 of the true refit-to-refit variance while the
         cluster bootstrap recovered 0.99. Precision still comes from the number
         of clusters, not the number of rows.

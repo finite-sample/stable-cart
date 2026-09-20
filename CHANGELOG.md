@@ -4,7 +4,7 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 3.1.0 - 2026-09-19
 
 ### Added
 
@@ -17,6 +17,11 @@ All notable changes are documented here. The format follows
   validation split to a grouped split so no cluster spans both sides.
   Time-series and survey designs still need schemes this release does not
   implement.
+
+### Fixed
+
+- Missing cluster labels are rejected before fitting instead of silently dropping
+  observations from bootstrap samples.
 
 ### Changed
 
