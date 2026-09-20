@@ -375,3 +375,57 @@ class TestGroupedFrontier:
         assert (
             clustered["points"][0]["instability"] > 2 * rows["points"][0]["instability"]
         )
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_grouped_classification_retains_classes(seed):
+    from sklearn.linear_model import LogisticRegression
+
+    X = np.arange(24.0).reshape(12, 2)
+    y = np.repeat([0, 0, 1, 1], 3)
+    groups = np.repeat(np.arange(4), 3)
+    result = stability_frontier(
+        lambda **kw: LogisticRegression(**kw),
+        {"C": [1.0]},
+        X,
+        y,
+        task="categorical",
+        n_bootstrap=2,
+        test_size=0.5,
+        random_state=seed,
+        groups=groups,
+    )
+    assert np.isfinite(result["points"][0]["score"])
+
+
+def test_grouped_classification_reports_unavailable_split_before_fitting():
+    def factory(**kw):
+        pytest.fail("An invalid split must be rejected before model fitting")
+
+    with pytest.raises(ValueError, match=r"class.*training"):
+        stability_frontier(
+            factory,
+            {},
+            np.arange(8).reshape(4, 2),
+            [0, 0, 1, 1],
+            task="categorical",
+            n_bootstrap=2,
+            test_size=0.5,
+            groups=[0, 0, 1, 1],
+            random_state=0,
+        )
+
+
+def test_grouped_classification_split_is_disjoint_and_reproducible():
+    from stable_cart.frontier import _grouped_validation_split
+
+    X = np.arange(24.0).reshape(12, 2)
+    y = np.repeat([0, 0, 1, 1], 3)
+    groups = np.repeat(np.arange(4), 3)
+    first = _grouped_validation_split(X, y, groups, "categorical", 0.5, 0)
+    second = _grouped_validation_split(X, y, groups, "categorical", 0.5, 0)
+    train, validation = first
+    assert set(groups[train]).isdisjoint(groups[validation])
+    assert set(y[train]) == set(y[validation]) == {0, 1}
+    np.testing.assert_array_equal(first[0], second[0])
+    np.testing.assert_array_equal(first[1], second[1])

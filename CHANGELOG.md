@@ -20,6 +20,10 @@ All notable changes are documented here. The format follows
 
 ### Fixed
 
+- Grouped classification frontiers retry validation splits to retain all training
+  classes, preferring full validation support, and report a clear error if the
+  bounded search fails.
+
 - Missing cluster labels are rejected before fitting instead of silently dropping
   observations from bootstrap samples.
 

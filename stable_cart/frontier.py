@@ -50,6 +50,33 @@ def _score(pred, y_true, task):
     return float(r2_score(y_true, pred))
 
 
+def _grouped_validation_split(X, y, groups, task, test_size, random_state):
+    """Keep clusters intact while retaining classification training support."""
+    categorical = task == "categorical"
+    n_classes = len(np.unique(y)) if categorical else 0
+    fallback = None
+    splits = GroupShuffleSplit(
+        n_splits=100 if categorical else 1,
+        test_size=test_size,
+        random_state=random_state,
+    ).split(X, y, groups=groups)
+    for train, validation in splits:
+        if not categorical:
+            return train, validation
+        if len(np.unique(y[train])) != n_classes:
+            continue
+        if fallback is None:
+            fallback = train, validation
+        if len(np.unique(y[validation])) == n_classes:
+            return train, validation
+    if fallback is not None:
+        return fallback
+    raise ValueError(
+        "Could not find a grouped split retaining every class in training "
+        "after 100 attempts. Change test_size or supply X_eval and y_eval."
+    )
+
+
 def pareto_front(
     points: list[dict], *, instability_key: str = "instability"
 ) -> list[dict]:
@@ -157,6 +184,11 @@ def stability_frontier(
         Cluster label per row of ``X``, for correlated data; see
         :func:`~stable_cart.bootstrap_predictions`. The internal validation split
         becomes a grouped split, so no cluster lands on both sides of it.
+        For classification, up to 100 candidate splits are tried to retain every
+        class in training, preferring splits that also retain every class in
+        validation. If none of the candidates retains all training classes,
+        a ``ValueError`` asks for a different split size or explicit validation
+        data. This search does not guarantee a feasible split will be found.
 
     Returns
     -------
@@ -203,10 +235,8 @@ def stability_frontier(
         # both sides, which inflates the validation score for exactly the
         # configurations that overfit the cluster structure.
         group_array = np.asarray(groups)
-        fit_index, validation_index = next(
-            GroupShuffleSplit(
-                n_splits=1, test_size=test_size, random_state=random_state
-            ).split(X, y_array, groups=group_array)
+        fit_index, validation_index = _grouped_validation_split(
+            X, y_array, group_array, task, test_size, random_state
         )
         X_fit = _take_rows(X, fit_index)
         X_validation = _take_rows(X, validation_index)
