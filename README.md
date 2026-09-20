@@ -323,7 +323,7 @@ plot_prediction_instability(raw, ax=axes[0])
 plot_mape_by_prediction(raw, ax=axes[1])
 ```
 
-![Prediction instability for a depth-3 regression tree on the diabetes data](https://raw.githubusercontent.com/finite-sample/stable-cart/main/docs/_static/instability.png)
+![Prediction instability for a depth-3 regression tree on the diabetes data](https://raw.githubusercontent.com/finite-sample/stable-cart/15979fba8b8013d938556b6cf18056dc5661479c/docs/_static/instability.png)
 
 One dot is one patient under one resample. The left panel puts the full-data
 prediction on the horizontal axis and the resampled prediction on the vertical
