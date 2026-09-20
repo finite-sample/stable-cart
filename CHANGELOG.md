@@ -4,6 +4,14 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 3.1.1 - 2026-09-19
+
+### Documentation
+
+- Add a pepy.tech downloads badge to the README shared by GitHub, the
+  documentation, and the PyPI package description. Package behavior and
+  dependencies are unchanged.
+
 ## 3.1.0 - 2026-09-19
 
 ### Added

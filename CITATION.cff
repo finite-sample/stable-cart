@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "Prediction instability audits for fitted models"
-version: 3.1.0
+version: 3.1.1
 date-released: 2026-09-19
 url: "https://github.com/finite-sample/stable-cart"
 repository-code: "https://github.com/finite-sample/stable-cart"
