@@ -4,7 +4,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![CI](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/stable-cart/)
-[![License](https://img.shields.io/pypi/l/stable-cart.svg)](LICENSE)
+[![License](https://img.shields.io/pypi/l/stable-cart.svg)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
 
 Fit a model twice on two samples from the same population and you get two
 different models. `stable-cart` tells you how much that would have changed the
@@ -504,7 +504,7 @@ untouched data or an outer resampling loop.
 
 ## Everything at once
 
-[`examples/user_workflow.py`](examples/user_workflow.py) runs the public API the
+[`examples/user_workflow.py`](https://github.com/finite-sample/stable-cart/blob/main/examples/user_workflow.py) runs the public API the
 way an installed user would: regression and multiclass audits, a frontier
 followed by untouched test evaluation, representative selection, tree-structure
 diagnostics, linear calibration, plots, and a JSON summary.
@@ -523,9 +523,9 @@ uv run pyright
 make docs
 ```
 
-Documentation builds require Python 3.12 or newer; the package supports Python 3.11.
+The package and documentation builds require Python 3.12 or newer.
 
-`make ci-docker` runs the same lint and test checks in a standard Python 3.11
+`make ci-docker` runs the same lint and test checks in a standard Python 3.12
 container.
 
 ## Basis

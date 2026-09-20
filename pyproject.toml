@@ -12,7 +12,7 @@ authors = [
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "machine learning",
     "stability",
@@ -31,7 +31,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -82,7 +81,7 @@ docs = [
 # Ruff configuration
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
@@ -105,7 +104,7 @@ convention = "numpy"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -v --strict-markers --strict-config"
+addopts = ["-ra", "-v", "--strict-markers", "--strict-config"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
@@ -164,5 +163,3 @@ typeCheckingMode = "standard"
 [tool.uv.build-backend]
 module-root = ""
 
-[tool.uv.dependency-groups]
-docs = { requires-python = ">=3.12" }
