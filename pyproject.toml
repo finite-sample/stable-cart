@@ -105,7 +105,7 @@ convention = "numpy"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -v --strict-markers"
+addopts = "-ra -v --strict-markers --strict-config"
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
@@ -118,6 +118,8 @@ markers = [
     "e2e: end-to-end integration tests",
     "slow: slow running tests",
 ]
+log_level = "INFO"
+xfail_strict = true
 
 [tool.coverage.run]
 branch = true
@@ -161,3 +163,6 @@ typeCheckingMode = "standard"
 
 [tool.uv.build-backend]
 module-root = ""
+
+[tool.uv.dependency-groups]
+docs = { requires-python = ">=3.12" }

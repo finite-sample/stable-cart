@@ -115,10 +115,19 @@ def linear_instability(
         heteroskedasticity-consistent form
         :math:`(X'X)^{-1}\big(\sum_i x_i x_i' \hat e_i^2\big)(X'X)^{-1}`.
         This branch is an estimated asymptotic covariance, not an exact
-        finite-sample result. The assumption is not a technicality: with noise scaling in
-        :math:`|x_1|`, the constant-variance formula understates the truth by
-        48%, while this one recovers it. Under genuine homoskedasticity the two
-        agree, so the cost of using it is only the loss of a known ``sigma``.
+        finite-sample result. The constant-variance assumption is not a
+        technicality. Writing :math:`a = (X'X)^{-1}x` and
+        :math:`w_i = (x_i'a)^2`, the true prediction variance is
+        :math:`\sum_i \sigma_i^2 w_i` while the constant-variance form returns
+        :math:`\bar\sigma^2 \sum_i w_i`. Their ratio is therefore the
+        :math:`w`-weighted mean of :math:`\sigma_i^2` divided by its unweighted
+        mean, so the constant-variance form is exact when the noise is
+        uncorrelated with :math:`w_i`, too small when observations that move
+        this prediction are the noisy ones, and too large when they are the
+        quiet ones. The error has no fixed sign and no characteristic size:
+        it is a property of the design and the noise pattern together. Under
+        genuine homoskedasticity the two forms agree, so the cost of using this
+        one is only the loss of a known ``sigma``.
 
     Returns
     -------

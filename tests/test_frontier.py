@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import BaggingRegressor
+from sklearn.linear_model import Ridge
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from stable_cart import pareto_front, stability_frontier
@@ -311,3 +312,66 @@ def test_identical_points_appear_once():
     ]
 
     assert len(pareto_front(points)) == 2
+
+
+class TestGroupedFrontier:
+    """Clustered data on the frontier: grouped split, clustered resampling."""
+
+    @staticmethod
+    def _clustered(n_clusters=30, rows=20, features=4):
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(n_clusters * rows, features))
+        groups = np.repeat(np.arange(n_clusters), rows)
+        y = (
+            X @ np.arange(1.0, features + 1)
+            + np.repeat(rng.normal(scale=3.0, size=n_clusters), rows)
+            + rng.normal(size=n_clusters * rows)
+        )
+        return X, y, groups
+
+    def test_the_internal_split_keeps_clusters_on_one_side(self):
+        X, y, groups = self._clustered()
+
+        result = stability_frontier(
+            lambda **kw: DecisionTreeRegressor(random_state=0, **kw),
+            {"max_depth": [2, 4]},
+            X,
+            y,
+            task="continuous",
+            n_bootstrap=5,
+            random_state=0,
+            groups=groups,
+        )
+        assert result["evaluation_source"] == "internal_grouped_validation_split"
+
+    def test_grouped_resampling_reports_more_instability(self):
+        """The frontier inherits the correction, not just the audit function."""
+        X, y, groups = self._clustered()
+        common = {
+            "task": "continuous",
+            "n_bootstrap": 60,
+            "random_state": 0,
+        }
+
+        rows = stability_frontier(
+            lambda **kw: Ridge(**kw),
+            {"alpha": [1.0]},
+            X,
+            y,
+            X_eval=X[:100],
+            y_eval=y[:100],
+            **common,
+        )
+        clustered = stability_frontier(
+            lambda **kw: Ridge(**kw),
+            {"alpha": [1.0]},
+            X,
+            y,
+            X_eval=X[:100],
+            y_eval=y[:100],
+            groups=groups,
+            **common,
+        )
+        assert (
+            clustered["points"][0]["instability"] > 2 * rows["points"][0]["instability"]
+        )

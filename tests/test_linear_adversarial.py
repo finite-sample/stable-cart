@@ -349,6 +349,46 @@ class TestVarianceFormulaPreconditions:
 
         assert robust == pytest.approx(truth, rel=0.15)
 
+    @pytest.mark.parametrize(
+        ("name", "scale_fn", "direction"),
+        [
+            ("noisy where influential", lambda x1: 2.0 * (0.3 + np.abs(x1)), "under"),
+            ("quiet where influential", lambda x1: 2.0 / (0.3 + np.abs(x1)), "over"),
+        ],
+    )
+    def test_the_constant_variance_error_has_no_fixed_sign(
+        self, name, scale_fn, direction
+    ):
+        """The documented mechanism, not a single measured percentage.
+
+        With a = (X'X)^-1 x and w_i = (x_i' a)^2, the true prediction variance is
+        sum_i sigma_i^2 w_i while the constant-variance form returns
+        sigmabar^2 sum_i w_i. The ratio is a w-weighted mean of sigma_i^2 over an
+        unweighted one, so its direction follows corr(sigma_i^2, w_i) and nothing
+        else. An earlier docstring quoted one draw's percentage as if it were a
+        property of the estimator; it is a property of the design and the noise
+        pattern together, and it flips sign here.
+        """
+        ratios = []
+        for seed in range(10):
+            rng = np.random.default_rng(seed)
+            X = rng.normal(size=(300, 5))
+            X_eval = rng.normal(size=(200, 5))
+            sigma_squared = scale_fn(X[:, 0]) ** 2
+
+            gram_inv = np.linalg.inv(X.T @ X)
+            meat = (X * sigma_squared[:, None]).T @ X
+            truth = np.einsum("ij,jk,ik->i", X_eval, gram_inv @ meat @ gram_inv, X_eval)
+            plain = linear_instability(
+                X, X_eval, sigma=float(np.sqrt(sigma_squared.mean()))
+            )["variance"]
+            ratios.append(float(np.mean(plain) / np.mean(truth)))
+
+        if direction == "under":
+            assert max(ratios) < 0.95, f"{name}: {ratios}"
+        else:
+            assert min(ratios) > 1.05, f"{name}: {ratios}"
+
     def test_the_two_forms_agree_under_homoskedasticity(self):
         """A correction that changed the answer when it should not would be worse."""
         rng = np.random.default_rng(0)

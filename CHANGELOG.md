@@ -6,6 +6,32 @@ All notable changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `groups=` on `bootstrap_predictions`, `bootstrap_instability`, and
+  `stability_frontier` resamples clusters instead of rows, taking each drawn
+  cluster whole, for data with correlated observations. Against a Monte Carlo
+  truth with a cluster random effect three times the idiosyncratic noise, the
+  row bootstrap recovered 0.19 of the true refit-to-refit variance and the
+  cluster bootstrap 0.99. `stability_frontier` also switches its internal
+  validation split to a grouped split so no cluster spans both sides.
+  Time-series and survey designs still need schemes this release does not
+  implement.
+
+### Changed
+
+- `n_bootstrap` defaults to 200 rather than 20 in `bootstrap_predictions`,
+  `bootstrap_instability`, and `stability_frontier`, matching `pminternal`.
+  Twenty resamples carried enough Monte Carlo error that the documentation had
+  to warn against the default it shipped.
+- `linear_instability` documents the constant-variance error by its mechanism
+  rather than by a percentage measured on one design. The ratio of the
+  constant-variance form to the truth is the `w`-weighted mean of the
+  per-observation noise over its unweighted mean, so the error follows
+  `corr(sigma_i^2, w_i)` and has no fixed sign. A new test pins both
+  directions.
+- Package scope moved from `PACKAGE_SCOPE.md` into the README.
+
 ## 3.0.0 - 2026-08-17
 
 ### Added
