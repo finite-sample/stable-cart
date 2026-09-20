@@ -26,10 +26,14 @@ from typing import Any
 
 import numpy as np
 from sklearn.metrics import accuracy_score, r2_score
-from sklearn.model_selection import ParameterGrid, train_test_split
+from sklearn.model_selection import (
+    GroupShuffleSplit,
+    ParameterGrid,
+    train_test_split,
+)
 from sklearn.utils.validation import column_or_1d
 
-from .evaluation import bootstrap_predictions
+from .evaluation import _take_rows, bootstrap_predictions
 
 __all__ = ["stability_frontier", "pareto_front"]
 
@@ -44,6 +48,33 @@ def _score(pred, y_true, task):
     if task == "categorical":
         return float(accuracy_score(y_true, pred))
     return float(r2_score(y_true, pred))
+
+
+def _grouped_validation_split(X, y, groups, task, test_size, random_state):
+    """Keep clusters intact while retaining classification training support."""
+    categorical = task == "categorical"
+    n_classes = len(np.unique(y)) if categorical else 0
+    fallback = None
+    splits = GroupShuffleSplit(
+        n_splits=100 if categorical else 1,
+        test_size=test_size,
+        random_state=random_state,
+    ).split(X, y, groups=groups)
+    for train, validation in splits:
+        if not categorical:
+            return train, validation
+        if len(np.unique(y[train])) != n_classes:
+            continue
+        if fallback is None:
+            fallback = train, validation
+        if len(np.unique(y[validation])) == n_classes:
+            return train, validation
+    if fallback is not None:
+        return fallback
+    raise ValueError(
+        "Could not find a grouped split retaining every class in training "
+        "after 100 attempts. Change test_size or supply X_eval and y_eval."
+    )
 
 
 def pareto_front(
@@ -100,7 +131,7 @@ def stability_frontier(
     X: Any,
     y: Any,
     task: str = "continuous",
-    n_bootstrap: int = 20,
+    n_bootstrap: int = 200,
     test_size: float = 0.3,
     random_state: int | None = None,
     *,
@@ -108,6 +139,7 @@ def stability_frontier(
     y_eval: Any = None,
     prediction_method: str = "predict",
     instability_metric: str = "pairwise",
+    groups: Any = None,
 ) -> dict[str, Any]:
     """
     Sweep a parameter grid and return the validation-score/instability tradeoff.
@@ -128,7 +160,7 @@ def stability_frontier(
         ``'continuous'`` or ``'categorical'``.
     n_bootstrap
         Resamples per configuration. The returned Monte Carlo standard error is
-        the guide to whether this is enough; 20 is only a quick diagnostic.
+        the guide to whether this is enough.
     test_size
         Fraction held out for evaluation.
     random_state
@@ -148,6 +180,15 @@ def stability_frontier(
         Quantity minimized on the frontier: ``'pairwise'`` compares two
         independently refitted models; ``'mape'`` compares each refit with the
         model fitted on all training data.
+    groups
+        Cluster label per row of ``X``, for correlated data; see
+        :func:`~stable_cart.bootstrap_predictions`. The internal validation split
+        becomes a grouped split, so no cluster lands on both sides of it.
+        For classification, up to 100 candidate splits are tried to retain every
+        class in training, preferring splits that also retain every class in
+        validation. If none of the candidates retains all training classes,
+        a ``ValueError`` asks for a different split size or explicit validation
+        data. This search does not guarantee a feasible split will be found.
 
     Returns
     -------
@@ -188,7 +229,21 @@ def stability_frontier(
 
     started = time.perf_counter()
     y_array = column_or_1d(y)
-    if X_eval is None:
+    fit_groups = groups
+    if X_eval is None and groups is not None:
+        # Splitting clustered rows at random puts correlated observations on
+        # both sides, which inflates the validation score for exactly the
+        # configurations that overfit the cluster structure.
+        group_array = np.asarray(groups)
+        fit_index, validation_index = _grouped_validation_split(
+            X, y_array, group_array, task, test_size, random_state
+        )
+        X_fit = _take_rows(X, fit_index)
+        X_validation = _take_rows(X, validation_index)
+        y_fit, y_validation = y_array[fit_index], y_array[validation_index]
+        fit_groups = group_array[fit_index]
+        evaluation_source = "internal_grouped_validation_split"
+    elif X_eval is None:
         stratify = y_array if task == "categorical" else None
         X_fit, X_validation, y_fit, y_validation = train_test_split(
             X,
@@ -220,6 +275,7 @@ def stability_frontier(
             n_bootstrap=n_bootstrap,
             random_state=random_state,
             prediction_method=prediction_method,
+            groups=fit_groups,
         )
         n_fits += raw["n_fit_attempts"]
 

@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import BaggingRegressor
+from sklearn.linear_model import Ridge
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from stable_cart import pareto_front, stability_frontier
@@ -311,3 +312,120 @@ def test_identical_points_appear_once():
     ]
 
     assert len(pareto_front(points)) == 2
+
+
+class TestGroupedFrontier:
+    """Clustered data on the frontier: grouped split, clustered resampling."""
+
+    @staticmethod
+    def _clustered(n_clusters=30, rows=20, features=4):
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(n_clusters * rows, features))
+        groups = np.repeat(np.arange(n_clusters), rows)
+        y = (
+            X @ np.arange(1.0, features + 1)
+            + np.repeat(rng.normal(scale=3.0, size=n_clusters), rows)
+            + rng.normal(size=n_clusters * rows)
+        )
+        return X, y, groups
+
+    def test_the_internal_split_keeps_clusters_on_one_side(self):
+        X, y, groups = self._clustered()
+
+        result = stability_frontier(
+            lambda **kw: DecisionTreeRegressor(random_state=0, **kw),
+            {"max_depth": [2, 4]},
+            X,
+            y,
+            task="continuous",
+            n_bootstrap=5,
+            random_state=0,
+            groups=groups,
+        )
+        assert result["evaluation_source"] == "internal_grouped_validation_split"
+
+    def test_grouped_resampling_reports_more_instability(self):
+        """The frontier inherits the correction, not just the audit function."""
+        X, y, groups = self._clustered()
+        common = {
+            "task": "continuous",
+            "n_bootstrap": 60,
+            "random_state": 0,
+        }
+
+        rows = stability_frontier(
+            lambda **kw: Ridge(**kw),
+            {"alpha": [1.0]},
+            X,
+            y,
+            X_eval=X[:100],
+            y_eval=y[:100],
+            **common,
+        )
+        clustered = stability_frontier(
+            lambda **kw: Ridge(**kw),
+            {"alpha": [1.0]},
+            X,
+            y,
+            X_eval=X[:100],
+            y_eval=y[:100],
+            groups=groups,
+            **common,
+        )
+        assert (
+            clustered["points"][0]["instability"] > 2 * rows["points"][0]["instability"]
+        )
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_grouped_classification_retains_classes(seed):
+    from sklearn.linear_model import LogisticRegression
+
+    X = np.arange(24.0).reshape(12, 2)
+    y = np.repeat([0, 0, 1, 1], 3)
+    groups = np.repeat(np.arange(4), 3)
+    result = stability_frontier(
+        lambda **kw: LogisticRegression(**kw),
+        {"C": [1.0]},
+        X,
+        y,
+        task="categorical",
+        n_bootstrap=2,
+        test_size=0.5,
+        random_state=seed,
+        groups=groups,
+    )
+    assert np.isfinite(result["points"][0]["score"])
+
+
+def test_grouped_classification_reports_unavailable_split_before_fitting():
+    def factory(**kw):
+        pytest.fail("An invalid split must be rejected before model fitting")
+
+    with pytest.raises(ValueError, match=r"class.*training"):
+        stability_frontier(
+            factory,
+            {},
+            np.arange(8).reshape(4, 2),
+            [0, 0, 1, 1],
+            task="categorical",
+            n_bootstrap=2,
+            test_size=0.5,
+            groups=[0, 0, 1, 1],
+            random_state=0,
+        )
+
+
+def test_grouped_classification_split_is_disjoint_and_reproducible():
+    from stable_cart.frontier import _grouped_validation_split
+
+    X = np.arange(24.0).reshape(12, 2)
+    y = np.repeat([0, 0, 1, 1], 3)
+    groups = np.repeat(np.arange(4), 3)
+    first = _grouped_validation_split(X, y, groups, "categorical", 0.5, 0)
+    second = _grouped_validation_split(X, y, groups, "categorical", 0.5, 0)
+    train, validation = first
+    assert set(groups[train]).isdisjoint(groups[validation])
+    assert set(y[train]) == set(y[validation]) == {0, 1}
+    np.testing.assert_array_equal(first[0], second[0])
+    np.testing.assert_array_equal(first[1], second[1])

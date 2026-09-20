@@ -39,7 +39,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Operating System :: OS Independent",
 ]
-version = "3.0.0"
+version = "3.1.0"
 
 [project.urls]
 Homepage = "https://github.com/finite-sample/stable-cart"

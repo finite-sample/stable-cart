@@ -79,15 +79,51 @@ def _aligned_probabilities(model: Any, X: NDArray[Any], classes: NDArray[Any]):
     return aligned
 
 
+def _take_rows(data: Any, rows: NDArray[np.integer]) -> Any:
+    """Select rows by position from a DataFrame, array, or sparse matrix."""
+    if hasattr(data, "iloc"):
+        return data.iloc[rows]
+    return np.asarray(data)[rows] if not hasattr(data, "shape") else data[rows]
+
+
+def _cluster_rows(groups: Any, n_train: int) -> tuple[NDArray[Any], list[NDArray[Any]]]:
+    """Return the distinct cluster labels and each cluster's row positions.
+
+    The pairs-cluster bootstrap is standard practice for correlated data
+    (Cameron, Gelbach and Miller 2008) but has no implementation in the
+    scikit-learn ecosystem: ``sklearn.utils.resample`` offers ``stratify`` and
+    nothing group-aware, and ``tsbootstrap`` covers only temporal structure. The
+    twenty lines here are cheaper than a dependency that fits neither case.
+    """
+    group_array = np.asarray(groups)
+    if group_array.ndim != 1:
+        raise ValueError("groups must be one-dimensional.")
+    if len(group_array) != n_train:
+        raise ValueError("groups must contain one label per training row.")
+    try:
+        missing = any(label is None or bool(label != label) for label in group_array)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "groups must not contain missing or nonscalar labels."
+        ) from None
+    if missing:
+        raise ValueError("groups must not contain missing labels.")
+    labels = np.unique(group_array)
+    if len(labels) < 2:
+        raise ValueError("groups must contain at least two distinct clusters.")
+    return labels, [np.flatnonzero(group_array == label) for label in labels]
+
+
 def bootstrap_predictions(
     model_factory: Callable[[], Any],
     X_train: Any,
     y_train: Any,
     X_eval: Any,
     task: str = "continuous",
-    n_bootstrap: int = 20,
+    n_bootstrap: int = 200,
     random_state: int | None = None,
     prediction_method: str = "predict",
+    groups: Any = None,
 ) -> dict[str, Any]:
     """
     Refit a model on bootstrap resamples and return every prediction it made.
@@ -112,7 +148,10 @@ def bootstrap_predictions(
     task
         'continuous' for regression, 'categorical' for classification.
     n_bootstrap
-        Number of bootstrap resamples.
+        Number of bootstrap resamples. The default matches ``pminternal``, the R
+        implementation of the same protocol. Read the returned Monte Carlo
+        standard errors rather than trusting any default: they say directly
+        whether more resamples would move the answer.
     random_state
         Seed for the bootstrap samples. Randomness inside the estimator remains
         under ``model_factory``; set estimator seeds there when the audit should
@@ -123,6 +162,15 @@ def bootstrap_predictions(
         probability vector, with columns aligned by the estimator's ``classes_``
         attribute. Probability movement is summarized by squared Euclidean
         distance for pairwise instability and mean absolute difference for MAPE.
+    groups
+        Cluster label per training row. When supplied, clusters are resampled
+        with replacement and each drawn cluster is taken whole, so within-cluster
+        correlation survives the resample. Rows that are correlated in the data
+        but resampled independently make the audit look far more stable than it
+        is: with a cluster random effect three times the idiosyncratic noise, the row
+        bootstrap recovered 0.19 of the true refit-to-refit variance while the
+        cluster bootstrap recovered 0.99. Precision still comes from the number
+        of clusters, not the number of rows.
 
     Returns
     -------
@@ -192,6 +240,9 @@ def bootstrap_predictions(
         raise ValueError("X_eval must not be empty.")
     if y_array.ndim != 1:
         raise ValueError("y_train must be one-dimensional.")
+    cluster_labels, cluster_positions = (
+        _cluster_rows(groups, n_train) if groups is not None else (None, None)
+    )
 
     original_model = model_factory().fit(X_train, y_train)
     classes = (
@@ -223,21 +274,35 @@ def bootstrap_predictions(
                 "Could not obtain the requested number of valid bootstrap fits. "
                 "Too many classification resamples contained only one class."
             )
-        # sklearn's public resample API preserves pandas and sparse containers.
         # This is the ordinary pairs bootstrap: class prevalence is allowed to
         # vary, because freezing it can materially understate instability.
         seed = int(rng.integers(np.iinfo(np.int32).max))
-        resampled = cast(
-            list[Any],
-            resample(
-                X_train,
-                y_train,
-                replace=True,
-                n_samples=n_train,
-                random_state=seed,
-            ),
-        )
-        X_resampled, y_resampled = resampled
+        if cluster_labels is None:
+            # sklearn's public resample API preserves pandas and sparse
+            # containers.
+            resampled = cast(
+                list[Any],
+                resample(
+                    X_train,
+                    y_train,
+                    replace=True,
+                    n_samples=n_train,
+                    random_state=seed,
+                ),
+            )
+            X_resampled, y_resampled = resampled
+        else:
+            # Draw clusters, not rows, and take each drawn cluster whole. The
+            # resample is not held to n_train rows: forcing it there would
+            # truncate large clusters and distort the very correlation the
+            # cluster bootstrap exists to preserve.
+            assert cluster_positions is not None
+            draw = np.random.default_rng(seed).integers(
+                0, len(cluster_labels), size=len(cluster_labels)
+            )
+            rows = np.concatenate([cluster_positions[index] for index in draw])
+            X_resampled = _take_rows(X_train, rows)
+            y_resampled = _take_rows(y_train, rows)
         n_resample_attempts += 1
         # A one-class draw is part of an unconditional pairs bootstrap, but many
         # standard classifiers are mathematically undefined on it. Use one
@@ -321,9 +386,10 @@ def bootstrap_instability(
     y_train: Any,
     X_eval: Any,
     task: str = "continuous",
-    n_bootstrap: int = 20,
+    n_bootstrap: int = 200,
     random_state: int | None = None,
     prediction_method: str = "predict",
+    groups: Any = None,
 ) -> dict[str, float | int]:
     """
     Measure how much a model's predictions move when the training data is perturbed.
@@ -350,12 +416,16 @@ def bootstrap_instability(
     task
         'continuous' for regression, 'categorical' for classification.
     n_bootstrap
-        Number of bootstrap resamples.
+        Number of bootstrap resamples. The default matches ``pminternal``; the
+        returned Monte Carlo standard errors say whether it is enough here.
     random_state
         Seed for the bootstrap samples. Estimator randomness remains under
         ``model_factory``.
     prediction_method
         Prediction representation to compare; see
+        :func:`bootstrap_predictions`.
+    groups
+        Cluster label per training row, for correlated data; see
         :func:`bootstrap_predictions`.
 
     Returns
@@ -396,6 +466,7 @@ def bootstrap_instability(
         n_bootstrap=n_bootstrap,
         random_state=random_state,
         prediction_method=prediction_method,
+        groups=groups,
     )
     per_point = raw["per_point"]
 

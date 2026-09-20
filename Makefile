@@ -49,8 +49,8 @@ doctest:
 
 # Docker-based CI (simple and clean)
 ci-docker:
-	docker run --rm -v $$(pwd):/app -w /app python:3.11 bash -c \
-		"pip install uv && uv sync --all-groups && make lint && make test"
+	docker run --rm -v $$(pwd):/app -w /app python:3.12 bash -c \
+		"pip install uv && uv sync --group dev --group test && make lint && make test"
 
 # Cleanup
 clean:
