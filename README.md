@@ -2,6 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![Python versions](https://img.shields.io/pypi/pyversions/stable-cart.svg)](https://pypi.org/project/stable-cart/)
+[![Downloads](https://static.pepy.tech/badge/stable-cart)](https://pepy.tech/projects/stable-cart)
 [![CI](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml/badge.svg)](https://github.com/finite-sample/stable-cart/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-github.io-blue)](https://finite-sample.github.io/stable-cart/)
 [![License](https://img.shields.io/pypi/l/stable-cart.svg)](https://github.com/finite-sample/stable-cart/blob/main/LICENSE)
