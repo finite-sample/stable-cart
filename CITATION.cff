@@ -11,7 +11,6 @@ authors:
     given-names: "Gaurav"
   - family-names: "Bhosle"
     given-names: "Arav"
-    email: "aravbhosle@gmail.com"
 abstract: >-
   A Python package for auditing how predictions change when a complete
   model-building procedure is refitted on bootstrap samples. It preserves
