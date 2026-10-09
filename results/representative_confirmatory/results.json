@@ -1,0 +1,324 @@
+{
+  "complete": true,
+  "config": {
+    "synthetic_datasets": 24,
+    "real_splits": 20,
+    "n_train": 500,
+    "n_test": 1000,
+    "n_outer": 20,
+    "n_candidates": 12,
+    "interval_resamples": 20000,
+    "seed": 20260817,
+    "output": "results/representative_confirmatory",
+    "skip_real": false,
+    "plan_path": "experiments/designs/REPRESENTATIVE_CONFIRMATORY_PLAN.md",
+    "plan_sha256": "3ae4ce4d424bd5b47a04f2e8c0749b9cd4893833ece8c7b349cfd56c8a61ea85",
+    "rules": [
+      "random",
+      "representative",
+      "best_validation",
+      "ensemble"
+    ],
+    "synthetic_processes": [
+      "classification_easy",
+      "classification_hard",
+      "classification_multiclass",
+      "regression_linear",
+      "regression_friedman1",
+      "regression_heteroscedastic"
+    ],
+    "real_datasets": [
+      "breast_cancer",
+      "wine",
+      "diabetes"
+    ],
+    "families": [
+      "tree"
+    ]
+  },
+  "failures": [],
+  "synthetic_summary": {
+    "grand": {
+      "mean": -8.265531393011882,
+      "ci_low": -9.180622551454885,
+      "ci_high": -7.333972189865445,
+      "n_cells": 6,
+      "n_units": 144
+    },
+    "families": {
+      "tree": {
+        "mean": -8.265531393011882,
+        "ci_low": -9.187477936632948,
+        "ci_high": -7.321809970394063,
+        "n_cells": 6,
+        "n_units": 144
+      }
+    },
+    "task_family_score_guardrails": {
+      "classification:tree": {
+        "mean": -0.00991458333333336,
+        "ci_low": -0.011646545138888922,
+        "ci_high": -0.008247170138888905,
+        "n_cells": 3,
+        "n_units": 72
+      },
+      "regression:tree": {
+        "mean": 0.006594277060658563,
+        "ci_low": 0.0041939667330383274,
+        "ci_high": 0.008964151887125769,
+        "n_cells": 3,
+        "n_units": 72
+      }
+    },
+    "cells": {
+      "classification_easy:tree": {
+        "task": "classification",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -9.31813512069821,
+          "ci_low": -11.593578568819577,
+          "ci_high": -6.9681457746074775,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": -0.007229166666666717,
+          "ci_low": -0.008987500000000048,
+          "ci_high": -0.005497916666666681,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.6385780885780886,
+          "ci_low": 0.6202214452214453,
+          "ci_high": 0.6566437208624709,
+          "n_units": 24
+        }
+      },
+      "classification_hard:tree": {
+        "task": "classification",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -15.618442696391456,
+          "ci_low": -18.932861796144543,
+          "ci_high": -12.407914815739929,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": -0.011487500000000017,
+          "ci_low": -0.015297968750000017,
+          "ci_high": -0.007920781250000012,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.6798513986013986,
+          "ci_low": 0.6612616550116551,
+          "ci_high": 0.69774256993007,
+          "n_units": 24
+        }
+      },
+      "classification_multiclass:tree": {
+        "task": "classification",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -9.761945067636546,
+          "ci_low": -11.484581355786,
+          "ci_high": -8.069268012726377,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": -0.011027083333333347,
+          "ci_low": -0.01403979166666669,
+          "ci_high": -0.008008333333333341,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.695410839160839,
+          "ci_low": 0.6797494172494174,
+          "ci_high": 0.7099650349650349,
+          "n_units": 24
+        }
+      },
+      "regression_friedman1:tree": {
+        "task": "regression",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -3.1564366294019095,
+          "ci_low": -5.003004633557547,
+          "ci_high": -1.12907585757251,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": 0.0012369451415536585,
+          "ci_low": -0.0027524459006099938,
+          "ci_high": 0.005106423514159473,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.6343677156177157,
+          "ci_low": 0.6167096445221446,
+          "ci_high": 0.6499708624708626,
+          "n_units": 24
+        }
+      },
+      "regression_heteroscedastic:tree": {
+        "task": "regression",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -7.95670434037153,
+          "ci_low": -10.499522453111435,
+          "ci_high": -5.393919089013362,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": 0.014336205347607059,
+          "ci_low": 0.010068753618061487,
+          "ci_high": 0.01841242171771087,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.6188956876456878,
+          "ci_low": 0.6000575466200467,
+          "ci_high": 0.6371215763403264,
+          "n_units": 24
+        }
+      },
+      "regression_linear:tree": {
+        "task": "regression",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -3.7815245035716365,
+          "ci_low": -5.2331080794965175,
+          "ci_high": -2.2825685003692686,
+          "n_units": 24
+        },
+        "score_delta_vs_best": {
+          "mean": 0.0042096806928149716,
+          "ci_low": 4.752964776933908e-08,
+          "ci_high": 0.008568303390482264,
+          "n_units": 24
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.5953525641025641,
+          "ci_low": 0.5765876311188812,
+          "ci_high": 0.6139281031468532,
+          "n_units": 24
+        }
+      }
+    }
+  },
+  "real_repeated_split_summary": {
+    "grand": {
+      "mean": -10.58349761132572,
+      "ci_low": -13.02803574485357,
+      "ci_high": -8.085225456812202,
+      "n_cells": 3,
+      "n_units": 60
+    },
+    "families": {
+      "tree": {
+        "mean": -10.58349761132572,
+        "ci_low": -13.029699172595674,
+        "ci_high": -8.038418764844566,
+        "n_cells": 3,
+        "n_units": 60
+      }
+    },
+    "task_family_score_guardrails": {
+      "classification:tree": {
+        "mean": -0.0036111111111111014,
+        "ci_low": -0.006507279483430804,
+        "ci_high": -0.0007796357212475662,
+        "n_cells": 2,
+        "n_units": 40
+      },
+      "regression:tree": {
+        "mean": 0.015163787113140226,
+        "ci_low": 0.0038360933277563165,
+        "ci_high": 0.027401656572002414,
+        "n_cells": 1,
+        "n_units": 20
+      }
+    },
+    "cells": {
+      "breast_cancer:tree": {
+        "task": "classification",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -16.91934034615213,
+          "ci_low": -21.387950944937074,
+          "ci_high": -12.42863452155949,
+          "n_units": 20
+        },
+        "score_delta_vs_best": {
+          "mean": -0.0022222222222222586,
+          "ci_low": -0.004385964912280771,
+          "ci_high": -4.385964912282367e-05,
+          "n_units": 20
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.5845104895104896,
+          "ci_low": 0.5613286713286715,
+          "ci_high": 0.6081298076923077,
+          "n_units": 20
+        }
+      },
+      "diabetes:tree": {
+        "task": "regression",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -7.420931211645799,
+          "ci_low": -10.627741397115061,
+          "ci_high": -4.010769782119439,
+          "n_units": 20
+        },
+        "score_delta_vs_best": {
+          "mean": 0.015163787113140226,
+          "ci_low": 0.00395145850693652,
+          "ci_high": 0.027399923992217433,
+          "n_units": 20
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.5104195804195806,
+          "ci_low": 0.4897202797202798,
+          "ci_high": 0.531346590909091,
+          "n_units": 20
+        }
+      },
+      "wine:tree": {
+        "task": "classification",
+        "family": "tree",
+        "instability_effect_vs_best_percent": {
+          "mean": -7.410221276179233,
+          "ci_low": -11.941027786534617,
+          "ci_high": -1.9695083214320817,
+          "n_units": 20
+        },
+        "score_delta_vs_best": {
+          "mean": -0.004999999999999944,
+          "ci_low": -0.010324074074073996,
+          "ci_high": 0.00018518518518527717,
+          "n_units": 20
+        },
+        "validation_test_centrality_spearman": {
+          "mean": 0.5466271620992053,
+          "ci_low": 0.5179203444043232,
+          "ci_high": 0.5737938002554361,
+          "n_units": 20
+        }
+      }
+    }
+  },
+  "decisions": {
+    "tree_specific": {
+      "supported": false,
+      "checks": {
+        "effect_interval_below_zero": true,
+        "enough_negative_cells": true,
+        "no_cell_above_ten_percent": true,
+        "performance_guardrails_pass": false
+      },
+      "negative_cells": 6,
+      "required_negative_cells": 4,
+      "maximum_cell_effect_percent": -3.1564366294019095
+    }
+  }
+}

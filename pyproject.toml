@@ -52,6 +52,7 @@ Issues = "https://github.com/finite-sample/stable-cart/issues"
 plots = ["matplotlib>=3.5"]
 
 [dependency-groups]
+experiments = ["pandas>=1.5", "matplotlib>=3.5"]
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -100,12 +101,14 @@ convention = "numpy"
 "tests/**" = ["S101", "D"]
 "docs/**" = ["D"]
 "examples/**" = ["T201"]
+"experiments/**" = ["T201", "D"]
+"experiments/tests/**" = ["S101"]
 "stable_cart/**" = ["S101"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = ["-ra", "-v", "--strict-markers", "--strict-config"]
-testpaths = ["tests"]
+testpaths = ["tests", "experiments/tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"

@@ -1682,6 +1682,10 @@ docs = [
     { name = "sphinx-autodoc-typehints" },
     { name = "sphinx-copybutton" },
 ]
+experiments = [
+    { name = "matplotlib" },
+    { name = "pandas" },
+]
 test = [
     { name = "matplotlib" },
     { name = "pandas" },
@@ -1720,6 +1724,10 @@ docs = [
     { name = "sphinx", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints", specifier = ">=1.25" },
     { name = "sphinx-copybutton", specifier = ">=0.5" },
+]
+experiments = [
+    { name = "matplotlib", specifier = ">=3.5" },
+    { name = "pandas", specifier = ">=1.5" },
 ]
 test = [
     { name = "matplotlib", specifier = ">=3.5" },

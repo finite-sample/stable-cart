@@ -1,0 +1,494 @@
+{
+  "classification_easy": {
+    "random": {
+      "pairwise_instability": 0.1324,
+      "pairwise_mcse": 0.0064790189901581495,
+      "score": 0.9032666666666667,
+      "score_mcse": 0.004287632620743078,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0272,
+        "instability_delta_mcse": 0.008203400655394393,
+        "instability_relative_change_percent": 25.855513307984786,
+        "score_delta": -0.01706666666666666,
+        "score_delta_mcse": 0.005065957774260938
+      }
+    },
+    "representative": {
+      "pairwise_instability": 0.10213333333333333,
+      "pairwise_mcse": 0.006730146750513447,
+      "score": 0.9170666666666666,
+      "score_mcse": 0.00352043258233685,
+      "vs_random": {
+        "instability_delta": -0.030266666666666664,
+        "instability_delta_mcse": 0.008243923069370317,
+        "instability_relative_change_percent": -22.860020140986908,
+        "score_delta": 0.013799999999999996,
+        "score_delta_mcse": 0.004719998287964079
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.0030666666666666676,
+        "instability_delta_mcse": 0.007870171016994148,
+        "instability_relative_change_percent": -2.915082382762992,
+        "score_delta": -0.0032666666666666634,
+        "score_delta_mcse": 0.004049630374841573
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 0.1052,
+      "pairwise_mcse": 0.005951550418248373,
+      "score": 0.9203333333333333,
+      "score_mcse": 0.003475584230939083,
+      "vs_random": {
+        "instability_delta": -0.0272,
+        "instability_delta_mcse": 0.008203400655394393,
+        "instability_relative_change_percent": -20.54380664652568,
+        "score_delta": 0.01706666666666666,
+        "score_delta_mcse": 0.005065957774260938
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 0.05586666666666667,
+      "pairwise_mcse": 0.004004034246785747,
+      "score": 0.9489999999999997,
+      "score_mcse": 0.002453381276065006,
+      "vs_random": {
+        "instability_delta": -0.07653333333333333,
+        "instability_delta_mcse": 0.006823302742621078,
+        "instability_relative_change_percent": -57.80463242698892,
+        "score_delta": 0.04573333333333332,
+        "score_delta_mcse": 0.004229149023034633
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.04933333333333333,
+        "instability_delta_mcse": 0.006253887679764572,
+        "instability_relative_change_percent": -46.89480354879595,
+        "score_delta": 0.02866666666666667,
+        "score_delta_mcse": 0.0034976342814506643
+      }
+    }
+  },
+  "classification_hard": {
+    "random": {
+      "pairwise_instability": 0.2584,
+      "pairwise_mcse": 0.0069270510523006205,
+      "score": 0.7073333333333331,
+      "score_mcse": 0.0040584948529449275,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.045200000000000004,
+        "instability_delta_mcse": 0.008439814938165183,
+        "instability_relative_change_percent": 21.200750469043157,
+        "score_delta": -0.015133333333333327,
+        "score_delta_mcse": 0.005478540934812004
+      }
+    },
+    "representative": {
+      "pairwise_instability": 0.2236,
+      "pairwise_mcse": 0.00718075028135463,
+      "score": 0.721,
+      "score_mcse": 0.003609906559006576,
+      "vs_random": {
+        "instability_delta": -0.03480000000000001,
+        "instability_delta_mcse": 0.00878318327202744,
+        "instability_relative_change_percent": -13.467492260061924,
+        "score_delta": 0.013666666666666659,
+        "score_delta_mcse": 0.005366374921488415
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0104,
+        "instability_delta_mcse": 0.01003966735678631,
+        "instability_relative_change_percent": 4.878048780487806,
+        "score_delta": -0.0014666666666666673,
+        "score_delta_mcse": 0.004472216261994899
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 0.21319999999999997,
+      "pairwise_mcse": 0.007622594412549528,
+      "score": 0.7224666666666667,
+      "score_mcse": 0.004097197312028369,
+      "vs_random": {
+        "instability_delta": -0.045200000000000004,
+        "instability_delta_mcse": 0.008439814938165183,
+        "instability_relative_change_percent": -17.492260061919506,
+        "score_delta": 0.015133333333333327,
+        "score_delta_mcse": 0.005478540934812004
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 0.12866666666666668,
+      "pairwise_mcse": 0.004014712173020569,
+      "score": 0.7585999999999998,
+      "score_mcse": 0.0023599634762910236,
+      "vs_random": {
+        "instability_delta": -0.12973333333333334,
+        "instability_delta_mcse": 0.00787938554414543,
+        "instability_relative_change_percent": -50.20639834881321,
+        "score_delta": 0.05126666666666666,
+        "score_delta_mcse": 0.004138668220000403
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.08453333333333334,
+        "instability_delta_mcse": 0.0075483385566617505,
+        "instability_relative_change_percent": -39.64978111319575,
+        "score_delta": 0.03613333333333333,
+        "score_delta_mcse": 0.00417483240253134
+      }
+    }
+  },
+  "regression_synthetic": {
+    "random": {
+      "pairwise_instability": 2379.981495987113,
+      "pairwise_mcse": 77.54915048875063,
+      "score": 0.5378376396431026,
+      "score_mcse": 0.006129198605302371,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": 302.1272186380676,
+        "instability_delta_mcse": 94.15733212602855,
+        "instability_relative_change_percent": 14.540346834308588,
+        "score_delta": -0.03054843861888174,
+        "score_delta_mcse": 0.007530463344452615
+      }
+    },
+    "representative": {
+      "pairwise_instability": 2002.434878771811,
+      "pairwise_mcse": 54.91877663753951,
+      "score": 0.5655269819091897,
+      "score_mcse": 0.004388412908410011,
+      "vs_random": {
+        "instability_delta": -377.54661721530186,
+        "instability_delta_mcse": 69.97518919400517,
+        "instability_relative_change_percent": -15.863426579235313,
+        "score_delta": 0.027689342266087137,
+        "score_delta_mcse": 0.006003928819439909
+      },
+      "vs_best_validation": {
+        "instability_delta": -75.41939857723433,
+        "instability_delta_mcse": 89.88401030990917,
+        "instability_relative_change_percent": -3.629676989353431,
+        "score_delta": -0.0028590963527946,
+        "score_delta_mcse": 0.006528385360369515
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 2077.854277349046,
+      "pairwise_mcse": 64.10117120479758,
+      "score": 0.5683860782619845,
+      "score_mcse": 0.0052996060250790735,
+      "vs_random": {
+        "instability_delta": -302.1272186380676,
+        "instability_delta_mcse": 94.15733212602855,
+        "instability_relative_change_percent": -12.694519648471399,
+        "score_delta": 0.03054843861888174,
+        "score_delta_mcse": 0.007530463344452615
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 444.41568567660323,
+      "pairwise_mcse": 16.352364015872492,
+      "score": 0.7345285722814218,
+      "score_mcse": 0.0023200190280520264,
+      "vs_random": {
+        "instability_delta": -1935.5658103105097,
+        "instability_delta_mcse": 74.89385830272614,
+        "instability_relative_change_percent": -81.3269268510729,
+        "score_delta": 0.1966909326383189,
+        "score_delta_mcse": 0.006288846231554376
+      },
+      "vs_best_validation": {
+        "instability_delta": -1633.4385916724425,
+        "instability_delta_mcse": 60.650338181109625,
+        "instability_relative_change_percent": -78.61179725059475,
+        "score_delta": 0.1661424940194372,
+        "score_delta_mcse": 0.005137418442583873
+      }
+    }
+  },
+  "breast_cancer": {
+    "random": {
+      "pairwise_instability": 0.09391812865497075,
+      "pairwise_mcse": 0.0047447550596717404,
+      "score": 0.9076608187134503,
+      "score_mcse": 0.0019901708790467914,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.01812865497076023,
+        "instability_delta_mcse": 0.00658924946924344,
+        "instability_relative_change_percent": 23.919753086419746,
+        "score_delta": -0.008362573099415207,
+        "score_delta_mcse": 0.002514619883040935
+      }
+    },
+    "representative": {
+      "pairwise_instability": 0.06818713450292396,
+      "pairwise_mcse": 0.004647259059828454,
+      "score": 0.9142105263157894,
+      "score_mcse": 0.0015395123135836472,
+      "vs_random": {
+        "instability_delta": -0.025730994152046778,
+        "instability_delta_mcse": 0.005787972623454894,
+        "instability_relative_change_percent": -27.3972602739726,
+        "score_delta": 0.006549707602339186,
+        "score_delta_mcse": 0.0023410707709341626
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.00760233918128655,
+        "instability_delta_mcse": 0.005910277746307099,
+        "instability_relative_change_percent": -10.030864197530862,
+        "score_delta": -0.0018128654970760217,
+        "score_delta_mcse": 0.0020708107632914233
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 0.07578947368421053,
+      "pairwise_mcse": 0.004722787049659449,
+      "score": 0.9160233918128654,
+      "score_mcse": 0.0015517263779951096,
+      "vs_random": {
+        "instability_delta": -0.01812865497076023,
+        "instability_delta_mcse": 0.00658924946924344,
+        "instability_relative_change_percent": -19.30261519302615,
+        "score_delta": 0.008362573099415207,
+        "score_delta_mcse": 0.002514619883040935
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 0.04666666666666666,
+      "pairwise_mcse": 0.002601853035662109,
+      "score": 0.9270760233918128,
+      "score_mcse": 0.0012888969507178238,
+      "vs_random": {
+        "instability_delta": -0.047251461988304086,
+        "instability_delta_mcse": 0.005144028445752744,
+        "instability_relative_change_percent": -50.31133250311333,
+        "score_delta": 0.01941520467836258,
+        "score_delta_mcse": 0.002371272574229308
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.029122807017543863,
+        "instability_delta_mcse": 0.005542796008192653,
+        "instability_relative_change_percent": -38.425925925925924,
+        "score_delta": 0.01105263157894737,
+        "score_delta_mcse": 0.0017863761864040952
+      }
+    }
+  },
+  "diabetes": {
+    "random": {
+      "pairwise_instability": 3442.6653659899494,
+      "pairwise_mcse": 122.57087641709853,
+      "score": 0.183442462438961,
+      "score_mcse": 0.011291630814457724,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": 228.8834494198896,
+        "instability_delta_mcse": 155.38185135117178,
+        "instability_relative_change_percent": 7.121934697553085,
+        "score_delta": -0.04052016223748766,
+        "score_delta_mcse": 0.01436076228704794
+      }
+    },
+    "representative": {
+      "pairwise_instability": 2854.3419259781404,
+      "pairwise_mcse": 102.20939211224072,
+      "score": 0.24356945662205975,
+      "score_mcse": 0.009444387499033579,
+      "vs_random": {
+        "instability_delta": -588.3234400118097,
+        "instability_delta_mcse": 142.68822621114944,
+        "instability_relative_change_percent": -17.08918461328975,
+        "score_delta": 0.06012699418309873,
+        "score_delta_mcse": 0.014160305447949686
+      },
+      "vs_best_validation": {
+        "instability_delta": -359.43999059192,
+        "instability_delta_mcse": 103.57086387890972,
+        "instability_relative_change_percent": -11.18433048423945,
+        "score_delta": 0.019606831945611077,
+        "score_delta_mcse": 0.011754723508704046
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 3213.7819165700594,
+      "pairwise_mcse": 98.091823829636,
+      "score": 0.22396262467644865,
+      "score_mcse": 0.0095378964004057,
+      "vs_random": {
+        "instability_delta": -228.8834494198896,
+        "instability_delta_mcse": 155.38185135117178,
+        "instability_relative_change_percent": -6.648437332336349,
+        "score_delta": 0.04052016223748766,
+        "score_delta_mcse": 0.01436076228704794
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 672.8870753555398,
+      "pairwise_mcse": 30.906680615563257,
+      "score": 0.4423311491278287,
+      "score_mcse": 0.0036394253754272908,
+      "vs_random": {
+        "instability_delta": -2769.77829063441,
+        "instability_delta_mcse": 125.52470743128475,
+        "instability_relative_change_percent": -80.45447338556392,
+        "score_delta": 0.2588886866888678,
+        "score_delta_mcse": 0.010854494787323529
+      },
+      "vs_best_validation": {
+        "instability_delta": -2540.89484121452,
+        "instability_delta_mcse": 88.67921882744652,
+        "instability_relative_change_percent": -79.06245374379091,
+        "score_delta": 0.2183685244513801,
+        "score_delta_mcse": 0.008696493382287762
+      }
+    }
+  },
+  "wine_binary": {
+    "random": {
+      "pairwise_instability": 0.10740740740740738,
+      "pairwise_mcse": 0.012731438534937528,
+      "score": 0.8711111111111112,
+      "score_mcse": 0.0032655111279763552,
+      "vs_random": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.017037037037037038,
+        "instability_delta_mcse": 0.01437206900216278,
+        "instability_relative_change_percent": -13.690476190476192,
+        "score_delta": 0.005925925925925922,
+        "score_delta_mcse": 0.004033914229267835
+      }
+    },
+    "representative": {
+      "pairwise_instability": 0.05777777777777779,
+      "pairwise_mcse": 0.008275646474504614,
+      "score": 0.8777777777777779,
+      "score_mcse": 0.0017259883837519286,
+      "vs_random": {
+        "instability_delta": -0.04962962962962962,
+        "instability_delta_mcse": 0.012802046251713533,
+        "instability_relative_change_percent": -46.20689655172414,
+        "score_delta": 0.006666666666666666,
+        "score_delta_mcse": 0.003536440073178399
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.06666666666666667,
+        "instability_delta_mcse": 0.013468700594029475,
+        "instability_relative_change_percent": -53.57142857142858,
+        "score_delta": 0.012592592592592591,
+        "score_delta_mcse": 0.003767501409284936
+      }
+    },
+    "best_validation": {
+      "pairwise_instability": 0.12444444444444444,
+      "pairwise_mcse": 0.01123687953647262,
+      "score": 0.8651851851851851,
+      "score_mcse": 0.0036097319111664896,
+      "vs_random": {
+        "instability_delta": 0.017037037037037038,
+        "instability_delta_mcse": 0.01437206900216278,
+        "instability_relative_change_percent": 15.862068965517246,
+        "score_delta": -0.005925925925925922,
+        "score_delta_mcse": 0.004033914229267835
+      },
+      "vs_best_validation": {
+        "instability_delta": 0.0,
+        "instability_delta_mcse": 0.0,
+        "instability_relative_change_percent": 0.0,
+        "score_delta": 0.0,
+        "score_delta_mcse": 0.0
+      }
+    },
+    "ensemble": {
+      "pairwise_instability": 0.05592592592592593,
+      "pairwise_mcse": 0.005759423917267641,
+      "score": 0.8901851851851851,
+      "score_mcse": 0.002190429135575904,
+      "vs_random": {
+        "instability_delta": -0.05148148148148148,
+        "instability_delta_mcse": 0.012332583127226876,
+        "instability_relative_change_percent": -47.931034482758626,
+        "score_delta": 0.019074074074074084,
+        "score_delta_mcse": 0.00390808154779458
+      },
+      "vs_best_validation": {
+        "instability_delta": -0.0685185185185185,
+        "instability_delta_mcse": 0.01179846725977659,
+        "instability_relative_change_percent": -55.059523809523796,
+        "score_delta": 0.02500000000000001,
+        "score_delta_mcse": 0.004197984724918347
+      }
+    }
+  }
+}

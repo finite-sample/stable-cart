@@ -1,0 +1,899 @@
+{
+  "complete": true,
+  "config": {
+    "synthetic_datasets": 20,
+    "real_splits": 16,
+    "n_development": 600,
+    "n_test": 1000,
+    "validation_refits": 16,
+    "test_refits": 20,
+    "interval_resamples": 20000,
+    "seed": 20260818,
+    "output": "results/bootstrap_split_confirmatory",
+    "skip_real": false,
+    "confirmatory": false,
+    "workers": 4,
+    "plan_path": "experiments/designs/BOOTSTRAP_SPLIT_CONFIRMATORY_PLAN.md",
+    "plan_sha256": "4228520ad396fa2febc9b9b0fa2ab3b0c2b9da9bcfd4ced7292407235874f27d",
+    "synthetic_processes": [
+      "classification_unique",
+      "classification_redundant",
+      "classification_interaction",
+      "regression_unique_step",
+      "regression_redundant",
+      "regression_friedman1"
+    ],
+    "real_datasets": [
+      "breast_cancer",
+      "digits_binary",
+      "diabetes"
+    ],
+    "arms": [
+      "pruned_cart",
+      "bootstrap_split"
+    ],
+    "configurations_per_arm": 12,
+    "preflight_checks": {
+      "a_a": true,
+      "a_a_paired_delta": true,
+      "fast_vs_slow_pair": true,
+      "class_renaming": true,
+      "equal_effective_grid": true,
+      "ineligible_arm_retained": true
+    },
+    "script_sha256": "b7b847ddc555bf1b076493eba883047c3375b8947ea6a0da9c9eb23ea80cb98a",
+    "estimator_sha256": "45f4d4a7fc69a673ab1bed7907a59092121b507af7185bd26b2a8bd9b4c80d34",
+    "lockfile_sha256": "91e009c49929423cc9cc1a47b814ad56ceaa95a96afdb5c0f6515f5801a75695",
+    "python_version": "3.13.2",
+    "numpy_version": "2.5.2",
+    "scikit_learn_version": "1.9.0"
+  },
+  "failures": [],
+  "synthetic_summary": {
+    "grand": {
+      "mean": 7.099726344313649,
+      "ci_low": 4.093059472996503,
+      "ci_high": 10.262209727182967,
+      "ci_98_low": 3.6827448210492144,
+      "ci_98_high": 10.730870372985313,
+      "ci_family_low": 3.4787722191413897,
+      "ci_family_high": 10.968578569703373,
+      "n_cells": 6,
+      "n_units": 120
+    },
+    "grand_normalized_instability_delta": {
+      "mean": 0.010753946559272547,
+      "ci_low": 0.007337528155294007,
+      "ci_high": 0.013964023606958519,
+      "ci_98_low": 0.006843237582109549,
+      "ci_98_high": 0.01446449651629221,
+      "ci_family_low": 0.006587401452834833,
+      "ci_family_high": 0.01469932832772206,
+      "n_cells": 6,
+      "n_units": 120
+    },
+    "tasks": {
+      "classification": {
+        "instability_effect_percent": {
+          "mean": 30.551593694292013,
+          "ci_low": 26.425940922292263,
+          "ci_high": 34.77582664465637,
+          "ci_98_low": 25.867758897964656,
+          "ci_98_high": 35.3477048613734,
+          "ci_family_low": 25.59648847802587,
+          "ci_family_high": 35.686292089780196,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "score_delta": {
+          "mean": 0.0009516666666666644,
+          "ci_low": -0.005200958333333336,
+          "ci_high": 0.0067602083333333195,
+          "ci_98_low": -0.0060658958333333355,
+          "ci_98_high": 0.007537562500000013,
+          "ci_family_low": -0.006502034722222235,
+          "ci_family_high": 0.007974451388888883,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "normalized_instability_delta": {
+          "mean": 0.024563508771929823,
+          "ci_low": 0.01864357456140351,
+          "ci_high": 0.030168131578947367,
+          "ci_98_low": 0.017662875000000005,
+          "ci_98_high": 0.03093537280701755,
+          "ci_family_low": 0.017209301169590643,
+          "ci_family_high": 0.03132699195906434,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "fit_time_ratio": {
+          "mean": 104.35851839844615,
+          "ci_low": 97.69820883361078,
+          "ci_high": 110.77296056548423,
+          "ci_98_low": 96.72859112613959,
+          "ci_98_high": 111.67039271552119,
+          "ci_family_low": 96.19227202971923,
+          "ci_family_high": 112.19487456354773,
+          "n_cells": 3,
+          "n_units": 60
+        }
+      },
+      "regression": {
+        "instability_effect_percent": {
+          "mean": -16.35214100566471,
+          "ci_low": -20.556529135319753,
+          "ci_high": -11.828777935547354,
+          "ci_98_low": -21.121792882642122,
+          "ci_98_high": -11.115953269145006,
+          "ci_family_low": -21.397111245896014,
+          "ci_family_high": -10.790901223341537,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "score_delta": {
+          "mean": 0.006122988701202095,
+          "ci_low": 0.0026746047517231973,
+          "ci_high": 0.009349777428858634,
+          "ci_98_low": 0.002152842233148232,
+          "ci_98_high": 0.009769950585630776,
+          "ci_family_low": 0.0018752424739534312,
+          "ci_family_high": 0.010017121575183944,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "normalized_instability_delta": {
+          "mean": -0.003055615653384728,
+          "ci_low": -0.006370919517478966,
+          "ci_high": 0.0003470587729743016,
+          "ci_98_low": -0.006863248453274887,
+          "ci_98_high": 0.0008826046024376226,
+          "ci_family_low": -0.007124487879029796,
+          "ci_family_high": 0.001139853764269661,
+          "n_cells": 3,
+          "n_units": 60
+        },
+        "fit_time_ratio": {
+          "mean": 101.36272462766628,
+          "ci_low": 93.51382552266867,
+          "ci_high": 109.5846567399622,
+          "ci_98_low": 92.55050964462839,
+          "ci_98_high": 110.80886231437968,
+          "ci_family_low": 91.95591072971463,
+          "ci_family_high": 111.55483197769966,
+          "n_cells": 3,
+          "n_units": 60
+        }
+      }
+    },
+    "cells": {
+      "classification_interaction": {
+        "task": "classification",
+        "instability_effect_percent": {
+          "mean": -0.9817598847157832,
+          "ci_low": -4.870848434378072,
+          "ci_high": 2.158885228434498,
+          "ci_98_low": -5.550936378897183,
+          "ci_98_high": 2.552286771487659,
+          "ci_family_low": -5.855627363877206,
+          "ci_family_high": 2.731711837581267,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": 0.02197999999999998,
+          "ci_low": 0.004527124999999969,
+          "ci_high": 0.03946749999999993,
+          "ci_98_low": 0.00197740624999996,
+          "ci_98_high": 0.04173762499999997,
+          "ci_family_low": 0.00022158333333328876,
+          "ci_family_high": 0.043026770833333325,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": -0.002739473684210525,
+          "ci_low": -0.017103835526315815,
+          "ci_high": 0.00981267105263156,
+          "ci_98_low": -0.019241388157894734,
+          "ci_98_high": 0.01149094736842106,
+          "ci_family_low": -0.020541063596491216,
+          "ci_family_high": 0.012284489035087684,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": -2.153612869741675,
+          "ci_low": -6.103634873765128,
+          "ci_high": 1.6507393829002013,
+          "ci_98_low": -6.692696319007813,
+          "ci_98_high": 2.1768018139607572,
+          "ci_family_low": -6.983608011924434,
+          "ci_family_high": 2.5049676928654367,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 123.74478859586536,
+          "ci_low": 108.07154596978121,
+          "ci_high": 137.8951350607062,
+          "ci_98_low": 105.59691388453537,
+          "ci_98_high": 139.66090501345087,
+          "ci_family_low": 104.46737242733465,
+          "ci_family_high": 140.67787847044752,
+          "n_units": 20
+        },
+        "eligibility_rate": 0.95,
+        "n_units": 20,
+        "probability_instability_effect_percent": {
+          "mean": 10.242495509552754,
+          "ci_low": -3.330752816283569,
+          "ci_high": 23.231153851655478,
+          "ci_98_low": -5.103712122833217,
+          "ci_98_high": 25.04652741334966,
+          "ci_family_low": -6.2261851568391595,
+          "ci_family_high": 25.927520392576717,
+          "n_units": 20
+        }
+      },
+      "classification_redundant": {
+        "task": "classification",
+        "instability_effect_percent": {
+          "mean": 29.580232382016987,
+          "ci_low": 22.360719192994576,
+          "ci_high": 37.426731529133114,
+          "ci_98_low": 21.475580576833973,
+          "ci_98_high": 38.6842128383125,
+          "ci_family_low": 20.97525800924624,
+          "ci_family_high": 39.41886990914242,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": -0.007605000000000001,
+          "ci_low": -0.009682499999999993,
+          "ci_high": -0.005525000000000002,
+          "ci_98_low": -0.009987500000000005,
+          "ci_98_high": -0.005194968749999987,
+          "ci_family_low": -0.010122500000000005,
+          "ci_family_high": -0.005007500000000008,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": 0.033668947368421055,
+          "ci_low": 0.025983868421052637,
+          "ci_high": 0.04120545394736841,
+          "ci_98_low": 0.024912312500000002,
+          "ci_98_high": 0.04220605263157895,
+          "ci_family_low": 0.0244470153508772,
+          "ci_family_high": 0.042725881578947376,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 5.871959585180386,
+          "ci_low": -25.16158753960673,
+          "ci_high": 36.13617465536654,
+          "ci_98_low": -29.087254893042005,
+          "ci_98_high": 40.614533900256575,
+          "ci_family_low": -31.706474326948968,
+          "ci_family_high": 43.05454230512725,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 87.968045256134,
+          "ci_low": 80.89063803671118,
+          "ci_high": 95.22470453824899,
+          "ci_98_low": 80.02927496507697,
+          "ci_98_high": 96.3028430063886,
+          "ci_family_low": 79.53793167199424,
+          "ci_family_high": 96.94310990725303,
+          "n_units": 20
+        },
+        "eligibility_rate": 0.9,
+        "n_units": 20,
+        "probability_instability_effect_percent": {
+          "mean": 20.62514518438254,
+          "ci_low": 11.973291100517438,
+          "ci_high": 29.23791603580342,
+          "ci_98_low": 10.808849290599056,
+          "ci_98_high": 30.445147031881227,
+          "ci_family_low": 10.217348009246981,
+          "ci_family_high": 30.93364039650592,
+          "n_units": 20
+        }
+      },
+      "classification_unique": {
+        "task": "classification",
+        "instability_effect_percent": {
+          "mean": 63.05630858557483,
+          "ci_low": 54.011156559172996,
+          "ci_high": 72.38781379457086,
+          "ci_98_low": 52.72389217233164,
+          "ci_98_high": 73.80027805848232,
+          "ci_family_low": 52.075127562118084,
+          "ci_family_high": 74.57443480325297,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": -0.011519999999999985,
+          "ci_low": -0.014812499999999984,
+          "ci_high": -0.00867999999999997,
+          "ci_98_low": -0.015277499999999961,
+          "ci_98_high": -0.00831496875000002,
+          "ci_family_low": -0.015565854166666643,
+          "ci_family_high": -0.008134083333333323,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": 0.04276105263157894,
+          "ci_low": 0.03545473684210527,
+          "ci_high": 0.05012352631578947,
+          "ci_98_low": 0.03436651644736842,
+          "ci_98_high": 0.05116586513157895,
+          "ci_family_low": 0.03370739912280702,
+          "ci_family_high": 0.05177365350877195,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.0,
+          "ci_98_low": 0.0,
+          "ci_98_high": 0.0,
+          "ci_family_low": 0.0,
+          "ci_family_high": 0.0,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 101.36272134333908,
+          "ci_low": 90.81005626960912,
+          "ci_high": 112.27470979372976,
+          "ci_98_low": 89.52593883318112,
+          "ci_98_high": 114.03469608016894,
+          "ci_family_low": 88.74443705730043,
+          "ci_family_high": 114.83304155533963,
+          "n_units": 20
+        },
+        "eligibility_rate": 0.8,
+        "n_units": 20,
+        "probability_instability_effect_percent": {
+          "mean": 24.17802689407271,
+          "ci_low": 9.714234016312131,
+          "ci_high": 39.057521077227996,
+          "ci_98_low": 7.916655419350808,
+          "ci_98_high": 41.069729687034226,
+          "ci_family_low": 6.734217620967396,
+          "ci_family_high": 42.299226668751864,
+          "n_units": 20
+        }
+      },
+      "regression_friedman1": {
+        "task": "regression",
+        "instability_effect_percent": {
+          "mean": 1.555456088397767,
+          "ci_low": -1.5228740774410148,
+          "ci_high": 4.780336473118831,
+          "ci_98_low": -1.9660258528414498,
+          "ci_98_high": 5.20674904645138,
+          "ci_family_low": -2.180764034722404,
+          "ci_family_high": 5.433142797950084,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": 0.009845531373956329,
+          "ci_low": -0.00044734110783391993,
+          "ci_high": 0.019204583055828922,
+          "ci_98_low": -0.001986238926797869,
+          "ci_98_high": 0.020394434445580204,
+          "ci_family_low": -0.0028283662776478393,
+          "ci_family_high": 0.020952388591473674,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": 0.004629816599754586,
+          "ci_low": -0.00446250768782276,
+          "ci_high": 0.013882264343299575,
+          "ci_98_low": -0.0055391355375909584,
+          "ci_98_high": 0.015134492990085423,
+          "ci_family_low": -0.0061699018067632614,
+          "ci_family_high": 0.015933570897614924,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 0.19230769230769162,
+          "ci_low": -9.080419580419582,
+          "ci_high": 9.272727272727273,
+          "ci_98_low": -9.272727272727273,
+          "ci_98_high": 9.657342657342657,
+          "ci_family_low": -11.786713286713288,
+          "ci_family_high": 9.849650349650348,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 139.0322785712188,
+          "ci_low": 131.4729082145886,
+          "ci_high": 146.62583450292212,
+          "ci_98_low": 130.45803189183468,
+          "ci_98_high": 147.70375661146582,
+          "ci_family_low": 129.8534686624923,
+          "ci_family_high": 148.25171299285506,
+          "n_units": 20
+        },
+        "eligibility_rate": 1.0,
+        "n_units": 20
+      },
+      "regression_redundant": {
+        "task": "regression",
+        "instability_effect_percent": {
+          "mean": -1.4670007934738791,
+          "ci_low": -4.737717952462859,
+          "ci_high": 1.7365462010030503,
+          "ci_98_low": -5.158004784934827,
+          "ci_98_high": 2.1546668198646173,
+          "ci_family_low": -5.4072382868668925,
+          "ci_family_high": 2.383238506840429,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": 0.0013452022179012036,
+          "ci_low": -0.0003444462097091132,
+          "ci_high": 0.0032134522567705717,
+          "ci_98_low": -0.0005624531457291365,
+          "ci_98_high": 0.0034842315507220547,
+          "ci_family_low": -0.0006683675450983862,
+          "ci_family_high": 0.003631049547744092,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": -0.0015038758295901615,
+          "ci_low": -0.004325873722057882,
+          "ci_high": 0.0011874975027682923,
+          "ci_98_low": -0.004717341250521096,
+          "ci_98_high": 0.001607222120364578,
+          "ci_family_low": -0.004943450777289852,
+          "ci_family_high": 0.0018473301476658978,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": -4.912915544143178,
+          "ci_low": -10.99029027569371,
+          "ci_high": 0.5291480096584152,
+          "ci_98_low": -11.893105414432295,
+          "ci_98_high": 1.2038890058330716,
+          "ci_family_low": -12.327630160556232,
+          "ci_family_high": 1.5286996846359229,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 116.57025751155861,
+          "ci_low": 94.57307933225302,
+          "ci_high": 139.73122180271997,
+          "ci_98_low": 91.5908997413634,
+          "ci_98_high": 143.14252686106582,
+          "ci_family_low": 90.03718203378143,
+          "ci_family_high": 144.89969231448785,
+          "n_units": 20
+        },
+        "eligibility_rate": 1.0,
+        "n_units": 20
+      },
+      "regression_unique_step": {
+        "task": "regression",
+        "instability_effect_percent": {
+          "mean": -49.14487831191802,
+          "ci_low": -60.76592300773661,
+          "ci_high": -36.44511490320162,
+          "ci_98_low": -62.262881975776,
+          "ci_98_high": -34.32970341418701,
+          "ci_family_low": -63.1534103601601,
+          "ci_family_high": -33.366962989285625,
+          "n_units": 20
+        },
+        "score_delta": {
+          "mean": 0.00717823251174875,
+          "ci_low": 0.0054055090649950425,
+          "ci_high": 0.008890843956362722,
+          "ci_98_low": 0.005110240666239784,
+          "ci_98_high": 0.009131584520240063,
+          "ci_family_low": 0.004969594714463112,
+          "ci_family_high": 0.009244729198380914,
+          "n_units": 20
+        },
+        "normalized_instability_delta": {
+          "mean": -0.01229278773031861,
+          "ci_low": -0.015380343285908461,
+          "ci_high": -0.009092892973737427,
+          "ci_98_low": -0.01581336475061958,
+          "ci_98_high": -0.008616655093389774,
+          "ci_family_low": -0.016040593326150585,
+          "ci_family_high": -0.008366889083997823,
+          "n_units": 20
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.0,
+          "ci_98_low": 0.0,
+          "ci_98_high": 0.0,
+          "ci_family_low": 0.0,
+          "ci_family_high": 0.0,
+          "n_units": 20
+        },
+        "fit_time_ratio": {
+          "mean": 48.48563780022141,
+          "ci_low": 45.527616826968554,
+          "ci_high": 51.27181423923398,
+          "ci_98_low": 45.06319920218779,
+          "ci_98_high": 51.641816220278095,
+          "ci_family_low": 44.79667435072928,
+          "ci_family_high": 51.87776380291133,
+          "n_units": 20
+        },
+        "eligibility_rate": 1.0,
+        "n_units": 20
+      }
+    }
+  },
+  "real_repeated_split_summary": {
+    "grand": {
+      "mean": 5.818650522170873,
+      "ci_low": 1.274281903735789,
+      "ci_high": 10.615755433901752,
+      "ci_98_low": 0.7231198910901784,
+      "ci_98_high": 11.358261422208866,
+      "ci_family_low": 0.33983475072941655,
+      "ci_family_high": 11.766906561784333,
+      "n_cells": 3,
+      "n_units": 48
+    },
+    "grand_normalized_instability_delta": {
+      "mean": 0.007128734089245082,
+      "ci_low": 0.0006287501516532272,
+      "ci_high": 0.014009152094268394,
+      "ci_98_low": -0.00021179529370844507,
+      "ci_98_high": 0.015059788206309509,
+      "ci_family_low": -0.0007426069838829362,
+      "ci_family_high": 0.015600910522428041,
+      "n_cells": 3,
+      "n_units": 48
+    },
+    "tasks": {
+      "classification": {
+        "instability_effect_percent": {
+          "mean": 5.383010359549854,
+          "ci_low": -0.3892148971827152,
+          "ci_high": 11.724048933337063,
+          "ci_98_low": -1.1944143572381654,
+          "ci_98_high": 12.81632881324717,
+          "ci_family_low": -1.6561526981046513,
+          "ci_family_high": 13.305719633012679,
+          "n_cells": 2,
+          "n_units": 32
+        },
+        "score_delta": {
+          "mean": -0.000495705409356742,
+          "ci_low": -0.0014260553728070603,
+          "ci_high": 0.0004407399792885073,
+          "ci_98_low": -0.001554584703947399,
+          "ci_98_high": 0.0005678910818713614,
+          "ci_family_low": -0.001622758792235273,
+          "ci_family_high": 0.0006437469541910274,
+          "n_cells": 2,
+          "n_units": 32
+        },
+        "normalized_instability_delta": {
+          "mean": 0.0019103794757361237,
+          "ci_low": 0.0005665789794295643,
+          "ci_high": 0.0033176369972812095,
+          "ci_98_low": 0.0004039201565225204,
+          "ci_98_high": 0.0035492986223325126,
+          "ci_family_low": 0.0003010689987945006,
+          "ci_family_high": 0.0036618080670120755,
+          "n_cells": 2,
+          "n_units": 32
+        },
+        "fit_time_ratio": {
+          "mean": 125.22082077249812,
+          "ci_low": 120.09008561923957,
+          "ci_high": 130.89746403199388,
+          "ci_98_low": 119.42012971594865,
+          "ci_98_high": 131.8712059909271,
+          "ci_family_low": 119.03728929717926,
+          "ci_family_high": 132.36957951330675,
+          "n_cells": 2,
+          "n_units": 32
+        }
+      },
+      "regression": {
+        "instability_effect_percent": {
+          "mean": 6.68993084741291,
+          "ci_low": -0.13184674738308977,
+          "ci_high": 13.470139458815162,
+          "ci_98_low": -1.0317482776524403,
+          "ci_98_high": 14.447267845952135,
+          "ci_family_low": -1.5458381055336614,
+          "ci_family_high": 14.949013129990112,
+          "n_cells": 1,
+          "n_units": 16
+        },
+        "score_delta": {
+          "mean": 0.019998519242470713,
+          "ci_low": 0.007028748178254601,
+          "ci_high": 0.034581470830290756,
+          "ci_98_low": 0.005437633906138778,
+          "ci_98_high": 0.036597418882694646,
+          "ci_family_low": 0.004537778331301287,
+          "ci_family_high": 0.03780297643760034,
+          "n_cells": 1,
+          "n_units": 16
+        },
+        "normalized_instability_delta": {
+          "mean": 0.017565443316263,
+          "ci_low": -0.001830540147846587,
+          "ci_high": 0.03762527589096665,
+          "ci_98_low": -0.004862584031476392,
+          "ci_98_high": 0.04074498215268133,
+          "ci_family_low": -0.006187722358013994,
+          "ci_family_high": 0.04220301046964937,
+          "n_cells": 1,
+          "n_units": 16
+        },
+        "fit_time_ratio": {
+          "mean": 80.12132855802538,
+          "ci_low": 72.57025485476268,
+          "ci_high": 87.74709660538842,
+          "ci_98_low": 71.47865310006338,
+          "ci_98_high": 88.87600772345881,
+          "ci_family_low": 70.84924217258113,
+          "ci_family_high": 89.46948432448175,
+          "n_cells": 1,
+          "n_units": 16
+        }
+      }
+    },
+    "cells": {
+      "breast_cancer": {
+        "task": "classification",
+        "instability_effect_percent": {
+          "mean": 4.269665648700215,
+          "ci_low": 1.0998736272422596,
+          "ci_high": 7.667857705161843,
+          "ci_98_low": 0.6722991314503464,
+          "ci_98_high": 8.132795404627409,
+          "ci_family_low": 0.418705400997045,
+          "ci_family_high": 8.402759456415636,
+          "n_units": 16
+        },
+        "score_delta": {
+          "mean": -0.0014254385964912394,
+          "ci_low": -0.002887426900584855,
+          "ci_high": 0.00012792397660821297,
+          "ci_98_low": -0.0030701754385965493,
+          "ci_98_high": 0.00036549707602343006,
+          "ci_family_low": -0.0031798245614035278,
+          "ci_family_high": 0.0004996649610136609,
+          "n_units": 16
+        },
+        "normalized_instability_delta": {
+          "mean": 0.003035549399815327,
+          "ci_low": 0.000705938365650967,
+          "ci_high": 0.005440135426285009,
+          "ci_98_low": 0.0004193598030163134,
+          "ci_98_high": 0.005761412165281628,
+          "ci_family_low": 0.0002494196932389456,
+          "ci_family_high": 0.0060044757361239365,
+          "n_units": 16
+        },
+        "root_disagreement_effect_percent": {
+          "mean": -3.8982025256786694,
+          "ci_low": -8.398754019402181,
+          "ci_high": 0.54054459113378,
+          "ci_98_low": -9.063713690014275,
+          "ci_98_high": 1.1795514593270495,
+          "ci_family_low": -9.380904499327322,
+          "ci_family_high": 1.5109950609629708,
+          "n_units": 16
+        },
+        "fit_time_ratio": {
+          "mean": 100.38159109097398,
+          "ci_low": 92.1840534200553,
+          "ci_high": 110.205672223604,
+          "ci_98_low": 91.23355689553257,
+          "ci_98_high": 111.62291800750536,
+          "ci_family_low": 90.71961529613394,
+          "ci_family_high": 112.6211585773278,
+          "n_units": 16
+        },
+        "eligibility_rate": 1.0,
+        "n_units": 16,
+        "probability_instability_effect_percent": {
+          "mean": -8.916760443759161,
+          "ci_low": -15.606415601103752,
+          "ci_high": -1.789226015025989,
+          "ci_98_low": -16.412335965203578,
+          "ci_98_high": -0.6510325174005915,
+          "ci_family_low": -16.903796050688726,
+          "ci_family_high": -0.1349823455236137,
+          "n_units": 16
+        }
+      },
+      "diabetes": {
+        "task": "regression",
+        "instability_effect_percent": {
+          "mean": 6.68993084741291,
+          "ci_low": -0.1121286826388227,
+          "ci_high": 13.624111474305357,
+          "ci_98_low": -1.0313851349018244,
+          "ci_98_high": 14.576210933185676,
+          "ci_family_low": -1.5897495749182162,
+          "ci_family_high": 15.023063420764085,
+          "n_units": 16
+        },
+        "score_delta": {
+          "mean": 0.019998519242470713,
+          "ci_low": 0.007206269943052453,
+          "ci_high": 0.03460078742368463,
+          "ci_98_low": 0.005434516997818298,
+          "ci_98_high": 0.036851030250657495,
+          "ci_family_low": 0.004570730814863652,
+          "ci_family_high": 0.03816746457772745,
+          "n_units": 16
+        },
+        "normalized_instability_delta": {
+          "mean": 0.017565443316263,
+          "ci_low": -0.0017103716989510399,
+          "ci_high": 0.038250431650702334,
+          "ci_98_low": -0.0044152452638034495,
+          "ci_98_high": 0.04109597235077298,
+          "ci_family_low": -0.00598149777772752,
+          "ci_family_high": 0.04245947865715952,
+          "n_units": 16
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 9.680190857542947,
+          "ci_low": 1.608104938539926,
+          "ci_high": 19.027774632053113,
+          "ci_98_low": 0.6318115940498892,
+          "ci_98_high": 20.457144292929648,
+          "ci_family_low": 0.09881467844624216,
+          "ci_family_high": 21.171383647066907,
+          "n_units": 16
+        },
+        "fit_time_ratio": {
+          "mean": 80.12132855802538,
+          "ci_low": 72.66614618241809,
+          "ci_high": 87.83944154770771,
+          "ci_98_low": 71.5519585574764,
+          "ci_98_high": 88.96717998609935,
+          "ci_family_low": 70.95406357857851,
+          "ci_family_high": 89.77601655631412,
+          "n_units": 16
+        },
+        "eligibility_rate": 0.875,
+        "n_units": 16
+      },
+      "digits_binary": {
+        "task": "classification",
+        "instability_effect_percent": {
+          "mean": 6.496355070399494,
+          "ci_low": -4.627915383954221,
+          "ci_high": 18.751726955685392,
+          "ci_98_low": -6.049105252443295,
+          "ci_98_high": 20.716788706906446,
+          "ci_family_low": -6.780585495096176,
+          "ci_family_high": 21.776122595645955,
+          "n_units": 16
+        },
+        "score_delta": {
+          "mean": 0.0004340277777777554,
+          "ci_low": -0.0007349537037037515,
+          "ci_high": 0.0014988425925926282,
+          "ci_98_low": -0.0009085648148148968,
+          "ci_98_high": 0.0016493055555555705,
+          "ci_family_low": -0.0010069444444445444,
+          "ci_family_high": 0.0017207272376543526,
+          "n_units": 16
+        },
+        "normalized_instability_delta": {
+          "mean": 0.0007852095516569204,
+          "ci_low": -0.0005726730019493178,
+          "ci_high": 0.0023172971491228034,
+          "ci_98_low": -0.0007639041179337224,
+          "ci_98_high": 0.0025505985014619916,
+          "ci_family_low": -0.0008733451104613386,
+          "ci_family_high": 0.0026551433560753745,
+          "n_units": 16
+        },
+        "root_disagreement_effect_percent": {
+          "mean": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.0,
+          "ci_98_low": 0.0,
+          "ci_98_high": 0.0,
+          "ci_family_low": 0.0,
+          "ci_family_high": 0.0,
+          "n_units": 16
+        },
+        "fit_time_ratio": {
+          "mean": 150.06005045402225,
+          "ci_low": 144.23714730552635,
+          "ci_high": 156.37754139920483,
+          "ci_98_low": 143.62484497061453,
+          "ci_98_high": 157.4049597124129,
+          "ci_family_low": 143.21436710027487,
+          "ci_family_high": 157.88483548173386,
+          "n_units": 16
+        },
+        "eligibility_rate": 1.0,
+        "n_units": 16,
+        "probability_instability_effect_percent": {
+          "mean": 1.7943842961473382,
+          "ci_low": -4.990712309759056,
+          "ci_high": 10.09177978182662,
+          "ci_98_low": -5.693781063406361,
+          "ci_98_high": 11.364029770920611,
+          "ci_family_low": -6.055349272590189,
+          "ci_family_high": 11.993043690573638,
+          "n_units": 16
+        }
+      }
+    }
+  },
+  "decisions": {
+    "broad": {
+      "supported": false,
+      "checks": {
+        "effect_at_least_five_percent": false,
+        "effect_interval_below_zero": false,
+        "absolute_effect_at_least_threshold": false,
+        "absolute_effect_interval_below_zero": false,
+        "enough_negative_cells": false,
+        "no_cell_above_ten_percent": false,
+        "eligibility_at_least_ninety_percent": false,
+        "performance_guardrails_pass": true,
+        "cell_performance_guardrails_pass": false,
+        "no_fit_failures": true
+      },
+      "negative_cells": 3,
+      "required_negative_cells": 4
+    },
+    "classification": {
+      "supported": false,
+      "checks": {
+        "effect_at_least_five_percent": false,
+        "effect_interval_below_zero": false,
+        "absolute_effect_at_least_threshold": false,
+        "absolute_effect_interval_below_zero": false,
+        "enough_negative_cells": false,
+        "no_cell_above_ten_percent": false,
+        "eligibility_at_least_ninety_percent": false,
+        "performance_guardrails_pass": true,
+        "cell_performance_guardrails_pass": false,
+        "no_fit_failures": true
+      },
+      "negative_cells": 1,
+      "required_negative_cells": 2
+    },
+    "regression": {
+      "supported": false,
+      "checks": {
+        "effect_at_least_five_percent": true,
+        "effect_interval_below_zero": true,
+        "absolute_effect_at_least_threshold": true,
+        "absolute_effect_interval_below_zero": false,
+        "enough_negative_cells": true,
+        "no_cell_above_ten_percent": true,
+        "eligibility_at_least_ninety_percent": true,
+        "performance_guardrails_pass": true,
+        "cell_performance_guardrails_pass": true,
+        "no_fit_failures": true
+      },
+      "negative_cells": 2,
+      "required_negative_cells": 2
+    },
+    "package_recommendation": "remove_from_package"
+  },
+  "artifact_validation": {
+    "status": "passed",
+    "json_roundtrip": true,
+    "config_agreement": true,
+    "summary_regeneration": true,
+    "decision_regeneration": true,
+    "flat_summary_agreement": true
+  }
+}

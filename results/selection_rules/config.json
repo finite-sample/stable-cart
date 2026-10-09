@@ -1,0 +1,7 @@
+{
+  "n_replicates": 100,
+  "n_candidates": 20,
+  "max_depth": 5,
+  "seed": 42,
+  "output": "results/selection_rules"
+}

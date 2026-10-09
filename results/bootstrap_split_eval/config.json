@@ -1,0 +1,18 @@
+{
+  "max_depth": 4,
+  "n_consensus": 16,
+  "n_bootstrap": 40,
+  "cap": 1000,
+  "accuracy_floor": 0.95,
+  "seed": 42,
+  "datasets": [
+    "friedman1",
+    "friedman2",
+    "quadrant_interaction",
+    "heteroscedastic",
+    "diabetes",
+    "breast_cancer",
+    "digits_binary"
+  ],
+  "output": "results/bootstrap_split_eval"
+}

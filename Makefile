@@ -1,7 +1,7 @@
 # Makefile for stable-cart project
 # Simple, focused targets for essential development tasks
 
-.PHONY: help install test lint format check docs doctest clean coverage ci-docker
+.PHONY: test-solver help install test lint format check docs doctest clean coverage ci-docker
 
 # Default target
 help:
@@ -23,19 +23,19 @@ install:
 
 # Testing
 test:
-	uv run pytest tests/ -v
+	uv run pytest tests/ experiments/tests/ -v
 
 coverage:
-	uv run pytest tests/ -v --cov=stable_cart --cov-report=term-missing
+	uv run pytest tests/ experiments/tests/ -v --cov=stable_cart --cov-report=term-missing
 
 # Linting and formatting
 lint:
-	uv run ruff check stable_cart/ tests/ examples/
-	uv run ruff format --check stable_cart/ tests/ examples/
+	uv run ruff check stable_cart/ tests/ examples/ experiments/
+	uv run ruff format --check stable_cart/ tests/ examples/ experiments/
 
 format:
-	uv run ruff format stable_cart/ tests/ examples/
-	uv run ruff check --fix stable_cart/ tests/ examples/
+	uv run ruff format stable_cart/ tests/ examples/ experiments/
+	uv run ruff check --fix stable_cart/ tests/ examples/ experiments/
 
 check:
 	uv run codespell
@@ -49,8 +49,9 @@ doctest:
 
 # Docker-based CI (simple and clean)
 ci-docker:
-	docker run --rm -v $$(pwd):/app -w /app python:3.12 bash -c \
-		"pip install uv && uv sync --group dev --group test && make lint && make test"
+	COPYFILE_DISABLE=1 tar --exclude=.git --exclude=.venv --exclude=docs/_build --exclude=__pycache__ --exclude=.pytest_cache -cf - . | \
+		docker run --rm -i -w /app python:3.12 bash -c \
+		"tar -xf - && pip install uv && uv sync --group dev --group test --group experiments && make lint && make test"
 
 # Cleanup
 clean:
@@ -58,3 +59,6 @@ clean:
 	rm -rf .pytest_cache/ .coverage htmlcov/ coverage.xml
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
+
+test-solver:
+	uv run --project experiments/solver python -m pytest experiments/tests/test_solver_comparison.py -q

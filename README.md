@@ -542,3 +542,10 @@ The work here is in the plumbing: repeating the model-building procedure rather
 than the estimation step, keeping the per-case prediction distributions instead
 of only their summary, and using metrics that stay valid for class labels and
 probability vectors.
+
+## CART experiments
+
+[Single-tree experiments](https://github.com/finite-sample/stable-cart/tree/main/experiments) compare representative selection,
+bootstrap split voting, honest leaves, persistent roots, and optimized trees.
+The collection includes positive results, accuracy tradeoffs, and negative results,
+with runnable studies and their evidence.

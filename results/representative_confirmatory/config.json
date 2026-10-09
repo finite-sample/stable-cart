@@ -1,0 +1,36 @@
+{
+  "synthetic_datasets": 24,
+  "real_splits": 20,
+  "n_train": 500,
+  "n_test": 1000,
+  "n_outer": 20,
+  "n_candidates": 12,
+  "interval_resamples": 20000,
+  "seed": 20260817,
+  "output": "results/representative_confirmatory",
+  "skip_real": false,
+  "plan_path": "experiments/designs/REPRESENTATIVE_CONFIRMATORY_PLAN.md",
+  "plan_sha256": "3ae4ce4d424bd5b47a04f2e8c0749b9cd4893833ece8c7b349cfd56c8a61ea85",
+  "rules": [
+    "random",
+    "representative",
+    "best_validation",
+    "ensemble"
+  ],
+  "synthetic_processes": [
+    "classification_easy",
+    "classification_hard",
+    "classification_multiclass",
+    "regression_linear",
+    "regression_friedman1",
+    "regression_heteroscedastic"
+  ],
+  "real_datasets": [
+    "breast_cancer",
+    "wine",
+    "diabetes"
+  ],
+  "families": [
+    "tree"
+  ]
+}

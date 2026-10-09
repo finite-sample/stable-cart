@@ -1,0 +1,48 @@
+{
+  "synthetic_datasets": 20,
+  "real_splits": 16,
+  "n_development": 600,
+  "n_test": 1000,
+  "validation_refits": 16,
+  "test_refits": 20,
+  "interval_resamples": 20000,
+  "seed": 20260818,
+  "output": "results/bootstrap_split_confirmatory",
+  "skip_real": false,
+  "confirmatory": false,
+  "workers": 4,
+  "plan_path": "experiments/designs/BOOTSTRAP_SPLIT_CONFIRMATORY_PLAN.md",
+  "plan_sha256": "4228520ad396fa2febc9b9b0fa2ab3b0c2b9da9bcfd4ced7292407235874f27d",
+  "synthetic_processes": [
+    "classification_unique",
+    "classification_redundant",
+    "classification_interaction",
+    "regression_unique_step",
+    "regression_redundant",
+    "regression_friedman1"
+  ],
+  "real_datasets": [
+    "breast_cancer",
+    "digits_binary",
+    "diabetes"
+  ],
+  "arms": [
+    "pruned_cart",
+    "bootstrap_split"
+  ],
+  "configurations_per_arm": 12,
+  "preflight_checks": {
+    "a_a": true,
+    "a_a_paired_delta": true,
+    "fast_vs_slow_pair": true,
+    "class_renaming": true,
+    "equal_effective_grid": true,
+    "ineligible_arm_retained": true
+  },
+  "script_sha256": "b7b847ddc555bf1b076493eba883047c3375b8947ea6a0da9c9eb23ea80cb98a",
+  "estimator_sha256": "45f4d4a7fc69a673ab1bed7907a59092121b507af7185bd26b2a8bd9b4c80d34",
+  "lockfile_sha256": "91e009c49929423cc9cc1a47b814ad56ceaa95a96afdb5c0f6515f5801a75695",
+  "python_version": "3.13.2",
+  "numpy_version": "2.5.2",
+  "scikit_learn_version": "1.9.0"
+}
