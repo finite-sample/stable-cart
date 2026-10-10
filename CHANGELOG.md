@@ -4,6 +4,15 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+
+- The README links to the single-tree experiments in `experiments/`, which
+  report representative selection, bootstrap split voting, repaired trees,
+  persistent roots, and leaf-shrinkage studies, including the negative results.
+  Package behavior is unchanged.
+
 ## 3.1.1 - 2026-09-19
 
 ### Documentation
