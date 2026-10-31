@@ -1,4 +1,4 @@
-# stable-cart
+# stable cart: how much do your predictions change when you refit?
 
 [![PyPI](https://img.shields.io/pypi/v/stable-cart.svg)](https://pypi.org/project/stable-cart/)
 [![Python versions](https://img.shields.io/pypi/pyversions/stable-cart.svg)](https://pypi.org/project/stable-cart/)
