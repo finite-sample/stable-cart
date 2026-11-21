@@ -108,10 +108,14 @@ def _cluster_rows(groups: Any, n_train: int) -> tuple[NDArray[Any], list[NDArray
         ) from None
     if missing:
         raise ValueError("groups must not contain missing labels.")
-    labels = np.unique(group_array)
+    labels, codes, sizes = np.unique(
+        group_array, return_inverse=True, return_counts=True
+    )
     if len(labels) < 2:
         raise ValueError("groups must contain at least two distinct clusters.")
-    return labels, [np.flatnonzero(group_array == label) for label in labels]
+    # Preserve training-row order within each cluster (and hence seeded resamples).
+    order = np.argsort(codes, kind="stable")
+    return labels, np.split(order, np.cumsum(sizes)[:-1])
 
 
 def bootstrap_predictions(

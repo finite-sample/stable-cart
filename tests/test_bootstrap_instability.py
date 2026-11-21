@@ -557,3 +557,13 @@ def test_cluster_bootstrap_rejects_missing_labels_before_fitting(missing):
 
     with pytest.raises(ValueError, match=r"missing.*label"):
         bootstrap_predictions(model_factory, X, X[:, 0], X, groups=groups)
+
+
+def test_cluster_partition_keeps_training_order():
+    from stable_cart.evaluation import _cluster_rows
+
+    groups = np.array(["west", "east", "west", "north", "east", "west", "north"])
+    labels, rows = _cluster_rows(groups, len(groups))
+    np.testing.assert_array_equal(labels, ["east", "north", "west"])
+    for label, positions in zip(labels, rows, strict=True):
+        np.testing.assert_array_equal(positions, np.flatnonzero(groups == label))
