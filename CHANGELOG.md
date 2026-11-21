@@ -6,6 +6,10 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+### Performance
+
+- Cluster bootstrap grouping collects all training-row positions in a single stable sort, improving audits with many clusters.
+
 ### Documentation
 
 - The README links to the single-tree experiments in `experiments/`, which
