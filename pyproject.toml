@@ -6,7 +6,7 @@ build-backend = "uv_build"
 name = "stable-cart"
 description = "Bootstrap audits of prediction instability for fitted models and model-building pipelines."
 authors = [
-    { name = "Gaurav Sood", email = "contact@gsood.com" },
+    { name = "Gaurav Sood" },
     { name = "Arav Bhosle", email = "aravbhosle@gmail.com"}
 ]
 readme = "README.md"
