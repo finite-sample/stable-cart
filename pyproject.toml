@@ -23,7 +23,7 @@ keywords = [
     "reproducibility"
 ]
 dependencies = [
-    "numpy>=1.23.0",
+    "numpy>=2.1.0",
     "scikit-learn>=1.6.0"
 ]
 classifiers = [
@@ -48,7 +48,7 @@ Changelog = "https://github.com/finite-sample/stable-cart/blob/main/CHANGELOG.md
 Issues = "https://github.com/finite-sample/stable-cart/issues"
 
 [project.optional-dependencies]
-plots = ["matplotlib>=3.5"]
+plots = ["matplotlib>=3.9.2"]
 
 [dependency-groups]
 experiments = ["pandas>=1.5", "matplotlib>=3.5"]

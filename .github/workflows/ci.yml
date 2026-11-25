@@ -18,5 +18,6 @@ jobs:
   ci:
     uses: gojiplus/py-canon/.github/workflows/reusable-ci.yml@v1
     with:
+      run-lower-bounds: true
       wheel-import: stable_cart
       coverage-floor: 0
